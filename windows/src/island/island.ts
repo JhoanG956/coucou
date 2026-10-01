@@ -18,6 +18,7 @@ import { UploadCanvas } from "../upload/canvas";
 import { USC, UploadSeq } from "../upload/sequence";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
 import { h } from "../views/dom";
+import { OPEN_URLS } from "../views/integrations";
 import { IslandStateMachine, type FsmState } from "./fsm";
 
 const BOT_OVERHANG = 40;
@@ -125,17 +126,9 @@ export class Island {
       openTarget: () => {
         const task = State.focusTask;
         if (!task) return;
-        const urls: Record<string, string> = {
-          integration_resend: "https://resend.com/emails",
-          integration_vercel: "https://vercel.com/dashboard",
-          integration_github: "https://github.com",
-          integration_stripe: "https://dashboard.stripe.com/payments",
-          integration_notion: "https://notion.so",
-          integration_calcom: "https://app.cal.com/bookings",
-        };
         if (task.id === "integration_claude") void Bridge.openInVSCode(task.sessionCwd ?? null);
         else if (task.id === "integration_n8n") void Bridge.openN8n();
-        else if (urls[task.id]) void Bridge.openUrl(urls[task.id]);
+        else if (OPEN_URLS[task.id]) void Bridge.openUrl(OPEN_URLS[task.id]);
       },
       openUrl: (url) => {
         if (url) void Bridge.openUrl(url);

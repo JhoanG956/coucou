@@ -609,6 +609,12 @@ body {
   color: var(--red-text);
 }
 
+.reminder-detail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .who-row {
   display: flex;
   align-items: center;
@@ -1185,6 +1191,46 @@ input[type="range"]::-webkit-slider-thumb {
   font: 500 10px var(--mono);
   color: #c9956a;
   flex: 0 0 auto;
+}
+
+/* Rows that open something (GitHub, Calendar). */
+.int-go {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: default;
+}
+
+.int-go:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.int-state {
+  font: 500 10px var(--font);
+  margin-left: auto;
+  padding-left: 4px;
+  flex: 0 0 auto;
+}
+
+.int-join {
+  font: 600 10px var(--font);
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.int-join:hover {
+  filter: brightness(1.25);
+}
+
+.int-star {
+  color: #f5a524;
+  display: grid;
+  place-items: center;
 }
 
 .int-more,
