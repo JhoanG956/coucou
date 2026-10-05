@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- GitHub: the CI of your Claude Code session's branch, read from its .git folder. On macOS it takes the CI row of the GitHub card (GitHub build) and the CI detail lists it first; on Windows the GitHub card shows it with the reviews asked of you and your open pull requests. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
+- Google Calendar, on macOS and Windows: a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
+- Claude Code sessions from the Claude desktop app's Code tab show up on the VS Code pill; their permission prompts stay in the desktop app — thanks @JhoanG956
+- Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
+- Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
+
 ## 0.1.8 — October 5, 2026
 
 - Coucou on iPhone: turn on Settings → General → iPhone (off by default) and your agent sessions show up live in the Coucou iPhone app and its widgets, through your own private iCloud. Project names, commands and questions are encrypted with your iCloud keys; turning it off deletes them (#209, #211, #212, #213)
