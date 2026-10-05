@@ -6,6 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
 
+    func applicationWillTerminate(_ notification: Notification) {
+        HotKeyCenter.shared.unregisterAll()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
@@ -14,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        #if PHONE_LINK
+        CloudProbe.shared.startIfEnabled()
+        #endif
     }
 
     // MARK: - Menu bar
@@ -44,17 +51,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var settingsWindow: NSWindow?
 
+    @objc private func openSettingsFromNotification(_ notification: Notification) {
+        if let section = notification.object as? String {
+            UserDefaults.standard.set(section, forKey: "settingsSection")
+        }
+        openSettings()
+    }
+
     @objc private func openSettings() {
-        if let w = settingsWindow, w.isVisible { w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 540),
-                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        // The island floats above every window; fold it away so it can't cover Settings.
+        if AppState.shared.mode == .expanded { islandController?.collapse() }
+
+        if let w = settingsWindow, w.isVisible {
+            placeBelowIsland(w)
+            w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return
+        }
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
+                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                           backing: .buffered, defer: false)
         win.title = "Settings — Coucou"
-        win.contentView = NSHostingView(rootView: SettingsView())
-        win.center()
+        let host = NSHostingView(rootView: SettingsView())
+        host.sizingOptions = [.minSize]
+        win.contentView = host
+        win.contentMinSize = NSSize(width: 640, height: 420)
         win.isReleasedWhenClosed = false
+        placeBelowIsland(win)
         settingsWindow = win
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Centres the window horizontally and keeps its title bar clear of the island panel
+    /// (320 pt tall at the top of the notch screen), shrinking it to fit if needed.
+    private func placeBelowIsland(_ win: NSWindow) {
+        let screen = IslandWindowController.notchScreen() ?? NSScreen.main ?? win.screen
+        guard let screen else { win.center(); return }
+        let visible = screen.visibleFrame
+        let islandBottom = screen.frame.maxY - 320 - 12   // island panel height + margin
+        let top = min(visible.maxY, islandBottom)
+        var frame = win.frame
+        frame.size.height = min(frame.height, max(top - visible.minY - 12, win.minSize.height))
+        frame.origin.x = visible.midX - frame.width / 2
+        frame.origin.y = max(visible.minY + 12, top - frame.height)
+        win.setFrame(frame, display: true)
     }
 
     // MARK: - Island setup
@@ -71,7 +110,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StripePoller.shared.start()
         CalcomPoller.shared.start()
         NotionPoller.shared.start()
-        NotificationCenter.default.addObserver(self, selector: #selector(openSettings),
+        NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
+        // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
+        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { _ in
+            DesktopMochiController.shared.launchFlyIfNeeded()
+        }
+        #if !APPSTORE
+        _ = MusicController.shared
+        #endif
     }
 }
