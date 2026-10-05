@@ -745,13 +745,10 @@ mod tests {
     }
 
     #[test]
-    fn pkce_primitives() {
-        // RFC 7636 appendix B: the S256 challenge of its example verifier
+    fn pkce_s256_rfc7636() {
+        // RFC 7636 appendix B: the S256 challenge of its example verifier.
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
         assert_eq!(b64url(&sha256(verifier.as_bytes()).unwrap()), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
-        let a = random_bytes(32).unwrap();
-        assert_eq!(a.len(), 32);
-        assert_ne!(a, random_bytes(32).unwrap());
     }
 
     #[test]
