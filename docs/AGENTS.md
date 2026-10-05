@@ -103,7 +103,7 @@ The GitHub build exposes Gemini CLI (`agent_gemini`) and Antigravity (`agent_ant
 
 ## Real-world examples
 
-### Gemini CLI (macOS and Windows)
+### Gemini CLI (macOS)
 
 Coucou supports Gemini CLI out of the box via **Settings → Gemini CLI → Install hooks**.
 The installer writes to `~/.gemini/settings.json` and uses `--agent gemini` so
@@ -119,7 +119,7 @@ Coucou events automatically.
 
 `AfterModel` is not installed — it fires on every response chunk and would flood the island.
 
-### Antigravity — `agy` (macOS and Windows)
+### Antigravity — `agy` (macOS)
 
 Coucou supports Antigravity out of the box via **Settings → Antigravity → Install hooks**.
 The installer writes to `~/.gemini/config/hooks.json` (timeouts in seconds) and uses

@@ -86,75 +86,6 @@ fn decision_json(decision: &str) -> Option<String> {
     ))
 }
 
-/// Normalize Gemini CLI / Antigravity event names to the Claude-like names the
-/// island already handles. Claude names pass through unchanged.
-fn normalize_event(name: &str) -> String {
-    match name {
-        // Gemini CLI
-        "BeforeTool" | "BeforeToolSelection" => "PreToolUse".to_string(),
-        "AfterTool" => "PostToolUse".to_string(),
-        "AfterModel" => "PostToolUse".to_string(),
-        "BeforeAgent" => "UserPromptSubmit".to_string(),
-        "AfterAgent" => "Stop".to_string(),
-        "SessionStart" | "startup" => "SessionStart".to_string(),
-        "SessionEnd" | "exit" => "SessionEnd".to_string(),
-        // Antigravity CLI (`agy`): Pre/PostToolUse and Stop already match;
-        // invocations map to prompt/activity so the pill breathes per turn.
-        "PreInvocation" => "UserPromptSubmit".to_string(),
-        "PostInvocation" => "PostToolUse".to_string(),
-        other => other.to_string(),
-    }
-}
-
-/// Antigravity wraps tool data as `toolCall: {name, args}` and identifies the
-/// session as `conversationId`. Map both onto the Claude-like fields the
-/// island reads (`tool_name`, `tool_input`, `session_id`); existing fields win.
-/// No-op for Claude Code events, which already carry `tool_name`.
-fn normalize_tool_fields(map: &mut serde_json::Map<String, serde_json::Value>) {
-    use serde_json::Value;
-    if map.contains_key("tool_name") {
-        return;
-    }
-    let tool = map.get("toolCall").cloned().unwrap_or(Value::Null);
-    let name = tool
-        .get("name")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .or_else(|| map.get("tool").and_then(Value::as_str).map(str::to_string));
-    if let Some(name) = name.filter(|s| !s.is_empty()) {
-        map.insert("tool_name".into(), Value::String(name));
-    }
-    if !map.contains_key("tool_input") {
-        if let Some(args) = tool.get("args").cloned().filter(|a| a.is_object()) {
-            let obj = args.as_object().unwrap();
-            let mut flat = obj.clone();
-            // Flatten the PascalCase keys Antigravity tools actually use so the
-            // island's step label finds them alongside the raw keys.
-            for (src, dst) in [
-                ("CommandLine", "command"),
-                ("FilePath", "file_path"),
-                ("Path", "path"),
-                ("Url", "url"),
-                ("Query", "query"),
-                ("Pattern", "pattern"),
-            ] {
-                if let Some(val) = obj.get(src).cloned() {
-                    flat.insert(dst.to_string(), val);
-                }
-            }
-            map.insert("tool_input".into(), Value::Object(flat));
-        }
-    }
-    if !map.contains_key("session_id") {
-        for key in ["conversationId", "conversation_id", "sessionId", "GEMINI_SESSION_ID"] {
-            if let Some(id) = map.get(key).and_then(Value::as_str).filter(|s| !s.is_empty()) {
-                map.insert("session_id".into(), Value::String(id.to_string()));
-                break;
-            }
-        }
-    }
-}
-
 /// Reads stdin and returns the payload to forward plus the event name.
 fn read_event() -> Option<(String, String)> {
     let mut raw = Vec::new();
@@ -189,19 +120,13 @@ fn read_event() -> Option<(String, String)> {
     if !agent.is_empty() {
         map.insert("coucou_agent".into(), serde_json::Value::String(agent));
     }
-    let raw_event = map
+    let event = map
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .map(str::to_string)
         .filter(|s| !s.is_empty())
         .unwrap_or(arg_event);
-    // Translate Gemini CLI / Antigravity event names; Claude names pass through.
-    let event = normalize_event(&raw_event);
     map.insert("hook_event_name".into(), serde_json::Value::String(event.clone()));
-
-    // Map Antigravity/Gemini field shapes onto the Claude-like names the island
-    // reads. No-op for Claude Code events that already carry `tool_name`.
-    normalize_tool_fields(map);
 
     for field in DROPPED_FIELDS {
         map.remove(*field);
@@ -233,14 +158,6 @@ fn read_event() -> Option<(String, String)> {
         if !map.contains_key(key) {
             let value = std::env::var(var).unwrap_or_default();
             map.insert(key.into(), serde_json::Value::String(value));
-        }
-    }
-    // Gemini / Antigravity expose the session id via this env var; only insert
-    // when it is non-empty and session_id was not already set by the payload.
-    if !map.contains_key("session_id") {
-        let id = std::env::var("GEMINI_SESSION_ID").unwrap_or_default();
-        if !id.is_empty() {
-            map.insert("session_id".into(), serde_json::Value::String(id));
         }
     }
 

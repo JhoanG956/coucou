@@ -3,7 +3,7 @@
 // integrations land here too in a later stage.
 
 import "./settings.css";
-import { Bridge, onEvent, type HookPreview, type HookStatus } from "../core/bridge";
+import { Bridge, onEvent, type HookStatus } from "../core/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "../core/state";
 import { h, clear } from "../views/dom";
 
@@ -168,136 +168,6 @@ function claudeSection(status: HookStatus): HTMLElement {
   }
 
   draw();
-  return section;
-}
-
-// ── Generic agent hook section (Gemini CLI, Antigravity) ─────────────────────
-// Reusable shell for any agent whose hooks live in a separate config file.
-
-function agentHookSection(opts: {
-  title: string;
-  hintInstalled: string;
-  hintNotInstalled: string;
-  getStatus: () => Promise<HookStatus | null>;
-  getPreview: (install: boolean) => Promise<HookPreview>;
-  applyHooks: (install: boolean, fp: string) => Promise<string>;
-  successNote: (backup: string) => string;
-}): HTMLElement {
-  let status: HookStatus = { installed: false, settingsPath: "", hookPath: "", hookReady: false };
-  const body = h("div", { style: "display:flex;flex-direction:column;gap:12px" });
-  const head = h("h2", {}, statusDot(false), h("span", { text: opts.title }));
-  const section = h("section", {}, head, body);
-
-  const rebuild = async () => {
-    const fresh = await opts.getStatus();
-    if (fresh) status = fresh;
-    clear(body);
-    draw();
-    clear(head);
-    head.append(statusDot(status.installed), h("span", { text: opts.title }));
-  };
-
-  function draw() {
-    body.append(
-      h("div", { class: "hint", text: status.installed ? opts.hintInstalled : opts.hintNotInstalled }),
-      h("div", { class: "row" },
-        h("label", { text: "Config file" }),
-        h("span", { class: "path", text: status.settingsPath }),
-      ),
-      h("div", { class: "row" },
-        h("label", { text: "Relay" }),
-        h("span", { class: "path", text: status.hookPath }),
-        statusDot(status.hookReady),
-      ),
-    );
-
-    if (!status.hookReady) {
-      body.append(h("div", {
-        class: "notice warn",
-        text: "coucou-hook.exe is not in place yet. Restart Coucou; if it still fails, build it with `cargo build -p coucou-hook`.",
-      }));
-    }
-
-    const actions = h("div", { class: "row" });
-    const install = h("button", {
-      class: "primary",
-      text: status.installed ? "Reinstall hooks…" : "Install hooks…",
-      onclick: () => showPreview(true),
-    });
-    if (!status.hookReady) {
-      install.disabled = true;
-      install.title = "The relay isn't installed yet.";
-    }
-    actions.append(install);
-    if (status.installed) {
-      actions.append(h("button", {
-        class: "danger",
-        text: "Uninstall hooks…",
-        onclick: () => showPreview(false),
-      }));
-    }
-    body.append(actions);
-  }
-
-  async function showPreview(install: boolean) {
-    let preview;
-    try {
-      preview = await opts.getPreview(install);
-    } catch (err) {
-      clear(body);
-      body.append(
-        h("div", { class: "notice err", text: String(err).replace(/^Error:\s*/, "") }),
-        h("div", { class: "row" }, h("button", {
-          text: "Back",
-          onclick: () => { clear(body); draw(); },
-        })),
-      );
-      return;
-    }
-    if (!preview) return;
-    clear(body);
-    body.append(
-      h("div", {
-        class: "hint",
-        text: install
-          ? "This is exactly what will change in the config file. Your own hooks are left untouched."
-          : "This removes Coucou's entries only. Your own hooks are left untouched.",
-      }),
-      renderDiff(preview.diff),
-      h("div", { class: "row" },
-        h("span", { class: "path", text: `Backup → ${preview.backup}` }),
-      ),
-    );
-    const confirm = h("button", {
-      class: install ? "primary" : "danger",
-      text: install ? "Back up and write" : "Back up and remove",
-    });
-    confirm.addEventListener("click", async () => {
-      confirm.disabled = true;
-      try {
-        const backup = await opts.applyHooks(install, preview.fingerprint);
-        clear(body);
-        body.append(h("div", { class: "notice ok", text: opts.successNote(backup) }));
-        window.setTimeout(() => void rebuild(), 2600);
-      } catch (err) {
-        confirm.disabled = false;
-        body.append(h("div", { class: "notice err", text: `Could not write: ${String(err)}` }));
-      }
-    });
-    body.append(h("div", { class: "row" }, confirm, h("button", {
-      text: "Cancel",
-      onclick: () => { clear(body); draw(); },
-    })));
-  }
-
-  void opts.getStatus().then((fresh) => {
-    if (fresh) status = fresh;
-    clear(body);
-    draw();
-    clear(head);
-    head.append(statusDot(status.installed), h("span", { text: opts.title }));
-  });
-
   return section;
 }
 
@@ -666,34 +536,10 @@ async function main() {
   const present: Record<string, boolean> = {};
   for (const k of keys) present[k] = (await Bridge.secretPresent(k)) ?? false;
 
-  const geminiSection = agentHookSection({
-    title: "Gemini CLI",
-    hintInstalled: "Coucou is hooked into your Gemini CLI sessions. Tool calls show up in the island.",
-    hintNotInstalled: "Install the hooks to see your Gemini CLI sessions in the island.",
-    getStatus: () => Bridge.geminiHooksStatus(),
-    getPreview: (install) => Bridge.geminiHooksPreview(install),
-    applyHooks: (install, fp) => Bridge.geminiHooksApply(install, fp),
-    successNote: (backup) =>
-      `Done. Previous config saved as ${backup}. Open a new Gemini CLI session to pick the hooks up.`,
-  });
-
-  const agySection = agentHookSection({
-    title: "Antigravity (agy)",
-    hintInstalled: "Coucou is hooked into your Antigravity sessions. Tool calls show up in the island.",
-    hintNotInstalled: "Install the hooks to see your Antigravity (agy) sessions in the island.",
-    getStatus: () => Bridge.agyHooksStatus(),
-    getPreview: (install) => Bridge.agyHooksPreview(install),
-    applyHooks: (install, fp) => Bridge.agyHooksApply(install, fp),
-    successNote: (backup) =>
-      `Done. Previous config saved as ${backup}. Open a new agy session to pick the hooks up.`,
-  });
-
   clear(root);
   root.append(
     h("h1", {}, h("span", { text: "Coucou" }), h("span", { class: "version", text: version })),
     claudeSection(status),
-    geminiSection,
-    agySection,
     apiSection(hasKey),
     integrationsSection(present),
     generalSection(),
