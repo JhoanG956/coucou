@@ -1263,6 +1263,7 @@ struct SettingsView: View {
             if def.id == "agent_gemini"        && !HookServer.geminiHooksInstalled()  { return "Hooks not installed" }
             if def.id == "agent_antigravity"   && !HookServer.agyHooksInstalled()    { return "Hooks not installed" }
             if def.id == "agent_codex"         && !HookServer.codexHooksInstalled()  { return "Hooks not installed" }
+            if def.id == SpotifyController.pillId && !SpotifyController.shared.isInstalled { return "Not installed" }
             #endif
             if def.category == .ai {
                 if let provider = ChatProvider(pillID: def.id), provider.isLocal {
