@@ -689,6 +689,7 @@ fn b64url(bytes: &[u8]) -> String {
 }
 
 /// Windows' own CSPRNG (CNG), so PKCE needs no extra crate.
+#[cfg(windows)]
 fn random_bytes(n: usize) -> Result<Vec<u8>, String> {
     use windows::Win32::Security::Cryptography::{BCryptGenRandom, BCRYPT_USE_SYSTEM_PREFERRED_RNG};
     let mut buf = vec![0u8; n];
@@ -698,6 +699,7 @@ fn random_bytes(n: usize) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
+#[cfg(windows)]
 fn sha256(data: &[u8]) -> Result<Vec<u8>, String> {
     use windows::Win32::Security::Cryptography::{BCryptHash, BCRYPT_SHA256_ALG_HANDLE};
     let mut out = vec![0u8; 32];
@@ -705,6 +707,24 @@ fn sha256(data: &[u8]) -> Result<Vec<u8>, String> {
         .ok()
         .map_err(|e| e.to_string())?;
     Ok(out)
+}
+
+/// The kernel's CSPRNG on Linux.
+#[cfg(target_os = "linux")]
+fn random_bytes(n: usize) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    let mut buf = vec![0u8; n];
+    std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| f.read_exact(&mut buf))
+        .map_err(|e| e.to_string())?;
+    Ok(buf)
+}
+
+/// `sha2`, already in the tree through Tauri; Windows uses CNG instead.
+#[cfg(target_os = "linux")]
+fn sha256(data: &[u8]) -> Result<Vec<u8>, String> {
+    use sha2::{Digest, Sha256};
+    Ok(Sha256::digest(data).to_vec())
 }
 
 #[cfg(test)]
@@ -722,6 +742,16 @@ mod tests {
         assert_eq!(pct_decode("4%2F0Ab+x%zz%4"), "4/0Ab x%zz%4");
         let q = parse_query("state=abc&code=4%2F0AX&scope=x");
         assert_eq!(q[1], ("code".to_string(), "4/0AX".to_string()));
+    }
+
+    #[test]
+    fn pkce_primitives() {
+        // RFC 7636 appendix B: the S256 challenge of its example verifier
+        let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+        assert_eq!(b64url(&sha256(verifier.as_bytes()).unwrap()), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+        let a = random_bytes(32).unwrap();
+        assert_eq!(a.len(), 32);
+        assert_ne!(a, random_bytes(32).unwrap());
     }
 
     #[test]
