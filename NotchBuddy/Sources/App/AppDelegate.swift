@@ -6,6 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     private(set) var islandController: IslandWindowController?
 
+    func applicationWillTerminate(_ notification: Notification) {
+        HotKeyCenter.shared.unregisterAll()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ignore SIGPIPE — prevents crash when nb-hook closes socket before we write response
         signal(SIGPIPE, SIG_IGN)
@@ -14,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBarItem()
         setupIsland()
+        #if PHONE_LINK
+        CloudProbe.shared.startIfEnabled()
+        #endif
     }
 
     // MARK: - Menu bar
@@ -44,6 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var settingsWindow: NSWindow?
 
+    @objc private func openSettingsFromNotification(_ notification: Notification) {
+        if let section = notification.object as? String {
+            UserDefaults.standard.set(section, forKey: "settingsSection")
+        }
+        openSettings()
+    }
+
     @objc private func openSettings() {
         // The island floats above every window; fold it away so it can't cover Settings.
         if AppState.shared.mode == .expanded { islandController?.collapse() }
@@ -52,14 +66,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             placeBelowIsland(w)
             w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return
         }
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 720),
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 560),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered, defer: false)
         win.title = "Settings — Coucou"
         let host = NSHostingView(rootView: SettingsView())
         host.sizingOptions = [.minSize]
         win.contentView = host
-        win.contentMinSize = NSSize(width: 420, height: 320)
+        win.contentMinSize = NSSize(width: 640, height: 420)
         win.isReleasedWhenClosed = false
         placeBelowIsland(win)
         settingsWindow = win
@@ -96,7 +110,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StripePoller.shared.start()
         CalcomPoller.shared.start()
         NotionPoller.shared.start()
-        NotificationCenter.default.addObserver(self, selector: #selector(openSettings),
+        NotificationCenter.default.addObserver(self, selector: #selector(openSettingsFromNotification(_:)),
                                                name: .openFullSettings, object: nil)
+        // After the greeting ends, fly Mochi back to the desktop if it was there at last quit
+        NotificationCenter.default.addObserver(forName: .greetComplete, object: nil, queue: .main) { _ in
+            DesktopMochiController.shared.launchFlyIfNeeded()
+        }
+        #if !APPSTORE
+        _ = MusicController.shared
+        #endif
     }
 }
