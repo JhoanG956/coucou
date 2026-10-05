@@ -1,214 +1,157 @@
 import Foundation
 
-// Same cases as the tests in windows/src-tauri/src/github.rs and time.rs.
-
 @main
 enum GitHubActivityTests {
-    nonisolated(unsafe) static var passed = 0
 
-    static func check(_ condition: Bool, _ what: String, line: Int = #line) {
-        precondition(condition, "line \(line): \(what)")
-        passed += 1
+    static var failures = 0
+
+    static func check(_ label: String, _ got: Bool) {
+        if got { print("  ✓ \(label)") }
+        else   { print("  ✗ \(label)"); failures += 1 }
     }
 
-    static func main() {
-        dates()
-        githubURLs()
-        upstreamFromConfig()
-        worktreeGitDir()
-        parsesAGraphQLAnswer()
-        firstPollIsSilentThenChangesAreAnnounced()
-        ciIsAnnouncedOnlyOnAWatchedTransition()
-        print("GitHub activity: \(passed) checks passed")
-    }
-
-    static func dates() {
-        check(RFC3339.utc(0) == "1970-01-01T00:00:00Z", "epoch")
-        check(RFC3339.utc(1_790_000_000) == "2026-09-21T14:13:20Z", "utc")
-        check(RFC3339.parse("2026-09-21T14:13:20Z") == 1_790_000_000, "Z")
-        check(RFC3339.parse("2026-09-21T16:13:20+02:00") == 1_790_000_000, "offset")
-        check(RFC3339.parse("2026-09-21T09:13:20.250-05:00") == 1_790_000_000, "fraction + negative offset")
-        check(RFC3339.parse("2024-02-29T00:00:00Z").map(RFC3339.utc) == "2024-02-29T00:00:00Z", "leap day")
-        check(RFC3339.parse("2026-10-01") == nil, "a date alone is not a time")
-        check(RFC3339.parse("") == nil, "empty")
-    }
-
-    static func githubURLs() {
-        func ok(_ u: String) -> String? { GitHubBranch.parseGitHubURL(u).map { "\($0.0)/\($0.1)" } }
-        check(ok("https://github.com/Louis-CFM/coucou.git") == "Louis-CFM/coucou", "https .git")
-        check(ok("https://github.com/Louis-CFM/coucou") == "Louis-CFM/coucou", "https")
-        check(ok("https://me@github.com/a/b/") == "a/b", "user + trailing slash")
-        check(ok("git@github.com:a/b.git") == "a/b", "scp-like")
-        check(ok("ssh://git@github.com/a/b.git") == "a/b", "ssh")
-        check(ok("https://gitlab.com/a/b.git") == nil, "not GitHub")
-        check(ok("https://github.com/a") == nil, "no repo")
-    }
-
-    static func upstreamFromConfig() {
-        let config = """
-        [core]
-        \tbare = false
-        [remote "origin"]
-        \turl = git@github.com:Louis-CFM/coucou.git
-        \tfetch = +refs/heads/*:refs/remotes/origin/*
-        [remote "fork"]
-        \turl = https://github.com/jhoan/coucou.git
-        [branch "main"]
-        \tremote = origin
-        \tmerge = refs/heads/main
-        [branch "local-name"]
-        \tremote = fork
-        \tmerge = refs/heads/remote-name
-        """
-        let main = GitHubBranch.resolveUpstream(config: config, local: "main")
-        check(main == GitHubBranchRef(owner: "Louis-CFM", name: "coucou", branch: "main"), "main")
-        let forked = GitHubBranch.resolveUpstream(config: config, local: "local-name")
-        check(forked?.owner == "jhoan" && forked?.branch == "remote-name", "fork upstream")
-        // Never pushed: same name on origin.
-        let fresh = GitHubBranch.resolveUpstream(config: config, local: "feat/x")
-        check(fresh?.owner == "Louis-CFM" && fresh?.branch == "feat/x", "never pushed")
-        // No origin at all: whichever remote points at GitHub.
-        let other = GitHubBranch.resolveUpstream(config: "[remote \"up\"]\n\turl = https://github.com/x/y\n", local: "dev")
-        check(other == GitHubBranchRef(owner: "x", name: "y", branch: "dev"), "any GitHub remote")
-        check(GitHubBranch.resolveUpstream(config: "[remote \"origin\"]\n\turl = https://gitlab.com/x/y\n", local: "dev") == nil,
-              "no GitHub remote")
-    }
-
-    static func worktreeGitDir() {
-        let fm = FileManager.default
-        let root = fm.temporaryDirectory.appendingPathComponent("coucou-gh-\(ProcessInfo.processInfo.processIdentifier)")
-        defer { try? fm.removeItem(at: root) }
-        let mainGit = root.appendingPathComponent("repo/.git")
-        let wtGit = mainGit.appendingPathComponent("worktrees/wt")
-        let wt = root.appendingPathComponent("wt")
-        try! fm.createDirectory(at: wtGit, withIntermediateDirectories: true)
-        try! fm.createDirectory(at: wt.appendingPathComponent("sub"), withIntermediateDirectories: true)
-        try! "[remote \"origin\"]\n\turl = https://github.com/a/b.git\n"
-            .write(to: mainGit.appendingPathComponent("config"), atomically: true, encoding: .utf8)
-        try! "ref: refs/heads/fix/thing\n".write(to: wtGit.appendingPathComponent("HEAD"), atomically: true, encoding: .utf8)
-        try! "../..\n".write(to: wtGit.appendingPathComponent("commondir"), atomically: true, encoding: .utf8)
-        try! "gitdir: \(wtGit.path)\n".write(to: wt.appendingPathComponent(".git"), atomically: true, encoding: .utf8)
-
-        let got = GitHubBranch.of(cwd: wt.appendingPathComponent("sub"))
-        check(got == GitHubBranchRef(owner: "a", name: "b", branch: "fix/thing"), "worktree")
-
-        // The main checkout itself, and a detached HEAD.
-        try! "ref: refs/heads/main\n".write(to: mainGit.appendingPathComponent("HEAD"), atomically: true, encoding: .utf8)
-        check(GitHubBranch.of(cwd: root.appendingPathComponent("repo")) == GitHubBranchRef(owner: "a", name: "b", branch: "main"),
-              "normal checkout")
-        try! "4b825dc642cb6eb9a060e54bf8d69288fbee4904\n"
-            .write(to: mainGit.appendingPathComponent("HEAD"), atomically: true, encoding: .utf8)
-        check(GitHubBranch.of(cwd: root.appendingPathComponent("repo")) == nil, "detached HEAD")
-        check(GitHubBranch.of(cwd: URL(fileURLWithPath: "/")) == nil, "no repository")
-    }
-
-    static func json(_ text: String) -> [String: Any] {
-        try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any]
-    }
-
-    static func parsesAGraphQLAnswer() {
-        let recent = RFC3339.utc(RFC3339.now() - 3600)
-        let data = json("""
-        {
-          "viewer": {
-            "login": "me",
-            "repositories": { "totalCount": 2, "nodes": [{ "stargazerCount": 3 }, { "stargazerCount": 4 }] },
-            "pullRequests": { "nodes": [
-              { "number": 8, "title": "Calendar", "url": "u8", "isDraft": false, "headRefName": "feat/cal",
-                "reviewDecision": null, "updatedAt": "\(recent)",
-                "repository": { "nameWithOwner": "Louis-CFM/coucou" },
-                "latestReviews": { "nodes": [{ "id": "r1", "state": "COMMENTED", "author": { "login": "louis" } }] } },
-              { "number": 2, "title": "[Snyk] Fix", "url": "u2", "isDraft": false, "headRefName": "snyk-fix-1",
-                "reviewDecision": null, "updatedAt": "2025-12-14T14:33:19Z",
-                "repository": { "nameWithOwner": "me/old" }, "latestReviews": { "nodes": [] } }
-            ] }
-          },
-          "requests": { "issueCount": 1, "nodes": [
-            { "number": 9, "title": "Docs", "url": "u9", "author": { "login": "x" }, "repository": { "nameWithOwner": "a/b" } },
-            {}
-          ] },
-          "repository": {
-            "nameWithOwner": "Louis-CFM/coucou",
-            "ref": { "target": {
-              "oid": "abc", "url": "commit-url", "committedDate": "\(recent)",
-              "statusCheckRollup": { "state": "FAILURE", "contexts": { "nodes": [
-                { "__typename": "CheckRun", "name": "lint", "conclusion": "SUCCESS", "detailsUrl": "l" },
-                { "__typename": "CheckRun", "name": "build", "conclusion": "FAILURE", "detailsUrl": "job-url" }
-              ] } }
-            } }
+    // MARK: - Fixture JSON
+    //
+    // Week 1 (complete, Jan 5–11 2026):
+    //   Jan 5 wd=0 NONE(0), Jan 6 wd=1 FIRST_QUARTILE(1), Jan 7 wd=2 SECOND_QUARTILE(2),
+    //   Jan 8 wd=3 THIRD_QUARTILE(3), Jan 9 wd=4 FOURTH_QUARTILE(4),
+    //   Jan 10 wd=5 FIRST_QUARTILE(1), Jan 11 wd=6 NONE(0)
+    //   counts: 0+1+4+8+12+2+0 = 27
+    //
+    // Week 2 (incomplete, Jan 12–13 2026):
+    //   Jan 12 wd=0 SECOND_QUARTILE(2), Jan 13 wd=1 THIRD_QUARTILE(3)
+    //   counts: 5+10 = 15
+    //
+    // Total: 42
+    static let validJSON: Data = """
+    {
+      "data": {
+        "viewer": {
+          "login": "testuser",
+          "contributionsCollection": {
+            "contributionCalendar": {
+              "totalContributions": 42,
+              "weeks": [
+                {
+                  "contributionDays": [
+                    {"date": "2026-01-05", "contributionCount": 0,  "contributionLevel": "NONE",            "weekday": 0},
+                    {"date": "2026-01-06", "contributionCount": 1,  "contributionLevel": "FIRST_QUARTILE",  "weekday": 1},
+                    {"date": "2026-01-07", "contributionCount": 4,  "contributionLevel": "SECOND_QUARTILE", "weekday": 2},
+                    {"date": "2026-01-08", "contributionCount": 8,  "contributionLevel": "THIRD_QUARTILE",  "weekday": 3},
+                    {"date": "2026-01-09", "contributionCount": 12, "contributionLevel": "FOURTH_QUARTILE", "weekday": 4},
+                    {"date": "2026-01-10", "contributionCount": 2,  "contributionLevel": "FIRST_QUARTILE",  "weekday": 5},
+                    {"date": "2026-01-11", "contributionCount": 0,  "contributionLevel": "NONE",            "weekday": 6}
+                  ]
+                },
+                {
+                  "contributionDays": [
+                    {"date": "2026-01-12", "contributionCount": 5,  "contributionLevel": "SECOND_QUARTILE", "weekday": 0},
+                    {"date": "2026-01-13", "contributionCount": 10, "contributionLevel": "THIRD_QUARTILE",  "weekday": 1}
+                  ]
+                }
+              ]
+            }
           }
         }
-        """)
-        let target = GitHubBranchRef(owner: "Louis-CFM", name: "coucou", branch: "feat/cal")
-        let s = GitHubActivity.parse(data, target: target)
-        check(s.login == "me" && s.totalRepos == 2 && s.totalStars == 7, "totals")
-        // The ten-month-old bot PR is gone.
-        check(s.pulls.map(\.number) == [8], "stale pull requests left out")
-        check(s.pulls.first?.reviews.first == GitHubActivity.Review(id: "r1", state: "COMMENTED", author: "louis"), "reviews")
-        check(s.requests.map(\.number) == [9] && s.requestCount == 1, "requests (non-PR nodes skipped)")
-        let b = s.branch
-        check(b?.state == "FAILURE" && b?.failing == ["build"] && b?.url == "job-url" && b?.pr == 8 && b?.pushed == true,
-              "branch CI")
-
-        // A branch GitHub doesn't know yet, and a repository the token can't see.
-        let unpushed = GitHubActivity.parse(json(#"{"viewer": {}, "repository": {"nameWithOwner": "a/b", "ref": null}}"#),
-                                            target: GitHubBranchRef(owner: "a", name: "b", branch: "new"))
-        check(unpushed.branch?.pushed == false && unpushed.branch?.state == nil, "not pushed")
-        let hidden = GitHubActivity.parse(json(#"{"viewer": {}, "repository": null}"#),
-                                          target: GitHubBranchRef(owner: "a", name: "b", branch: "new"))
-        check(hidden.branch == nil, "repository not visible")
-        check(GitHubActivity.parse(data, target: nil).branch == nil, "no session branch")
+      }
     }
+    """.data(using: .utf8)!
 
-    static func snapshot(_ state: String?, reviews: [(String, String)], requests: [String]) -> GitHubActivity {
-        var s = GitHubActivity()
-        s.login = "me"
-        s.branch = .init(repo: "a/b", branch: "fix", pushed: true, oid: "abc", state: state,
-                         failing: state == "FAILURE" ? ["build"] : [], url: "", committedAt: "", pr: 7)
-        s.pulls = [.init(repo: "a/b", number: 7, title: "Fix", url: "u7", draft: false, head: "fix", decision: nil,
-                         reviews: reviews.map { .init(id: $0.0, state: $0.1, author: "louis") })]
-        s.requests = requests.map { .init(repo: "a/b", number: 9, title: "T", url: $0, author: "x") }
-        return s
+    static let unknownLevelJSON: Data = """
+    {
+      "data": {
+        "viewer": {
+          "login": "testuser",
+          "contributionsCollection": {
+            "contributionCalendar": {
+              "totalContributions": 1,
+              "weeks": [
+                {
+                  "contributionDays": [
+                    {"date": "2026-03-01", "contributionCount": 1, "contributionLevel": "EXTRA_SPECIAL", "weekday": 0}
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
     }
+    """.data(using: .utf8)!
 
-    static func firstPollIsSilentThenChangesAreAnnounced() {
-        var m = GitHubMemory()
-        // Already red when first seen, an existing review, an existing request.
-        check(m.diff(snapshot("FAILURE", reviews: [("r1", "COMMENTED")], requests: ["p1"])) == nil, "first poll silent")
-        // Same again: nothing new.
-        check(m.diff(snapshot("FAILURE", reviews: [("r1", "COMMENTED")], requests: ["p1"])) == nil, "nothing new")
+    // MARK: - Main
 
-        // A new review request.
-        let e = m.diff(snapshot("FAILURE", reviews: [("r1", "COMMENTED")], requests: ["p1", "p2"]))
-        check(e?.attention == true && e?.label.hasPrefix("Review requested") == true, "review requested")
+    static func main() {
 
-        // An approval.
-        let a = m.diff(snapshot("FAILURE", reviews: [("r2", "APPROVED")], requests: ["p1", "p2"]))
-        check(a?.success == true && a?.label == "Approved · #7", "approval")
+        // ── GitHubActivity.parse ──────────────────────────────────────────────
+        print("GitHubActivity.parse")
+        do {
+            let act = GitHubActivity.parse(validJSON)
+            check("parse returns non-nil", act != nil)
+            check("total == 42",           act?.total == 42)
+            check("2 weeks",               act?.weeks.count == 2)
+            check("week 0 has 7 days",     act?.weeks[0].count == 7)
+            check("week 1 has 2 days (incomplete)", act?.weeks[1].count == 2)
+            // Level mapping
+            check("NONE → level 0",            act?.weeks[0][0].level == 0)
+            check("FIRST_QUARTILE → level 1",  act?.weeks[0][1].level == 1)
+            check("SECOND_QUARTILE → level 2", act?.weeks[0][2].level == 2)
+            check("THIRD_QUARTILE → level 3",  act?.weeks[0][3].level == 3)
+            check("FOURTH_QUARTILE → level 4", act?.weeks[0][4].level == 4)
+            // Dates and counts
+            check("first day date",  act?.weeks[0][0].date    == "2026-01-05")
+            check("first day count", act?.weeks[0][0].count   == 0)
+            check("first day wd",    act?.weeks[0][0].weekday == 0)
+            check("last day date",   act?.weeks[1][1].date    == "2026-01-13")
+            check("last day count",  act?.weeks[1][1].count   == 10)
+        }
 
-        // Your own review says nothing.
-        var mine = snapshot("FAILURE", reviews: [("r3", "COMMENTED")], requests: [])
-        mine.pulls[0].reviews[0].author = "me"
-        check(m.diff(mine) == nil, "own review")
-    }
+        // ── GitHubActivity.parse — unknown level ─────────────────────────────
+        print("GitHubActivity.parse — unknown level → 0")
+        do {
+            let act = GitHubActivity.parse(unknownLevelJSON)
+            check("unknown level → 0", act?.weeks[0][0].level == 0)
+        }
 
-    static func ciIsAnnouncedOnlyOnAWatchedTransition() {
-        var m = GitHubMemory()
-        check(m.diff(snapshot("PENDING", reviews: [], requests: [])) == nil, "pending first")
-        let e = m.diff(snapshot("FAILURE", reviews: [], requests: []))
-        check(e?.success == false && e?.label == "CI failed · fix" && e?.detail == "build", "CI failed")
-        // Still red on the next poll: already said.
-        check(m.diff(snapshot("FAILURE", reviews: [], requests: [])) == nil, "said once")
+        // ── GitHubActivity.parse — bad data → nil ────────────────────────────
+        print("GitHubActivity.parse — bad data")
+        do {
+            check("garbage → nil",  GitHubActivity.parse("garbage".data(using: .utf8)!) == nil)
+            check("no data key → nil", GitHubActivity.parse("{}".data(using: .utf8)!) == nil)
+        }
 
-        // A red build outranks an approval landing in the same poll.
-        var m2 = GitHubMemory()
-        _ = m2.diff(snapshot("PENDING", reviews: [], requests: []))
-        let both = m2.diff(snapshot("FAILURE", reviews: [("r9", "APPROVED")], requests: []))
-        check(both?.label.hasPrefix("CI failed") == true, "priority")
+        // ── GitHubActivity.lastWeeks ─────────────────────────────────────────
+        print("GitHubActivity.lastWeeks")
+        do {
+            let act = GitHubActivity.parse(validJSON)!
+            check("lastWeeks(2) returns both",       act.lastWeeks(2).count == 2)
+            check("lastWeeks(1) returns last week",  act.lastWeeks(1).count == 1)
+            check("lastWeeks(1)[0] is incomplete",   act.lastWeeks(1)[0].count == 2)
+            check("lastWeeks(1)[0][0].date",         act.lastWeeks(1)[0][0].date == "2026-01-12")
+            check("lastWeeks(99) clamps to available", act.lastWeeks(99).count == 2)
+            check("lastWeeks(0) returns empty",      act.lastWeeks(0).isEmpty)
+        }
 
-        // Green after pending.
-        var m3 = GitHubMemory()
-        _ = m3.diff(snapshot("PENDING", reviews: [], requests: []))
-        check(m3.diff(snapshot("SUCCESS", reviews: [], requests: []))?.label == "CI passed · fix", "CI passed")
+        // ── GitHubActivity.lastDays ──────────────────────────────────────────
+        print("GitHubActivity.lastDays")
+        do {
+            let act = GitHubActivity.parse(validJSON)!
+            // All 9 days flat, last 3 = Jan 11, Jan 12, Jan 13
+            check("lastDays(3) count",          act.lastDays(3).count == 3)
+            check("lastDays(3)[0].date",        act.lastDays(3)[0].date == "2026-01-11")
+            check("lastDays(3)[2].date",        act.lastDays(3)[2].date == "2026-01-13")
+            check("lastDays(9) all days",       act.lastDays(9).count == 9)
+            check("lastDays(99) clamps to all", act.lastDays(99).count == 9)
+            check("lastDays(0) empty",          act.lastDays(0).isEmpty)
+        }
+
+        // ── finish ────────────────────────────────────────────────────────────
+        if failures == 0 {
+            print("\nAll tests passed.")
+            exit(0)
+        } else {
+            print("\n\(failures) test(s) failed.")
+            exit(1)
+        }
     }
 }

@@ -12,6 +12,7 @@ enum GoogleCalendarTests {
     }
 
     static func main() {
+        dates()
         encodings()
         pkcePrimitives()
         loopbackListener()
@@ -22,6 +23,18 @@ enum GoogleCalendarTests {
         remindersRingLikeGoogleCalendar()
         startsInReadsNaturally()
         print("Google Calendar: \(passed) checks passed")
+    }
+
+    // RFC 3339 lives in IntegrationNews.swift; same cases as windows/src-tauri/src/time.rs.
+    static func dates() {
+        check(RFC3339.utc(0) == "1970-01-01T00:00:00Z", "epoch")
+        check(RFC3339.utc(1_790_000_000) == "2026-09-21T14:13:20Z", "utc")
+        check(RFC3339.parse("2026-09-21T14:13:20Z") == 1_790_000_000, "Z")
+        check(RFC3339.parse("2026-09-21T16:13:20+02:00") == 1_790_000_000, "offset")
+        check(RFC3339.parse("2026-09-21T09:13:20.250-05:00") == 1_790_000_000, "fraction + negative offset")
+        check(RFC3339.parse("2024-02-29T00:00:00Z").map(RFC3339.utc) == "2024-02-29T00:00:00Z", "leap day")
+        check(RFC3339.parse("2026-10-01") == nil, "a date alone is not a time")
+        check(RFC3339.parse("") == nil, "empty")
     }
 
     static func encodings() {
