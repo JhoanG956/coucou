@@ -68,6 +68,25 @@ in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
 
 It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
 
+## Gemini CLI and Antigravity
+
+Coucou also hooks into **Gemini CLI** (`gemini`) and **Antigravity** (`agy`, the
+Go successor of Gemini CLI).
+
+- **Settings… → Gemini CLI → Install hooks…** — writes to
+  `%USERPROFILE%\.gemini\settings.json` (timeouts in milliseconds, same
+  backup + diff + fingerprint flow as Claude Code).
+- **Settings… → Antigravity → Install hooks…** — writes to
+  `%USERPROFILE%\.gemini\config\hooks.json` (timeouts in seconds; Coucou's
+  entries live under a `"coucou"` top-level key and uninstalling removes
+  only that key).
+
+Once installed, a `gemini` or `agy` session gets its own pill in the island, just
+like a Claude Code session. The same `coucou-hook.exe` relay is used; it translates Gemini's `BeforeTool` /
+`AfterTool` / `BeforeAgent` / `AfterAgent` events to `PreToolUse` / `PostToolUse` /
+`UserPromptSubmit` / `Stop`, and maps Antigravity's `toolCall` / `conversationId`
+fields to the shapes the island already understands.
+
 ## Chat and keys
 
 **Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows

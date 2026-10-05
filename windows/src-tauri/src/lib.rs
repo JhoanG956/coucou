@@ -214,6 +214,40 @@ fn hooks_apply(
     Ok(backup)
 }
 
+// ── Gemini CLI hooks ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn gemini_hooks_status() -> HookStatus {
+    hooks::gemini_status()
+}
+
+#[tauri::command]
+fn gemini_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::gemini_preview(install)
+}
+
+#[tauri::command]
+fn gemini_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    hooks::gemini_write(install, &fingerprint)
+}
+
+// ── Antigravity (agy) hooks ───────────────────────────────────────────────────
+
+#[tauri::command]
+fn agy_hooks_status() -> HookStatus {
+    hooks::agy_status()
+}
+
+#[tauri::command]
+fn agy_hooks_preview(install: bool) -> Result<HookPreview, String> {
+    hooks::agy_preview(install)
+}
+
+#[tauri::command]
+fn agy_hooks_apply(install: bool, fingerprint: String) -> Result<String, String> {
+    hooks::agy_write(install, &fingerprint)
+}
+
 #[tauri::command]
 fn approval_decision(app: AppHandle, request_id: String, decision: String) {
     pipe::answer(&app, &request_id, &decision);
@@ -407,6 +441,12 @@ pub fn run() {
             hooks_status,
             hooks_preview,
             hooks_apply,
+            gemini_hooks_status,
+            gemini_hooks_preview,
+            gemini_hooks_apply,
+            agy_hooks_status,
+            agy_hooks_preview,
+            agy_hooks_apply,
             approval_decision,
             approval_ack,
             approval_decline,
