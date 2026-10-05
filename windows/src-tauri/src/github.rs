@@ -4,7 +4,7 @@
 // "The branch you're on" is the branch checked out in the folder of the last
 // Claude Code session, read straight from its .git directory: no `git` process,
 // no console flash, and nothing to configure. Everything else comes from one
-// GraphQL query per poll, with the same token the macOS overview card uses.
+// GraphQL query per poll. GitHubActivity.swift follows the same rules on macOS.
 //
 // Events, at most one per poll, only for things that changed since the last
 // poll: a CI run on that branch finishing, a new review on one of your pull

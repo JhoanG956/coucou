@@ -13,13 +13,14 @@ extension AgentTask {
         AgentTask(id: "integration_github",  name: "GitHub",    color: "#F4505E", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_notion",  name: "Notion",    color: "#8C8C8C", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_calcom",  name: "Cal.com",   color: "#C9956A", state: .idle, steps: [], source: .n8n, isIntegration: true),
+        AgentTask(id: "integration_gcal",    name: "Calendar",  color: "#4285F4", state: .idle, steps: [], source: .n8n, isIntegration: true),
         AgentTask(id: "integration_stripe",  name: "Stripe",    color: "#0570DE", state: .idle, steps: [], source: .n8n, isIntegration: true),
     ]
 
     /// IDs that can be toggled (VS Code is always on and excluded from this list)
     static let toggleableIntegrationIds: [String] = [
         "integration_resend", "integration_n8n", "integration_vercel", "integration_github",
-        "integration_notion", "integration_calcom", "integration_stripe",
+        "integration_notion", "integration_calcom", "integration_gcal", "integration_stripe",
     ]
 
 }
@@ -160,8 +161,15 @@ final class AppState: ObservableObject {
     @Published var resendEmails: [ResendEmail] = []
     @Published var resendTotal: Int? = nil
 
-    // GitHub stats (populated by GithubPoller)
-    @Published var githubStats: GitHubStats? = nil
+    // GitHub: CI of the session's branch, reviews, pull requests (populated by GithubPoller)
+    @Published var githubActivity: GitHubActivity? = nil
+    @Published var githubError: String? = nil       // last API error (nil = ok)
+
+    // Google Calendar (populated by GcalPoller). nil = not connected or not loaded yet.
+    @Published var gcalEvents: [GcalEvent]? = nil
+    @Published var gcalError: String? = nil
+    // The event the reminder card is about
+    @Published var reminder: GcalEvent? = nil
 
     // Stripe (populated by StripePoller)
     @Published var stripePayments: [StripePayment] = []
@@ -300,6 +308,61 @@ final class AppState: ObservableObject {
             }
         }
         syncMode()
+    }
+
+    // MARK: - Integration news (GitHub, Google Calendar)
+
+    private var integrationClearWork: [String: DispatchWorkItem] = [:]
+
+    /// Shows what a poller has to say on its pill: state, badge, sound, and the
+    /// compact island so the badge is seen. A calendar reminder opens its own card.
+    func announce(_ news: IntegrationNews, for id: String, reminder event: GcalEvent? = nil) {
+        guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
+        // Something waiting on you (a review asked of you, a meeting about to
+        // start) reads as a question with the amber badge, not as done or broken.
+        tasks[idx].state = news.attention ? .question : news.success ? .finished : .error
+        tasks[idx].steps = news.detail.map { [news.label, $0] } ?? [news.label]
+        tasks[idx].stepIndex = tasks[idx].steps.count - 1
+        if focusId != id {
+            tasks[idx].pillBadge = news.attention ? .approval : news.success ? .finished : .error
+        }
+
+        if let event {
+            // A reminder is a message, not a badge: open a card that says what,
+            // when and where, with Join / Open. Unless you are in the middle of
+            // something — the chat, an approval, a file drop — then it waits as
+            // the amber badge on the Calendar pill.
+            SoundEngine.shared.play("approval")
+            let busy: Set<IslandView> = [.prompt, .approval, .question, .upload, .uploading, .choose, .mail]
+            if mode == .expanded && busy.contains(view) {
+                NotificationCenter.default.post(name: .hookReveal, object: nil)
+            } else {
+                reminder = event
+                setFocus(id)
+                if mode == .expanded { view = .reminder }
+                else { NotificationCenter.default.post(name: .islandAlert, object: IslandView.reminder) }
+            }
+        } else {
+            SoundEngine.shared.play(news.attention ? "question" : news.success ? "finish" : "error")
+            // Same as the other pollers: show the compact island so the badge is seen,
+            // but never steal the screen.
+            NotificationCenter.default.post(name: .hookReveal, object: nil)
+        }
+
+        // Auto-clear the pill after 60 s (the card's data stays).
+        integrationClearWork[id]?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.integrationClearWork[id] = nil
+            guard let i = self.tasks.firstIndex(where: { $0.id == id }),
+                  [.finished, .error, .question].contains(self.tasks[i].state) else { return }
+            self.tasks[i].state = .idle
+            self.tasks[i].steps = []
+            self.tasks[i].stepIndex = 0
+            self.tasks[i].pillBadge = nil
+        }
+        integrationClearWork[id] = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60, execute: work)
     }
 
 }

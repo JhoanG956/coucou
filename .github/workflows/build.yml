@@ -24,6 +24,12 @@ jobs:
       - name: Test link filter
         run: bash scripts/test-safe-links.sh
 
+      - name: Test GitHub activity
+        run: bash scripts/test-github-activity.sh
+
+      - name: Test Google Calendar
+        run: bash scripts/test-google-calendar.sh
+
       - name: Build
         run: |
           xcodebuild \

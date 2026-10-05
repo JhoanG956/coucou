@@ -191,5 +191,3 @@ problems. It stays on your machine.
   attach it as context, and jumping to a specific terminal window — "Open
   terminal" opens the working folder in VS Code when `code` is on your `PATH`.
 - Cal.com shows the next bookings as a list rather than the Mac's calendar.
-- Windows only, for now: GitHub CI and pull requests (the Mac card shows stars
-  and repositories), and Google Calendar.

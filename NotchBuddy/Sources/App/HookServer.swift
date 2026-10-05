@@ -176,13 +176,14 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
-        // External agents bypass the VS Code filter (their relay runs in any terminal).
-        guard isExternalAgent || isVSCode else {
+        // External agents bypass the host filter (their relay runs in any terminal).
+        guard isExternalAgent || Self.isShownHost(termProgram: termProgram, bundleId: bundleId) else {
             nbLog("Ignored \(name) from \(termProgram.isEmpty ? bundleId : termProgram) (\(projectName))")
             return
         }
+
+        // The GitHub card follows the branch of whichever shown session spoke last.
+        GithubPoller.shared.noteCwd(cwd)
 
         let focused = state.focusId == agentId
 
@@ -281,6 +282,19 @@ final class HookServer: @unchecked Sendable {
         }
     }
 
+    // MARK: - Host filter
+
+    /// VS Code, or the Claude desktop app's Code tab. Approvals stay VS Code only:
+    /// the desktop app shows its own permission prompt.
+    private static func isVSCode(termProgram: String, bundleId: String) -> Bool {
+        termProgram.lowercased().contains("vscode") || bundleId.lowercased().contains("vscode")
+    }
+
+    private static func isShownHost(termProgram: String, bundleId: String) -> Bool {
+        isVSCode(termProgram: termProgram, bundleId: bundleId)
+            || bundleId == "com.anthropic.claudefordesktop"
+    }
+
     // MARK: - Agent validation + dynamic pill
 
     /// Validates a coucou_agent name: lowercase, digits and hyphens, 1–24 chars.
@@ -364,15 +378,15 @@ final class HookServer: @unchecked Sendable {
 
         let termProgram = payload["term_program"] as? String ?? ""
         let bundleId    = payload["bundle_id"]    as? String ?? ""
-        let isVSCode = termProgram.lowercased().contains("vscode") ||
-                       bundleId.lowercased().contains("vscode")
-        guard isVSCode else {
+        guard Self.isVSCode(termProgram: termProgram, bundleId: bundleId) else {
             Task.detached { [weak self] in
                 self?.sendLine(fd: fd, text: #"{"permissionDecision":"ask"}"#)
                 close(fd)
             }
             return
         }
+
+        GithubPoller.shared.noteCwd(cwd)
 
         let tool = payload["tool_name"] as? String ?? "Tool"
         var command = tool
@@ -515,8 +529,7 @@ final class HookServer: @unchecked Sendable {
         ]
         let label = labels[tool] ?? tool
         if let cmd = input["command"] as? String {
-            let short = String(cmd.prefix(40))
-            return "\(label) · \(short)"
+            return "\(label) · \(Self.commandSummary(cmd))"
         } else if let path = input["path"] as? String {
             return "\(label) · \(URL(fileURLWithPath: path).lastPathComponent)"
         } else if let file = input["file_path"] as? String {
@@ -525,6 +538,20 @@ final class HookServer: @unchecked Sendable {
             return "\(label) · \(String(query.prefix(40)))"
         }
         return label
+    }
+
+    /// The part of a shell command worth reading in one ticker line: whitespace and
+    /// newlines collapsed, and the `cd <project> &&` / `cd <project>;` prefix Claude
+    /// puts in front of most commands dropped, since the card already names the
+    /// project. The ticker ellipsizes, so this only caps pathological lengths.
+    static func commandSummary(_ cmd: String) -> String {
+        var s = cmd.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let prefix = #"^(?:cd|Set-Location|pushd)\s+("[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*"#
+        if let r = s.range(of: prefix, options: [.regularExpression, .caseInsensitive]) {
+            let rest = String(s[r.upperBound...])
+            if !rest.isEmpty { s = rest }
+        }
+        return String(s.prefix(120))
     }
 
     // MARK: - Logging

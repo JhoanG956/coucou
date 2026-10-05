@@ -9,7 +9,7 @@ enum IslandMode: String, CaseIterable {
 // MARK: - Island View
 
 enum IslandView: String, CaseIterable {
-    case overview, empty, approval, question, error, finished
+    case overview, empty, approval, question, error, finished, reminder
     case confused, upload, uploading, choose, mail, prompt
     case searching, result, note, settings, greeting
 }
@@ -96,6 +96,7 @@ enum IslandConst {
         .question:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 56, agentMode: .column),
         .error:     ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
         .finished:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
+        .reminder:  ViewLayout(height: 160, botX: 62,  botY: nil, botDiameter: 58, agentMode: .column),
         .confused:  ViewLayout(height: 160, botX: 76,  botY: nil, botDiameter: 66, agentMode: .column),
         .upload:    ViewLayout(height: 176, botX: 140, botY: 104, botDiameter: 62, agentMode: .column),
         .uploading: ViewLayout(height: 176, botX: 46,  botY: 118, botDiameter: 20, agentMode: .none),
@@ -139,6 +140,7 @@ enum IslandConst {
         .init(id: "integration_github",  name: "GitHub",  color: "#F4505E"),
         .init(id: "integration_notion",  name: "Notion",  color: "#8C8C8C"),
         .init(id: "integration_calcom",  name: "Cal.com", color: "#C9956A"),
+        .init(id: "integration_gcal",    name: "Calendar", color: "#4285F4"),
         .init(id: "integration_stripe",  name: "Stripe",  color: "#0570DE"),
     ]
 

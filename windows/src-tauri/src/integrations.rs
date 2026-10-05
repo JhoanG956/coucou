@@ -5,8 +5,8 @@
 // one emits an `integration` event; the island owns the badge, the sound and the
 // 60 s auto-clear, exactly as the Swift handlers do.
 //
-// GitHub (CI and pull requests) and Google Calendar go further than macOS and
-// live in their own modules, github.rs and gcal.rs.
+// GitHub (CI and pull requests) and Google Calendar live in their own modules,
+// github.rs and gcal.rs (GithubPoller / GcalPoller on macOS).
 //
 // Nothing is polled until its key exists in the Credential Manager, and no
 // request goes anywhere the user has not configured.
