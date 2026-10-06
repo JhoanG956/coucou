@@ -42,6 +42,11 @@ final class HookServer: @unchecked Sendable {
     private var approvalFDSource: (any DispatchSourceRead)? = nil  // monitors pendingApprovalFD
     private var pendingQuestionFD: Int32 = -1         // held open while user answers AskUserQuestion
     private var questionFDSource: (any DispatchSourceRead)? = nil  // monitors pendingQuestionFD
+
+    /// True when a real nb-hook connection is holding the approval fd open.
+    @MainActor var hasRealPendingApproval: Bool { pendingApprovalFD >= 0 }
+    /// True when a real nb-hook connection is holding the question fd open.
+    @MainActor var hasRealPendingQuestion: Bool { pendingQuestionFD >= 0 }
     private var questionPillId: String = ""           // pill that owns the pending question
     private var questionSessionId: String = ""        // sessionId for the pending question (recap tracking)
     private var focusBeforeQuestion: String? = nil    // saved focus to restore after question
@@ -124,6 +129,14 @@ final class HookServer: @unchecked Sendable {
     /// Called by QuestionView. Sends answers JSON and cleans up.
     @MainActor
     func sendQuestionAnswers(_ answers: [String: Any]) {
+        // Only intercept a demo question — real questions always have a live fd.
+        if DemoEngine.shared.isActive, pendingQuestionFD < 0 {
+            AppState.shared.pendingQuestion = nil
+            AppState.shared.isPinned = false
+            AppState.shared.view = AppState.shared.tasks.isEmpty ? .empty : .overview
+            DemoEngine.shared.handleQuestionAnswered(answers: answers)
+            return
+        }
         let fd = pendingQuestionFD
         pendingQuestionFD = -1
         let source = questionFDSource
@@ -400,7 +413,8 @@ final class HookServer: @unchecked Sendable {
 
         // While a permission request is pending, dismiss when the resolving event arrives,
         // then continue normal processing. Only skip normal processing when unresolved.
-        if let pending = state.pendingApproval, agentId == pending.pillId {
+        if let pending = state.pendingApproval, agentId == pending.pillId,
+           pending.sessionId != "demo_session" {
             let handledNote: String
             switch pending.pillId {
             case "agent_cursor":  handledNote = "Handled in Cursor."
@@ -781,6 +795,17 @@ final class HookServer: @unchecked Sendable {
     /// Called by ApprovalView buttons. Writes the decision to the waiting nb-hook and cleans up.
     @MainActor
     func sendApprovalDecision(_ decision: String) {
+        // Only intercept a demo card — a real card has a live fd (pendingApprovalFD >= 0).
+        if DemoEngine.shared.isActive,
+           AppState.shared.pendingApproval?.sessionId == "demo_session",
+           pendingApprovalFD < 0 {
+            let s = AppState.shared
+            s.pendingApproval = nil
+            s.isPinned = false
+            s.view = s.tasks.isEmpty ? .empty : .overview
+            DemoEngine.shared.handleApprovalDecision(decision)
+            return
+        }
         let fd = pendingApprovalFD
         pendingApprovalFD = -1
         // Capture source before nulling — we send the decision first, then cancel the source.

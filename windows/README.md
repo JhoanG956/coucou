@@ -11,7 +11,7 @@ Approve Claude Code permissions, watch your session work, drop a file, chat with
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
 ![Rust](https://img.shields.io/badge/Rust-backend-000?logo=rust)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Code: MIT](https://img.shields.io/badge/code-MIT-green)
 
 </div>
 

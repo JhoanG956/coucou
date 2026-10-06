@@ -4,6 +4,7 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject private var state = AppState.shared
+    @ObservedObject private var demoEngine = DemoEngine.shared
     @State private var apiKey: String = KeychainStore.shared.get("anthropic-api-key") ?? ""
 
     // Claude model — dynamic list fetched from the API, static fallback if unavailable
@@ -248,6 +249,21 @@ struct SettingsView: View {
     // MARK: - General section
 
     @ViewBuilder private var generalSection: some View {
+        GroupBox(String(localized: "demo.groupbox.title")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(localized: "demo.description"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(demoEngine.isActive ? String(localized: "demo.stop") : String(localized: "demo.start")) {
+                    if demoEngine.isActive { DemoEngine.shared.stop() }
+                    else { DemoEngine.shared.start() }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(6)
+        }
+
         GroupBox("Sound") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Enable sounds", isOn: $state.soundEnabled)
