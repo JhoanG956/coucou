@@ -73,6 +73,16 @@ struct SettingsView: View {
     @State private var showAmpDiff: Bool = false
     @State private var pendingAmpContent: String = ""
     @State private var ampPendingInstall: Bool = true
+
+    @State private var hermesPluginInstalled: Bool = HookServer.hermesPluginInstalled()
+    @State private var showHermesPluginDiff: Bool = false
+    @State private var pendingHermesPluginContent: String = ""
+    @State private var hermesPluginPendingInstall: Bool = true
+
+    @State private var showHermesConfigDiff: Bool = false
+    @State private var pendingHermesConfigContent: String = ""
+    @AppStorage("hermesApprovalsEnabled") private var hermesApprovalsEnabled: Bool = false
+    @State private var hermesSupportsApprovals: Bool = false
     #endif
 
     // Multi-provider chat keys
@@ -760,6 +770,87 @@ struct SettingsView: View {
             .padding(6)
         }
 
+        GroupBox(String(localized: "plugin.hermes.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(hermesPluginInstalled
+                     ? String(localized: "plugin.hermes.installed")
+                     : "~/.hermes/plugins/coucou/__init__.py")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 10) {
+                    if !hermesPluginInstalled {
+                        Button(String(localized: "plugin.install")) { triggerHermesPluginPreview(install: true) }
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button(String(localized: "hooks.uninstall")) { triggerHermesPluginPreview(install: false) }
+                            .buttonStyle(.bordered)
+                    }
+                }
+                if showHermesPluginDiff {
+                    ScrollView {
+                        Text(pendingHermesPluginContent)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 180)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    HStack {
+                        Button(String(localized: "hooks.confirm-write")) { confirmHermesPluginOp() }
+                            .buttonStyle(.borderedProminent)
+                        Button(String(localized: "Cancel")) { showHermesPluginDiff = false; pendingHermesPluginContent = "" }
+                            .buttonStyle(.bordered)
+                    }
+                }
+
+                if hermesPluginInstalled {
+                    Divider()
+                    Toggle(String(localized: "plugin.hermes.approvals"), isOn: $hermesApprovalsEnabled)
+                        .onChange(of: hermesApprovalsEnabled) { _, _ in triggerHermesConfigPreview() }
+                        .disabled(!hermesSupportsApprovals)
+                    if !hermesSupportsApprovals {
+                        Text("Requires a newer version of Hermes — run: hermes update")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(hermesApprovalsEnabled
+                             ? String(localized: "plugin.hermes.approvals.enabled")
+                             : String(localized: "plugin.hermes.approvals.disabled"))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if showHermesConfigDiff {
+                        ScrollView {
+                            Text(pendingHermesConfigContent)
+                                .font(.system(size: 10, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(height: 120)
+                        .background(Color(NSColor.textBackgroundColor))
+                        .cornerRadius(6)
+                        HStack {
+                            Button(String(localized: "hooks.confirm-write")) { confirmHermesConfigOp() }
+                                .buttonStyle(.borderedProminent)
+                            Button(String(localized: "Cancel")) { showHermesConfigDiff = false; pendingHermesConfigContent = "" }
+                                .buttonStyle(.bordered)
+                        }
+                    }
+                }
+            }
+            .padding(6)
+        }
+        #if !APPSTORE
+        .task(id: hermesPluginInstalled) {
+            guard hermesPluginInstalled else { hermesSupportsApprovals = false; return }
+            let result = await Task.detached(priority: .background) {
+                HookServer.hermesSupportsApprovalTransport()
+            }.value
+            await MainActor.run { hermesSupportsApprovals = result }
+        }
+        #endif
+
         GroupBox(String(localized: "plan.title")) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(String(localized: "plan.description"))
@@ -1434,6 +1525,58 @@ struct SettingsView: View {
             statusMessage = ampPendingInstall
                 ? String(localized: "status.amp-plugin-installed")
                 : String(localized: "status.amp-plugin-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerHermesPluginPreview(install: Bool) {
+        do {
+            hermesPluginPendingInstall = install
+            pendingHermesPluginContent = try HookServer.shared.previewHermesPlugin(install: install)
+            showHermesPluginDiff = true
+            statusMessage = String(localized: "plugin.review-content")
+        } catch let e as NSError where e.domain == "CoucouNoop" {
+            statusMessage = e.localizedDescription
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmHermesPluginOp() {
+        do {
+            if hermesPluginPendingInstall {
+                try HookServer.shared.writeHermesPlugin()
+            } else {
+                try HookServer.shared.removeHermesPlugin()
+            }
+            showHermesPluginDiff = false
+            pendingHermesPluginContent = ""
+            hermesPluginInstalled = hermesPluginPendingInstall
+            statusMessage = hermesPluginPendingInstall
+                ? String(localized: "status.hermes-plugin-installed")
+                : String(localized: "status.hermes-plugin-removed")
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func triggerHermesConfigPreview() {
+        do {
+            pendingHermesConfigContent = try HookServer.shared.previewHermesConfig(
+                enableApprovals: hermesApprovalsEnabled,
+                supportsTransport: hermesSupportsApprovals)
+            showHermesConfigDiff = true
+        } catch {
+            statusMessage = "❌ \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmHermesConfigOp() {
+        do {
+            try HookServer.shared.writeHermesConfig()
+            showHermesConfigDiff = false
+            pendingHermesConfigContent = ""
         } catch {
             statusMessage = "❌ \(error.localizedDescription)"
         }

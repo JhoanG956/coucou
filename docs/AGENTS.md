@@ -100,8 +100,8 @@ A **declared pill** is a catalog entry (`PillCatalog.swift`) that has been enabl
 A catalog pill that is not checked in Settings behaves like any other agent: it gets an automatic pill when a session starts, and that pill is removed when the session ends.
 
 The GitHub build exposes Gemini CLI (`agent_gemini`), Antigravity (`agent_antigravity`),
-GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`)
-and Amp (`agent_amp`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
+GitHub Copilot CLI (`agent_copilot`), Muse Code (`agent_muse`), OpenCode (`agent_opencode`),
+Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Cursor (`agent_cursor`) and Codex
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
 the main pill; session support is coming in a future version.
 
@@ -203,6 +203,23 @@ The `tool.call` handler returns `{ action: 'allow' }` so Amp always proceeds; al
 | `tool.call` | `PreToolUse` |
 | `tool.result` | `PostToolUse` |
 | `agent.end` | `Stop` |
+
+### Hermes Agent (macOS)
+
+Coucou supports Hermes via **Settings → Agents → Hermes → Install plugin**.
+The installer writes a Python plugin to `~/.hermes/plugins/coucou/` and enables it in
+`~/.hermes/config.yaml`. The plugin uses `on_session_start` (sends the platform when running
+via the gateway), `post_llm_call` (sends the final response), and a `pre_approval_request`
+observer hook that fires a `⏳ Approval pending in Hermes` step in the notch.
+Approving from the notch requires `register_approval_transport`, which is not yet available
+in Hermes 0.15.x; the Approvals toggle activates automatically once Hermes exposes it.
+Every event is fire-and-forget: if the app is closed or unreachable, nothing is sent and Hermes carries on, handling approvals itself.
+
+| Hermes event | Canonical event |
+|---|---|
+| `on_session_start` | `SessionStart` |
+| `post_llm_call` | `Stop` |
+| `pre_approval_request` | `PreToolUse` (observer only, shows "⏳ Approval pending in Hermes") |
 
 ### Any other tool
 

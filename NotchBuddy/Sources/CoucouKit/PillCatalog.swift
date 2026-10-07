@@ -37,6 +37,7 @@ struct PillDefinition {
         case "integration_claude": return "Claude Code"
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
+        case "agent_hermes":       return "Hermes"
         default:                   return "Agent"
         }
     }
@@ -66,6 +67,8 @@ enum PillCatalog {
         .init(id: "agent_opencode",      name: "OpenCode",    color: "#4ADE80",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         .init(id: "agent_amp",           name: "Amp",         color: "#F59E0B",
+              category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
