@@ -38,6 +38,7 @@ struct PillDefinition {
         case "agent_cursor":       return "Cursor"
         case "agent_codex":        return "Codex"
         case "agent_hermes":       return "Hermes"
+        case "agent_claude-desktop": return "Claude Desktop"
         default:                   return "Agent"
         }
     }
@@ -70,6 +71,10 @@ enum PillCatalog {
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
         .init(id: "agent_hermes",        name: "Hermes",      color: "#C084FC",
               category: .agent,     subtitle: "Agent",        source: .agent,  githubOnly: true),
+        // Claude Code sessions run from the Claude desktop app: the relay tags them
+        // `coucou_agent: claude-desktop` from CLAUDE_CODE_ENTRYPOINT, so nothing to install.
+        .init(id: "agent_claude-desktop", name: "Claude Desktop", color: "#D97757",
+              category: .agent,     subtitle: "Agent",        source: .agent),
         // ── AI for the chat ──────────────────────────────────────────────────
         .init(id: "ai_anthropic",        name: "Anthropic",   color: ChatProvider.anthropic.accentHex,
               category: .ai,        subtitle: "Chat",         source: .n8n),

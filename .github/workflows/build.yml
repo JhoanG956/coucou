@@ -21,6 +21,15 @@ jobs:
       - name: Test screen geometry
         run: bash scripts/test-screen-geometry.sh
 
+      - name: Test Claude hook detection
+        run: bash scripts/test-claude-hooks.sh
+
+      - name: Test display choice
+        run: bash scripts/test-display-choice.sh
+
+      - name: Desktop Mochi and gaze tests
+        run: bash scripts/test-desktop-mochi.sh
+
       - name: Test auto-close timing
         run: bash scripts/test-auto-close.sh
 

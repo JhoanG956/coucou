@@ -126,6 +126,9 @@ struct SettingsView: View {
         )
     }
 
+    // Connected screens for the Display picker, refreshed when screens change
+    @State private var connectedScreens: [(uuid: String, name: String)] = []
+
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
     #if PHONE_LINK
@@ -310,6 +313,35 @@ struct SettingsView: View {
             .padding(6)
         }
 
+        GroupBox("Display") {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Show Mochi on", selection: $state.islandDisplay) {
+                    Text("Screen with the notch").tag(IslandDisplayChoice.notch)
+                    Text("Main screen (menu bar)").tag(IslandDisplayChoice.menuBar)
+                    Text("Follow the mouse").tag(IslandDisplayChoice.followMouse)
+                    Divider()
+                    ForEach(connectedScreens, id: \.uuid) { screen in
+                        Text(screen.name).tag(IslandDisplayChoice.display(uuid: screen.uuid))
+                    }
+                    if case .display(let uuid) = state.islandDisplay,
+                       !connectedScreens.contains(where: { $0.uuid == uuid }) {
+                        Text("Saved screen (not connected)").tag(state.islandDisplay)
+                    }
+                }
+                .frame(maxWidth: 360)
+                Text("On a screen without a notch, Mochi sits in a small bar at the top. Follow the mouse moves it to your cursor's screen while it is closed.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
+            .onAppear { refreshConnectedScreens() }
+            .onReceive(NotificationCenter.default.publisher(
+                for: NSApplication.didChangeScreenParametersNotification)) { _ in
+                refreshConnectedScreens()
+            }
+        }
+
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
@@ -431,6 +463,13 @@ struct SettingsView: View {
             .padding(6)
         }
         #endif
+    }
+
+    private func refreshConnectedScreens() {
+        connectedScreens = NSScreen.screens.compactMap { screen in
+            guard let uuid = IslandWindowController.displayUUID(screen) else { return nil }
+            return (uuid, screen.localizedName)
+        }
     }
 
     // MARK: - Active pills section
@@ -908,6 +947,15 @@ struct SettingsView: View {
                         .buttonStyle(.bordered)
                     }
                 }
+                Divider()
+                Text("Shows your Codex plan usage (weekly limit and free resets left) in the notch header. Coucou asks the Codex CLI (codex app-server) when the pill shows; nothing is installed. Codex must be signed in with ChatGPT.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Show Codex plan in the notch", isOn: Binding(
+                    get: { state.showCodexPlanInNotch },
+                    set: { state.showCodexPlanInNotch = $0 }
+                ))
             }
             .padding(6)
         }

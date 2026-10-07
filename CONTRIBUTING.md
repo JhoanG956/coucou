@@ -15,6 +15,7 @@ Check resting island dimensions on screens with and without a notch:
 
 ```bash
 bash scripts/test-screen-geometry.sh
+bash scripts/test-display-choice.sh
 ```
 
 Check auto-close timing and live setting changes:

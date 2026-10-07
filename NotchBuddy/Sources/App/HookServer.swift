@@ -362,16 +362,17 @@ final class HookServer: @unchecked Sendable {
         let isVSCodeEditor = !isCursorEditor && (
             termProgram.lowercased().contains("vscode") ||
             bundleId.lowercased().contains("vscode"))
-        // The Claude desktop app's Code tab runs the same hooks. Its sessions show
-        // like VS Code's; approvals stay VS Code only, since the desktop app shows
-        // its own permission prompt.
+        // The Claude desktop app's Code tab runs the same hooks. The relay tags its
+        // sessions `claude-desktop` from CLAUDE_CODE_ENTRYPOINT; the bundle ID catches
+        // the ones that come without it (an older relay), so they reach the same pill.
         let isClaudeDesktop = bundleId == "com.anthropic.claudefordesktop"
 
         // Routing:
         // • "codex" → agent_codex (GitHub build only: workspace pill, approvals in the notch)
         // • other valid coucou_agent → external pill (fire-and-forget, no approval card)
         // • Cursor bundle ID → agent_cursor
-        // • VS Code, Claude desktop app → integration_claude
+        // • Claude desktop app bundle ID → agent_claude-desktop (its own permission prompt)
+        // • VS Code → integration_claude
         #if !APPSTORE
         let isCodexEvent = rawAgent == "codex"
         #else
@@ -388,7 +389,10 @@ final class HookServer: @unchecked Sendable {
         } else if isCursorEditor {
             agentId = "agent_cursor"
             isExternalAgent = false
-        } else if isVSCodeEditor || isClaudeDesktop {
+        } else if isClaudeDesktop {
+            agentId = "agent_claude-desktop"
+            isExternalAgent = true
+        } else if isVSCodeEditor {
             agentId = "integration_claude"
             isExternalAgent = false
         } else {
@@ -1553,6 +1557,24 @@ final class HookServer: @unchecked Sendable {
         return (data, snapshot.bytes)
     }
     #endif
+
+    // MARK: - Claude Code installed-state detection (both builds)
+
+    /// True when ~/.claude/settings.json already routes Claude Code events to Coucou.
+    /// Cursor sessions ride on these same hooks, so they share this state.
+    static func claudeHooksInstalled() -> Bool {
+        #if APPSTORE
+        // Sandboxed: can't read ~/.claude directly — check the install flag set on write.
+        return UserDefaults.standard.bool(forKey: "coucouHooksInstalled")
+        #else
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/settings.json")
+        guard let data = try? Data(contentsOf: url),
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return false }
+        return coucouHooksPresent(inSettings: json)
+        #endif
+    }
 
     // MARK: - Gemini CLI and Antigravity hook installers  (#if !APPSTORE only)
 
@@ -3249,6 +3271,10 @@ def main():
             i += 1
     if agent:
         payload.setdefault('coucou_agent', agent)
+    # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
+    # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
+    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
+        payload['coucou_agent'] = 'claude-desktop'
 
     # Enrich with terminal context
     env = os.environ
@@ -3548,6 +3574,10 @@ def main():
             i += 1
     if agent:
         payload.setdefault('coucou_agent', agent)
+    # Claude Code sessions from the Claude desktop app (Code tab) report this entrypoint;
+    # route them to the Claude Desktop pill instead of dropping them (no VS Code terminal).
+    if not payload.get('coucou_agent') and os.environ.get('CLAUDE_CODE_ENTRYPOINT') == 'claude-desktop':
+        payload['coucou_agent'] = 'claude-desktop'
 
     env = os.environ
     payload.setdefault('term_program', env.get('TERM_PROGRAM', ''))

@@ -105,6 +105,8 @@ Amp (`agent_amp`) and Hermes (`agent_hermes`) in Settings → Active pills. Curs
 (`agent_codex`, GitHub build only) are there too — their pills can be declared and set as
 the main pill; session support is coming in a future version.
 
+Claude Desktop (`agent_claude-desktop`, every build) is there as well. Claude Code sessions started from the Claude desktop app's Code tab carry `CLAUDE_CODE_ENTRYPOINT=claude-desktop`; the relay tags them `coucou_agent: claude-desktop` on its own (an explicit `--agent` still wins), so nothing extra is installed. Declare the pill to keep it after the session ends; the ↗ button opens the Claude app.
+
 ## Real-world examples
 
 ### Gemini CLI (macOS)
