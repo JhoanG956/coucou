@@ -2,10 +2,30 @@
 
 ## Unreleased
 
-- GitHub: the CI of your Claude Code session's branch, read from its .git folder. On macOS it takes the CI row of the GitHub card (GitHub build) and the CI detail lists it first; on Windows the GitHub card shows it with the reviews asked of you and your open pull requests. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
-- Google Calendar, on macOS and Windows: a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
+- GitHub: the CI of your Claude Code session's branch, read from its .git folder. It takes the CI row of the GitHub card (macOS, GitHub build) and the CI detail lists it first. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
+- Google Calendar (macOS): a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
 - Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
+
+## Windows and Linux 0.2.0 — unreleased
+
+The Windows and Linux app catches up with the Mac, from 0.1.1 to 0.2.1 — everything except Apple Music and the iPhone, which depend on macOS and iCloud.
+
+- **Agents**: Codex, GitHub Copilot CLI and Muse Code sessions with Allow / Deny in the island; Gemini CLI, Antigravity, Cursor Agent, OpenCode, Amp and Hermes sessions on their own pills; Claude Code sessions from the Claude app on Windows. Install them all from Settings → Agents, which shows the diff and takes a dated backup before writing — one hardened writer for every agent's config (#278 by @Totopo27, #298 by @kobaltgit, #231 by @BeyondBirthday07)
+- **Questions**: answer Claude Code's multiple-choice questions from the island; answers are checked against the questions asked, and a question answered in the terminal takes the card down (#216 by @PythonTilk)
+- **The permission card** comes up for every agent, brings its pill forward, can be folded without answering, and never decides on its own
+- **Chat**: Anthropic, Google AI, OpenAI and OpenRouter, switchable by clicking the model name; local models through Ollama, LM Studio or any OpenAI-compatible server, streamed, thinking hidden; Markdown answers with a copy button; full answers; your first name in the greeting; `COUCOU_ANTHROPIC_BASE_URL` for a gateway, https only (#161 by @4rchila, #166 by @AlphaIsYour, #173 by @AinzDerErste, #206 by @Totopo27)
+- **Plan usage**: Claude's 5-hour and weekly limits and Codex's, in the island header (#171 by @AinzDerErste)
+- **Live diff**: each file Claude edits shows in the ticker with its +N −M, and a click opens the diff; the finished card shows Claude's final message
+- **GitHub**: your pull requests with their CI, reviews waiting for you, the CI of your default branches, alerts when CI turns red or green, and your contribution grid
+- **Mochi**: the wardrobe and seasonal outfits, the new greeting and its sound, and Mochi on the desktop (Windows, X11 and layer-shell compositors)
+- **Keyboard shortcuts** from anywhere, changeable in Settings → Shortcuts; the defaults never type an AltGr character on French, German, Spanish, Italian or Portuguese keyboards
+- **Weekly recap** on Monday mornings, shareable as an image; history stays on your computer
+- **Pills**: declare the tools you use and pick your main one; hook-based pills no longer ask for a key; "Open terminal" brings the session's own window forward on Windows
+- **10 languages**: English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português (Brasil), Русский, Bahasa Indonesia — Settings → General → Language (#228; picker from #226 by @alexisrja)
+- **File drop** works from every Explorer view, and Cancel works (#240 by @KauaDc, #126); only files a real drop delivered can be read
+- **Linux**: auto-close on KDE/Wayland and GNOME (#160 by @4rchila, #136), the island at the top on GNOME (#149 by @betodoescher), pinned to its display on Hyprland and Sway with a display picker (#227 by @chuxclay), GNOME large text no longer cuts the island (#122), an Arch Linux PKGBUILD (#299 by @FabioLukas123, #230)
+- The step ticker no longer stops at a session's 20th step (#265 by @PythonTilk), ticker steps keep their own line (from #203 by @shakibbinkabir), `tauri dev` no longer crashes on EBUSY (#202 by @Andrev-91)
 
 ## 0.2.1 — October 7, 2026
 

@@ -162,3 +162,148 @@ test("a transition to the current state is not reported", () => {
   fsm.forceHome();
   assert.deepEqual(transitions, ["hidden>home"]);
 });
+
+// ── Auto-close delay from Settings (IslandAutoCloseTests.swift) ──────────────
+
+/** Opened by a click, the way the Mac tests open theirs. */
+function opened(delay) {
+  fsm.homeToPetitDelay = delay;
+  fsm.mouseEntered();
+  fsm.click();
+  assert.equal(fsm.state, "home");
+}
+
+test("a configured 2-second delay replaces the default 15 seconds", () => {
+  opened(2);
+  fsm.mouseLeft();
+  seconds(1.9);
+  assert.equal(fsm.state, "home");
+  seconds(0.1);
+  assert.equal(fsm.state, "petit");
+});
+
+test("editing the delay during a countdown replaces its timer", () => {
+  opened(15);
+  fsm.mouseLeft();
+  fsm.homeToPetitDelay = 0.05;
+  seconds(0.05);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a longer delay also cancels the shorter timer that was running", () => {
+  opened(0.05);
+  fsm.mouseLeft();
+  fsm.homeToPetitDelay = 0.25;
+  seconds(0.1);
+  assert.equal(fsm.state, "home");
+  seconds(0.15);
+  assert.equal(fsm.state, "petit");
+});
+
+test("coming back cancels the countdown, and leaving again starts it with the delay", () => {
+  opened(0.05);
+  fsm.mouseLeft();
+  fsm.mouseEntered();
+  seconds(0.1);
+  assert.equal(fsm.state, "home");
+  fsm.mouseLeft();
+  seconds(0.05);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a delay edit while the island is hovered starts no countdown", () => {
+  opened(15);
+  fsm.homeToPetitDelay = 0.05;
+  seconds(600);
+  assert.equal(fsm.state, "home");
+  fsm.mouseLeft();
+  seconds(0.05);
+  assert.equal(fsm.state, "petit");
+});
+
+test("the greeting keeps its own timing whatever the auto-close delay", () => {
+  fsm.greetAutoCollapseDelay = 0.15;
+  fsm.launch();
+  fsm.greetComplete();
+  fsm.homeToPetitDelay = 0.01;
+  seconds(0.05);
+  assert.equal(fsm.state, "coucou");
+  seconds(0.1);
+  assert.equal(fsm.state, "petit");
+});
+
+test("an alert waiting for an answer stays open through a delay edit", () => {
+  opened(0.05);
+  fsm.pinned = true;
+  fsm.mouseLeft();
+  fsm.homeToPetitDelay = 0.01;
+  seconds(600);
+  assert.equal(fsm.state, "home");
+  fsm.pinned = false;
+  fsm.mouseLeft();
+  seconds(0.01);
+  assert.equal(fsm.state, "petit");
+});
+
+test("an alert pinned during a countdown blocks the old timer and its replacement", () => {
+  opened(0.2);
+  fsm.mouseLeft();
+  fsm.pinned = true;
+  fsm.homeToPetitDelay = 0.01;
+  seconds(600);
+  assert.equal(fsm.state, "home");
+  fsm.pinned = false;
+  fsm.mouseLeft();
+  seconds(0.01);
+  assert.equal(fsm.state, "petit");
+});
+
+test("a pin that arrives after the timer was armed still holds the island", () => {
+  opened(1);
+  fsm.mouseLeft();
+  fsm.pinned = true;
+  seconds(600);
+  assert.equal(fsm.state, "home");
+});
+
+test("the deadline the countdown bar reads follows the delay and clears with the timer", () => {
+  opened(15);
+  assert.equal(fsm.homeCollapseDueAt, null);
+  fsm.mouseLeft();
+  const first = fsm.homeCollapseDueAt;
+  assert.ok(first != null);
+  fsm.homeToPetitDelay = 5;
+  assert.ok(fsm.homeCollapseDueAt < first);
+  fsm.mouseEntered();
+  assert.equal(fsm.homeCollapseDueAt, null);
+});
+
+// ── A card folded away while it waits (Mac #290) ─────────────────────────────
+
+test("a folded card keeps the compact island on screen until it is answered", () => {
+  fsm.forceHome();
+  fsm.pinned = true;
+  fsm.forcePetit();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "petit");
+  // Reopening brings it back open, and the mouse leaving does not fold it.
+  fsm.mouseEntered();
+  fsm.click();
+  fsm.mouseLeft();
+  seconds(600);
+  assert.equal(fsm.state, "home");
+  // Answered: the usual timers again.
+  fsm.pinned = false;
+  fsm.mouseLeft();
+  seconds(15);
+  assert.equal(fsm.state, "petit");
+  fsm.mouseLeft();
+  seconds(60);
+  assert.equal(fsm.state, "hidden");
+});
+
+test("an unusable delay is ignored", () => {
+  for (const bad of [NaN, -1, Infinity]) fsm.homeToPetitDelay = bad;
+  assert.equal(fsm.homeToPetitDelay, 15);
+});

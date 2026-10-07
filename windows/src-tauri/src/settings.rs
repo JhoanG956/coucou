@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
@@ -17,12 +18,66 @@ pub struct Settings {
     pub auto_close_interval: f64,
     pub absence_interval: f64,
     pub active_integrations: Vec<String>,
+    /// The always-on workspace pill (src/core/pills.ts checks it is one).
+    pub main_pill: String,
     /// "primary" = the main display, "cursor" = whichever display the mouse is on.
     pub screen: String,
     pub autostart: bool,
     pub hooks_installed: bool,
     /// Claude model used by the chat. Changeable in the settings window.
     pub model: String,
+    /// Show the Claude plan pill (5 h and weekly limits) in the island's header.
+    /// Off until the user turns it on, so the header stays as it shipped.
+    pub show_plan_in_notch: bool,
+    /// Coucou's status line relay is the one in Claude Code's settings.json.
+    /// Like `hooks_installed`, the real state wins at launch over what was stored.
+    pub plan_relay_installed: bool,
+    /// Show the Codex plan pill (5 h / weekly limits from `codex app-server`).
+    /// Off by default; nothing is installed for it.
+    pub show_codex_plan_in_notch: bool,
+    /// Who the chat talks to: "anthropic", a cloud provider of
+    /// openai_compat.rs ("openai", "google", "openrouter"), or a model server
+    /// of local_chat.rs ("ollama", "lmstudio", "custom"). Picked in the chat view.
+    pub chat_provider: String,
+    /// The model picked for each provider other than Anthropic (whose model is
+    /// `model`), by provider id.
+    pub chat_models: BTreeMap<String, String>,
+    /// Addresses of the model servers once connected; empty means not connected.
+    pub ollama_url: String,
+    pub lmstudio_url: String,
+    /// Any other OpenAI-compatible server; its key, if any, is in the keychain.
+    pub custom_url: String,
+    /// Global shortcuts the user changed, by action id; the others keep their
+    /// default (see shortcuts.rs).
+    pub shortcuts: crate::shortcuts::Bindings,
+    /// Mochi's outfit, picked in the wardrobe: "auto" (dresses for the
+    /// season), "none" or an outfit id — the Mac's raw values. The island reads
+    /// anything it doesn't know as "auto", so the value is stored as it comes.
+    pub mochi_outfit: String,
+    /// Interface language: "" follows the system, else one of i18n::LANGUAGES
+    /// ("fr", "pt-BR", "zh-Hans"…). Kept as it comes, like `mochi_outfit`: a
+    /// code this build doesn't know reads as "".
+    pub language: String,
+    /// Mochi on the desktop: whether he lives there, and his spot. Owned by
+    /// the Rust side (desktop.rs) — what a webview sends back is ignored.
+    pub desktop_mochi: DesktopMochiPref,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DesktopMochiPref {
+    /// He was on the desktop when the app quit: he flies back out at launch.
+    pub on_desktop: bool,
+    /// Top-left corner of his window where the user last left him.
+    pub spot: Option<DesktopSpot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DesktopSpot {
+    pub x: f64,
+    pub y: f64,
+    /// What x and y are measured in (`DesktopMode::space`).
+    pub space: String,
 }
 
 fn default_model() -> String {
@@ -42,10 +97,23 @@ impl Default for Settings {
                 "integration_vercel".into(),
                 "integration_github".into(),
             ],
+            main_pill: "integration_claude".into(),
             screen: "primary".into(),
             autostart: false,
             hooks_installed: false,
             model: default_model(),
+            show_plan_in_notch: false,
+            plan_relay_installed: false,
+            show_codex_plan_in_notch: false,
+            chat_provider: crate::chat::ANTHROPIC.into(),
+            chat_models: BTreeMap::new(),
+            ollama_url: String::new(),
+            lmstudio_url: String::new(),
+            custom_url: String::new(),
+            shortcuts: Default::default(),
+            mochi_outfit: "auto".into(),
+            language: String::new(),
+            desktop_mochi: DesktopMochiPref::default(),
         }
     }
 }
@@ -303,10 +371,23 @@ mod tests {
   "autoCloseInterval": 30.0,
   "absenceInterval": 60.0,
   "activeIntegrations": ["integration_notion"],
+  "mainPill": "agent_cursor",
   "screen": "cursor",
   "autostart": true,
   "hooksInstalled": true,
-  "model": "some-model"
+  "model": "some-model",
+  "showPlanInNotch": true,
+  "planRelayInstalled": true,
+  "showCodexPlanInNotch": true,
+  "chatProvider": "ollama",
+  "chatModels": { "ollama": "llama3.2", "openai": "gpt-x" },
+  "ollamaUrl": "http://127.0.0.1:11434",
+  "lmstudioUrl": "http://127.0.0.1:1234",
+  "customUrl": "https://llm.example.com",
+  "shortcuts": { "openChat": { "keys": "Ctrl+Shift+K", "enabled": false } },
+  "mochiOutfit": "witchHat",
+  "language": "pt-BR",
+  "desktopMochi": { "onDesktop": true, "spot": { "x": 1500.5, "y": -300.0, "space": "screen" } }
 }"#;
 
     fn custom() -> Value {
@@ -397,6 +478,49 @@ mod tests {
     }
 
     #[test]
+    fn a_file_from_before_the_wardrobe_dresses_mochi_for_the_seasons() {
+        let loaded = parse(&custom_with("mochiOutfit", None)).unwrap();
+        assert_eq!(loaded.mochi_outfit, "auto");
+        assert_eq!(loaded.model, "some-model");
+        assert!(!loaded.sound_enabled);
+    }
+
+    #[test]
+    fn a_file_from_before_the_desktop_mochi_keeps_him_in_the_island() {
+        let loaded = parse(&custom_with("desktopMochi", None)).unwrap();
+        assert_eq!(loaded.desktop_mochi, DesktopMochiPref::default());
+        assert!(!loaded.desktop_mochi.on_desktop);
+        assert_eq!(loaded.mochi_outfit, "witchHat");
+    }
+
+    #[test]
+    fn a_half_written_desktop_spot_costs_only_the_spot() {
+        let loaded = parse(&custom_with(
+            "desktopMochi",
+            Some(json!({ "onDesktop": true, "spot": { "x": "left" } })),
+        ))
+        .unwrap();
+        // The whole field falls back, and nothing else does.
+        assert_eq!(loaded.desktop_mochi, DesktopMochiPref::default());
+        assert_eq!(loaded.model, "some-model");
+
+        let loaded = parse(&custom_with("desktopMochi", Some(json!({ "onDesktop": true })))).unwrap();
+        assert!(loaded.desktop_mochi.on_desktop);
+        assert_eq!(loaded.desktop_mochi.spot, None);
+    }
+
+    #[test]
+    fn an_outfit_this_build_does_not_know_is_kept_as_written() {
+        // A newer build may add outfits: the island shows "auto" for it, but
+        // the choice must survive a save made by this one.
+        let loaded = parse(&custom_with("mochiOutfit", Some(json!("topHat")))).unwrap();
+        assert_eq!(loaded.mochi_outfit, "topHat");
+        // The language too: "" (follow the system) when absent, as it comes otherwise.
+        assert_eq!(parse(&custom_with("language", None)).unwrap().language, "");
+        assert_eq!(parse(&custom_with("language", Some(json!("xx")))).unwrap().language, "xx");
+    }
+
+    #[test]
     fn a_missing_field_takes_its_default_and_the_rest_are_kept() {
         for key in custom().as_object().unwrap().keys() {
             let loaded = parse(&custom_with(key, None))
@@ -413,7 +537,9 @@ mod tests {
             ("soundVolume", json!("loud")),
             ("soundEnabled", json!(1)),
             ("activeIntegrations", json!("integration_n8n")),
+            ("mainPill", json!(["agent_cursor"])),
             ("screen", Value::Null),
+            ("shortcuts", json!("Ctrl+Alt+A")),
         ] {
             let loaded = parse(&custom_with(key, Some(wrong)))
                 .unwrap_or_else(|| panic!("a file with a bad {key} was thrown away"));
@@ -628,10 +754,23 @@ mod tests {
                 "autoCloseInterval",
                 "absenceInterval",
                 "activeIntegrations",
+                "mainPill",
                 "screen",
                 "autostart",
                 "hooksInstalled",
                 "model",
+                "showPlanInNotch",
+                "planRelayInstalled",
+                "showCodexPlanInNotch",
+                "chatProvider",
+                "chatModels",
+                "ollamaUrl",
+                "lmstudioUrl",
+                "customUrl",
+                "shortcuts",
+                "mochiOutfit",
+                "language",
+                "desktopMochi",
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);

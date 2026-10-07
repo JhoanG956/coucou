@@ -1,193 +1,414 @@
-// GitHub — CI for the branch you're on, and the pull requests waiting on you
-// or on someone else.
+// GitHub pulse and contribution calendar — the pure half of GithubPoller.swift,
+// GitHubPulse.swift and GitHubActivity.swift. Parsing, alert detection and the
+// staleness rule live here, away from the network, so they can be tested.
 //
-// "The branch you're on" is the branch checked out in the folder of the last
-// Claude Code session, read straight from its .git directory: no `git` process,
-// no console flash, and nothing to configure. Everything else comes from one
-// GraphQL query per poll. GitHubActivity.swift follows the same rules on macOS.
-//
-// Events, at most one per poll, only for things that changed since the last
-// poll: a CI run on that branch finishing, a new review on one of your pull
-// requests, a new review requested from you. The first poll only fills the card.
+// The pollers that use them are in integrations.rs.
 
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, Mutex};
+use serde::Serialize;
+use serde_json::Value;
 
-use serde_json::{json, Value};
-use tauri::AppHandle;
+// ── CI and review states ──────────────────────────────────────────────────────
 
-use crate::integrations::{client, emit, status_error, IntegrationEvent, IntegrationUpdate};
-use crate::log;
-use crate::secrets;
-use crate::time::{now_secs, parse_rfc3339};
-
-const ID: &str = "integration_github";
-const STALE_AFTER_SECS: i64 = 30 * 86_400;
-
-// ── The session's branch ──────────────────────────────────────────────────────
-
-static SESSION_CWD: Mutex<Option<PathBuf>> = Mutex::new(None);
-
-/// Called for every Claude Code hook that carries a `cwd`.
-pub fn note_cwd(cwd: &str) {
-    if cwd.is_empty() {
-        return;
-    }
-    *SESSION_CWD.lock().unwrap() = Some(PathBuf::from(cwd));
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CiState {
+    Pending,
+    Success,
+    Failure,
+    Unknown,
 }
 
-#[derive(Debug, PartialEq)]
-struct BranchRef {
-    owner: String,
-    name: String,
-    /// The branch's name on GitHub (its upstream), which is what CI ran on.
-    branch: String,
-}
-
-/// The GitHub repository and branch checked out in `cwd`, if there is one.
-fn branch_of(cwd: &Path) -> Option<BranchRef> {
-    let (git_dir, common_dir) = find_git_dir(cwd)?;
-    let head = std::fs::read_to_string(git_dir.join("HEAD")).ok()?;
-    // Detached HEAD (rebase, bisect, checkout of a tag): no branch to follow.
-    let local = head.trim().strip_prefix("ref: refs/heads/")?.to_string();
-    let config = std::fs::read_to_string(common_dir.join("config")).ok()?;
-    resolve_upstream(&config, &local)
-}
-
-/// `.git` is a directory in a normal checkout and a `gitdir: …` file in a
-/// worktree, whose config then lives in the main repository (`commondir`).
-fn find_git_dir(start: &Path) -> Option<(PathBuf, PathBuf)> {
-    for dir in start.ancestors() {
-        let dot_git = dir.join(".git");
-        if dot_git.is_dir() {
-            return Some((dot_git.clone(), dot_git));
-        }
-        if dot_git.is_file() {
-            let text = std::fs::read_to_string(&dot_git).ok()?;
-            let target = text.trim().strip_prefix("gitdir:")?.trim();
-            let git_dir = dir.join(target);
-            let common = std::fs::read_to_string(git_dir.join("commondir"))
-                .map(|c| git_dir.join(c.trim()))
-                .unwrap_or_else(|_| git_dir.clone());
-            return Some((git_dir, common));
+impl CiState {
+    /// GitHub's `StatusState` (statusCheckRollup.state) → our four states.
+    pub fn from_github(raw: Option<&str>) -> Self {
+        match raw.map(str::to_ascii_uppercase).as_deref() {
+            Some("PENDING") | Some("EXPECTED") => CiState::Pending,
+            Some("SUCCESS") => CiState::Success,
+            Some("ERROR") | Some("FAILURE") => CiState::Failure,
+            _ => CiState::Unknown,
         }
     }
-    None
 }
 
-/// Follows `branch.<local>.remote` / `.merge` to the GitHub repo and remote
-/// branch name; a branch with no upstream is assumed to be pushed to origin
-/// under the same name.
-fn resolve_upstream(config: &str, local: &str) -> Option<BranchRef> {
-    let sections = parse_git_config(config);
-    let get = |section: &str, sub: &str, key: &str| -> Option<String> {
-        sections
-            .iter()
-            .find(|(s, n, k, _)| s == section && n == sub && k == key)
-            .map(|(_, _, _, v)| v.clone())
-    };
-
-    let remote = get("branch", local, "remote").unwrap_or_else(|| "origin".into());
-    let branch = get("branch", local, "merge")
-        .and_then(|m| m.strip_prefix("refs/heads/").map(str::to_string))
-        .unwrap_or_else(|| local.to_string());
-
-    let url = get("remote", &remote, "url").or_else(|| {
-        // No such remote: take whichever remote points at GitHub.
-        sections
-            .iter()
-            .filter(|(s, _, k, _)| s == "remote" && k == "url")
-            .map(|(_, _, _, v)| v.clone())
-            .find(|v| parse_github_url(v).is_some())
-    })?;
-    let (owner, name) = parse_github_url(&url)?;
-    Some(BranchRef { owner, name, branch })
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ReviewState {
+    Approved,
+    ChangesRequested,
+    Pending,
+    Unknown,
 }
 
-/// (section, subsection, key, value) — just enough of git-config(1) for
-/// `[remote "x"]` and `[branch "x"]`. Section and key names are case-insensitive.
-fn parse_git_config(text: &str) -> Vec<(String, String, String, String)> {
-    let mut out = Vec::new();
-    let (mut section, mut sub) = (String::new(), String::new());
-    for raw in text.lines() {
-        let line = raw.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with(';') {
-            continue;
+impl ReviewState {
+    pub fn from_github(raw: Option<&str>) -> Self {
+        match raw.map(str::to_ascii_uppercase).as_deref() {
+            Some("APPROVED") => ReviewState::Approved,
+            Some("CHANGES_REQUESTED") => ReviewState::ChangesRequested,
+            Some("REVIEW_REQUIRED") => ReviewState::Pending,
+            _ => ReviewState::Unknown,
         }
-        if let Some(header) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
-            match header.split_once(char::is_whitespace) {
-                Some((s, n)) => {
-                    section = s.to_ascii_lowercase();
-                    sub = n.trim().trim_matches('"').to_string();
-                }
-                None => {
-                    section = header.to_ascii_lowercase();
-                    sub.clear();
-                }
+    }
+}
+
+// ── Pulse ─────────────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubPr {
+    /// "owner/repo#number"
+    pub id: String,
+    pub title: String,
+    pub url: String,
+    pub repo: String,
+    pub number: i64,
+    pub is_draft: bool,
+    pub ci: CiState,
+    pub review: ReviewState,
+    /// Oid of the PR's last commit, when GitHub returned it.
+    pub head_sha: Option<String>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubRepoCi {
+    pub repo: String,
+    pub url: String,
+    pub branch: String,
+    pub ci: CiState,
+    /// Oid of the default branch's head commit, when GitHub returned it.
+    pub head_sha: Option<String>,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct GitHubPulse {
+    pub login: String,
+    #[serde(rename = "myPRs")]
+    pub my_prs: Vec<GitHubPr>,
+    #[serde(rename = "toReview")]
+    pub to_review: Vec<GitHubPr>,
+    #[serde(rename = "mainCI")]
+    pub main_ci: Vec<GitHubRepoCi>,
+    /// Unix time in milliseconds.
+    #[serde(rename = "fetchedAt")]
+    pub fetched_at: u64,
+}
+
+/// What a pulse poll can raise: the island turns these into a badge and a sound.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(tag = "kind")]
+pub enum GitHubEvent {
+    #[serde(rename = "ciFailed")]
+    CiFailed {
+        #[serde(rename = "prId")]
+        pr_id: String,
+    },
+    #[serde(rename = "ciPassed")]
+    CiPassed {
+        #[serde(rename = "prId")]
+        pr_id: String,
+    },
+    #[serde(rename = "mainFailed")]
+    MainFailed { repo: String },
+    #[serde(rename = "reviewRequested")]
+    ReviewRequested {
+        #[serde(rename = "prId")]
+        pr_id: String,
+    },
+}
+
+fn str_at<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
+    v.get(key).and_then(Value::as_str)
+}
+
+/// Pull request fields shared by "my PRs" and "to review"; None when a required
+/// field is missing (that node is skipped, as on macOS).
+fn pr_basics(node: &Value) -> Option<(String, String, String, String, i64, bool)> {
+    let number = node.get("number")?.as_i64()?;
+    let title = str_at(node, "title")?.to_string();
+    let url = str_at(node, "url")?.to_string();
+    let repo = node.get("repository").and_then(|r| str_at(r, "nameWithOwner"))?.to_string();
+    let is_draft = node.get("isDraft").and_then(Value::as_bool).unwrap_or(false);
+    Some((format!("{repo}#{number}"), title, url, repo, number, is_draft))
+}
+
+fn nodes<'a>(parent: Option<&'a Value>) -> &'a [Value] {
+    parent
+        .and_then(|p| p.get("nodes"))
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or(&[])
+}
+
+impl GitHubPulse {
+    /// Parses the pulse GraphQL response. None when there is no `data.viewer`.
+    pub fn parse(root: &Value, now_ms: u64) -> Option<Self> {
+        let data = root.get("data")?.as_object()?;
+        let viewer = data.get("viewer")?.as_object()?;
+        let login = viewer.get("login").and_then(Value::as_str).unwrap_or("").to_string();
+
+        // My pull requests, first occurrence of an id wins.
+        let mut my_prs: Vec<GitHubPr> = Vec::new();
+        for node in nodes(viewer.get("pullRequests")) {
+            let Some((id, title, url, repo, number, is_draft)) = pr_basics(node) else { continue };
+            if my_prs.iter().any(|p| p.id == id) {
+                continue;
             }
-            continue;
+            let review = ReviewState::from_github(str_at(node, "reviewDecision"));
+            let commit = node
+                .get("commits")
+                .and_then(|c| c.get("nodes"))
+                .and_then(Value::as_array)
+                .and_then(|a| a.last())
+                .and_then(|n| n.get("commit"));
+            let ci_raw = commit
+                .and_then(|c| c.get("statusCheckRollup"))
+                .and_then(|r| str_at(r, "state"));
+            let head_sha = commit.and_then(|c| str_at(c, "oid")).map(str::to_string);
+            my_prs.push(GitHubPr {
+                id,
+                title,
+                url,
+                repo,
+                number,
+                is_draft,
+                ci: CiState::from_github(ci_raw),
+                review,
+                head_sha,
+            });
         }
-        if let Some((k, v)) = line.split_once('=') {
-            let value = v.trim().trim_matches('"').to_string();
-            out.push((section.clone(), sub.clone(), k.trim().to_ascii_lowercase(), value));
+
+        // Default-branch CI of the recently pushed repos, archived ones left out.
+        let mut main_ci: Vec<GitHubRepoCi> = Vec::new();
+        for node in nodes(viewer.get("repositories")) {
+            if node.get("isArchived").and_then(Value::as_bool).unwrap_or(false) {
+                continue;
+            }
+            let (Some(repo), Some(url)) = (str_at(node, "nameWithOwner"), str_at(node, "url")) else {
+                continue;
+            };
+            let Some(branch_ref) = node.get("defaultBranchRef").filter(|b| b.is_object()) else {
+                continue;
+            };
+            let Some(branch) = str_at(branch_ref, "name") else { continue };
+            let target = branch_ref.get("target");
+            let ci_raw = target
+                .and_then(|t| t.get("statusCheckRollup"))
+                .and_then(|r| str_at(r, "state"));
+            let head_sha = target.and_then(|t| str_at(t, "oid")).map(str::to_string);
+            main_ci.push(GitHubRepoCi {
+                repo: repo.to_string(),
+                url: url.to_string(),
+                branch: branch.to_string(),
+                ci: CiState::from_github(ci_raw),
+                head_sha,
+            });
         }
+
+        // Pull requests waiting for my review.
+        let mut to_review: Vec<GitHubPr> = Vec::new();
+        for node in nodes(data.get("reviewRequested")) {
+            let Some((id, title, url, repo, number, is_draft)) = pr_basics(node) else { continue };
+            if to_review.iter().any(|p| p.id == id) {
+                continue;
+            }
+            to_review.push(GitHubPr {
+                id,
+                title,
+                url,
+                repo,
+                number,
+                is_draft,
+                ci: CiState::Unknown,
+                review: ReviewState::Pending,
+                head_sha: None,
+            });
+        }
+
+        Some(GitHubPulse { login, my_prs, to_review, main_ci, fetched_at: now_ms })
     }
-    out
+
+    /// True when a PR's CI or a default branch is still running — the next poll
+    /// then comes after 60 s instead of 5 min.
+    pub fn has_pending(&self) -> bool {
+        self.my_prs.iter().any(|p| p.ci == CiState::Pending)
+            || self.main_ci.iter().any(|r| r.ci == CiState::Pending)
+    }
+
+    /// Alerts between two polls. The first poll after launch (or after the token
+    /// changed) has no `old` and stays silent.
+    ///
+    /// headSha rule, which catches CI runs faster than the poll interval:
+    /// - same commit (or both unknown): plain state transitions;
+    /// - new commit or new PR: alert at once if its CI is already done; if it is
+    ///   still running, the next poll on the same commit will catch the result;
+    /// - default branches only ever raise "failed", never "passed".
+    pub fn events(old: Option<&GitHubPulse>, new: &GitHubPulse) -> Vec<GitHubEvent> {
+        let Some(old) = old else { return Vec::new() };
+        let mut out = Vec::new();
+
+        for pr in &new.my_prs {
+            // First occurrence wins, should the old list hold a duplicate.
+            let prev = old.my_prs.iter().find(|p| p.id == pr.id);
+            match prev {
+                Some(prev) if prev.head_sha == pr.head_sha => {
+                    if pr.ci == CiState::Failure && prev.ci != CiState::Failure {
+                        out.push(GitHubEvent::CiFailed { pr_id: pr.id.clone() });
+                    } else if pr.ci == CiState::Success && prev.ci == CiState::Pending {
+                        out.push(GitHubEvent::CiPassed { pr_id: pr.id.clone() });
+                    }
+                }
+                _ => match pr.ci {
+                    CiState::Success => out.push(GitHubEvent::CiPassed { pr_id: pr.id.clone() }),
+                    CiState::Failure => out.push(GitHubEvent::CiFailed { pr_id: pr.id.clone() }),
+                    _ => {}
+                },
+            }
+        }
+
+        for repo in &new.main_ci {
+            let prev = old.main_ci.iter().find(|r| r.repo == repo.repo);
+            let failed = match prev {
+                Some(prev) if prev.head_sha == repo.head_sha => {
+                    repo.ci == CiState::Failure && prev.ci != CiState::Failure
+                }
+                _ => repo.ci == CiState::Failure,
+            };
+            if failed {
+                out.push(GitHubEvent::MainFailed { repo: repo.repo.clone() });
+            }
+        }
+
+        for pr in &new.to_review {
+            if !old.to_review.iter().any(|p| p.id == pr.id) {
+                out.push(GitHubEvent::ReviewRequested { pr_id: pr.id.clone() });
+            }
+        }
+
+        out
+    }
 }
 
-/// `https://github.com/o/r(.git)`, `git@github.com:o/r.git`,
-/// `ssh://git@github.com/o/r.git` → (o, r). Anything not on github.com → None.
-fn parse_github_url(url: &str) -> Option<(String, String)> {
-    let at = url.find("github.com")?;
-    let rest = &url[at + "github.com".len()..];
-    let rest = rest.strip_prefix(':').or_else(|| rest.strip_prefix('/'))?;
-    let rest = rest.trim_end_matches('/');
-    let rest = rest.strip_suffix(".git").unwrap_or(rest);
-    let (owner, name) = rest.split_once('/')?;
-    if owner.is_empty() || name.is_empty() || name.contains('/') {
-        return None;
+/// True when nothing was fetched yet or the last fetch is older than `max_age_secs`.
+pub fn is_stale(fetched_at_ms: Option<u64>, now_ms: u64, max_age_secs: u64) -> bool {
+    match fetched_at_ms {
+        None => true,
+        Some(t) => now_ms.saturating_sub(t) > max_age_secs * 1000,
     }
-    Some((owner.to_string(), name.to_string()))
 }
 
-// ── The query ─────────────────────────────────────────────────────────────────
+// ── Contribution calendar ─────────────────────────────────────────────────────
 
-const QUERY: &str = r#"
-query($owner: String!, $name: String!, $ref: String!, $withRepo: Boolean!) {
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct ContributionDay {
+    /// YYYY-MM-DD
+    pub date: String,
+    pub count: i64,
+    /// 0…4, from NONE … FOURTH_QUARTILE.
+    pub level: u8,
+    /// 0 = Sunday … 6 = Saturday.
+    pub weekday: u8,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct GitHubActivity {
+    pub total: i64,
+    /// Oldest week first; the last one is usually the current, incomplete week.
+    pub weeks: Vec<Vec<ContributionDay>>,
+    #[serde(rename = "fetchedAt")]
+    pub fetched_at: u64,
+}
+
+fn contribution_level(raw: &str) -> u8 {
+    match raw {
+        "FIRST_QUARTILE" => 1,
+        "SECOND_QUARTILE" => 2,
+        "THIRD_QUARTILE" => 3,
+        "FOURTH_QUARTILE" => 4,
+        _ => 0,
+    }
+}
+
+impl GitHubActivity {
+    pub fn parse(root: &Value, now_ms: u64) -> Option<Self> {
+        let calendar = root
+            .get("data")?
+            .get("viewer")?
+            .get("contributionsCollection")?
+            .get("contributionCalendar")?;
+        let total = calendar.get("totalContributions")?.as_i64()?;
+        let weeks_raw = calendar.get("weeks")?.as_array()?;
+
+        let mut weeks = Vec::new();
+        for week in weeks_raw {
+            let Some(days_raw) = week.get("contributionDays").and_then(Value::as_array) else { continue };
+            let days: Vec<ContributionDay> = days_raw
+                .iter()
+                .filter_map(|d| {
+                    Some(ContributionDay {
+                        date: str_at(d, "date")?.to_string(),
+                        count: d.get("contributionCount")?.as_i64()?,
+                        level: contribution_level(str_at(d, "contributionLevel")?),
+                        weekday: u8::try_from(d.get("weekday")?.as_i64()?).ok()?,
+                    })
+                })
+                .collect();
+            if !days.is_empty() {
+                weeks.push(days);
+            }
+        }
+        Some(GitHubActivity { total, weeks, fetched_at: now_ms })
+    }
+}
+
+// ── GraphQL ───────────────────────────────────────────────────────────────────
+
+/// Same query as GithubPoller.swift.
+pub const PULSE_QUERY: &str = r#"
+query {
   viewer {
     login
-    repositories(ownerAffiliations: OWNER, first: 100, orderBy: {field: PUSHED_AT, direction: DESC}) {
-      totalCount
-      nodes { stargazerCount }
-    }
-    pullRequests(states: OPEN, first: 10, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(states: OPEN, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
-        number title url isDraft headRefName reviewDecision updatedAt
-        repository { nameWithOwner }
-        latestReviews(first: 10) { nodes { id state author { login } } }
+        number title url isDraft reviewDecision
+        repository { nameWithOwner url }
+        commits(last: 1) {
+          nodes { commit { oid statusCheckRollup { state } } }
+        }
+      }
+    }
+    repositories(first: 10, ownerAffiliations: [OWNER], orderBy: {field: PUSHED_AT, direction: DESC}) {
+      nodes {
+        nameWithOwner url isArchived
+        defaultBranchRef {
+          name
+          target { ... on Commit { oid statusCheckRollup { state } } }
+        }
       }
     }
   }
-  requests: search(query: "is:open is:pr user-review-requested:@me archived:false", type: ISSUE, first: 5) {
+  reviewRequested: search(query: "is:pr is:open review-requested:@me archived:false", type: ISSUE, first: 20) {
     issueCount
-    nodes { ... on PullRequest { number title url author { login } repository { nameWithOwner } } }
+    nodes {
+      ... on PullRequest {
+        number title url isDraft
+        author { login }
+        repository { nameWithOwner url }
+      }
+    }
   }
-  repository(owner: $owner, name: $name) @include(if: $withRepo) {
-    nameWithOwner
-    ref(qualifiedName: $ref) {
-      target {
-        ... on Commit {
-          oid url committedDate
-          statusCheckRollup {
-            state
-            contexts(first: 50) {
-              nodes {
-                __typename
-                ... on CheckRun { name conclusion detailsUrl }
-                ... on StatusContext { context state targetUrl }
-              }
-            }
+}
+"#;
+
+pub const ACTIVITY_QUERY: &str = r#"
+query {
+  viewer {
+    login
+    contributionsCollection {
+      contributionCalendar {
+        totalContributions
+        weeks {
+          contributionDays {
+            date contributionCount contributionLevel weekday
           }
         }
       }
@@ -196,580 +417,383 @@ query($owner: String!, $name: String!, $ref: String!, $withRepo: Boolean!) {
 }
 "#;
 
-pub async fn poll(app: AppHandle) {
-    let Some(token) = secrets::get("github-token") else { return };
-    let cwd = SESSION_CWD.lock().unwrap().clone();
-    let target = cwd.as_deref().and_then(branch_of);
-
-    let variables = match &target {
-        Some(t) => json!({
-            "owner": t.owner, "name": t.name,
-            "ref": format!("refs/heads/{}", t.branch), "withRepo": true,
-        }),
-        None => json!({ "owner": "", "name": "", "ref": "", "withRepo": false }),
-    };
-
-    let response = client()
-        .post("https://api.github.com/graphql")
-        .header("Authorization", format!("Bearer {token}"))
-        .header("User-Agent", "Coucou")
-        .json(&json!({ "query": QUERY, "variables": variables }))
-        .send()
-        .await;
-    let Ok(response) = response else { return };
-    if !response.status().is_success() {
-        emit(&app, IntegrationUpdate {
-            id: ID,
-            data: json!({}),
-            error: Some(status_error(response.status().as_u16(), "Token lacks the needed scope")),
-            event: None,
-        });
-        return;
-    }
-    let body: Value = response.json().await.unwrap_or(json!({}));
-    let Some(data) = body.get("data").filter(|d| !d.is_null()) else {
-        let message = body
-            .pointer("/errors/0/message")
-            .and_then(Value::as_str)
-            .unwrap_or("Unexpected answer from GitHub");
-        log::line(format!("github graphql: {message}"));
-        emit(&app, IntegrationUpdate {
-            id: ID,
-            data: json!({}),
-            error: Some(message.chars().take(80).collect()),
-            event: None,
-        });
-        return;
-    };
-
-    let snapshot = Snapshot::parse(data, target.as_ref());
-    let event = MEMORY.lock().unwrap().diff(&snapshot);
-    emit(&app, IntegrationUpdate { id: ID, data: snapshot.to_json(), error: None, event });
+/// Number of GraphQL errors in a response, for the log (never their text: it
+/// can quote the query, not secrets, but there is no need for it).
+pub fn graphql_error_count(root: &Value) -> usize {
+    root.get("errors").and_then(Value::as_array).map(Vec::len).unwrap_or(0)
 }
 
-// ── What the query says ───────────────────────────────────────────────────────
-
-#[derive(Debug, Default)]
-struct Snapshot {
-    login: String,
-    total_repos: i64,
-    total_stars: i64,
-    branch: Option<BranchState>,
-    pulls: Vec<Pull>,
-    requests: Vec<Request>,
-    request_count: i64,
-}
-
-#[derive(Debug)]
-struct BranchState {
-    repo: String,
-    branch: String,
-    /// False when the branch only exists locally.
-    pushed: bool,
-    oid: String,
-    /// SUCCESS, FAILURE, ERROR, PENDING, EXPECTED — None when no check ran.
-    state: Option<String>,
-    failing: Vec<String>,
-    url: String,
-    committed_at: String,
-    pr: Option<i64>,
-}
-
-#[derive(Debug)]
-struct Pull {
-    repo: String,
-    number: i64,
-    title: String,
-    url: String,
-    draft: bool,
-    head: String,
-    /// APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED, or None.
-    decision: Option<String>,
-    reviews: Vec<Review>,
-}
-
-#[derive(Debug)]
-struct Review {
-    id: String,
-    state: String,
-    author: String,
-}
-
-#[derive(Debug)]
-struct Request {
-    repo: String,
-    number: i64,
-    title: String,
-    url: String,
-    author: String,
-}
-
-fn s(v: &Value, ptr: &str) -> String {
-    v.pointer(ptr).and_then(Value::as_str).unwrap_or_default().to_string()
-}
-
-impl Snapshot {
-    fn parse(data: &Value, target: Option<&BranchRef>) -> Self {
-        let viewer = &data["viewer"];
-        let login = s(viewer, "/login");
-
-        let repos = &viewer["repositories"];
-        let total_stars = repos["nodes"]
-            .as_array()
-            .map(|l| l.iter().filter_map(|r| r["stargazerCount"].as_i64()).sum())
-            .unwrap_or(0);
-
-        // Pull requests nobody has touched in a month are abandoned, not "on
-        // the go" — bots opening them under your name leave plenty of those.
-        // A new review bumps updatedAt, so one coming back to life reappears.
-        let fresh_since = now_secs() - STALE_AFTER_SECS;
-        let pulls: Vec<Pull> = viewer
-            .pointer("/pullRequests/nodes")
-            .and_then(Value::as_array)
-            .map(|list| {
-                list.iter()
-                    .filter(|p| {
-                        p["updatedAt"].as_str().and_then(parse_rfc3339).is_none_or(|t| t >= fresh_since)
-                    })
-                    .map(|p| Pull {
-                        repo: s(p, "/repository/nameWithOwner"),
-                        number: p["number"].as_i64().unwrap_or(0),
-                        title: s(p, "/title"),
-                        url: s(p, "/url"),
-                        draft: p["isDraft"].as_bool().unwrap_or(false),
-                        head: s(p, "/headRefName"),
-                        decision: p["reviewDecision"].as_str().map(str::to_string),
-                        reviews: p
-                            .pointer("/latestReviews/nodes")
-                            .and_then(Value::as_array)
-                            .map(|rs| {
-                                rs.iter()
-                                    .map(|r| Review {
-                                        id: s(r, "/id"),
-                                        state: s(r, "/state"),
-                                        author: s(r, "/author/login"),
-                                    })
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let requests = data
-            .pointer("/requests/nodes")
-            .and_then(Value::as_array)
-            .map(|list| {
-                list.iter()
-                    .filter(|n| n.get("url").is_some())
-                    .map(|n| Request {
-                        repo: s(n, "/repository/nameWithOwner"),
-                        number: n["number"].as_i64().unwrap_or(0),
-                        title: s(n, "/title"),
-                        url: s(n, "/url"),
-                        author: s(n, "/author/login"),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let branch = target.and_then(|t| {
-            // A repository the token can't see comes back null: no CI row then.
-            let repo = data.get("repository").filter(|r| !r.is_null())?;
-            let name_with_owner = s(repo, "/nameWithOwner");
-            let pr = pulls
-                .iter()
-                .find(|p| p.head == t.branch && p.repo.eq_ignore_ascii_case(&name_with_owner))
-                .map(|p| p.number);
-            let commit = repo.pointer("/ref/target");
-            let Some(commit) = commit.filter(|c| !c.is_null()) else {
-                return Some(BranchState {
-                    repo: name_with_owner,
-                    branch: t.branch.clone(),
-                    pushed: false,
-                    oid: String::new(),
-                    state: None,
-                    failing: vec![],
-                    url: String::new(),
-                    committed_at: String::new(),
-                    pr,
-                });
-            };
-            let rollup = commit.get("statusCheckRollup").filter(|r| !r.is_null());
-            let mut failing = Vec::new();
-            let mut failing_url = None;
-            if let Some(contexts) = rollup.and_then(|r| r.pointer("/contexts/nodes")).and_then(Value::as_array) {
-                for c in contexts {
-                    let (name, bad, url) = match c["__typename"].as_str() {
-                        Some("CheckRun") => (
-                            s(c, "/name"),
-                            matches!(
-                                c["conclusion"].as_str(),
-                                Some("FAILURE" | "TIMED_OUT" | "STARTUP_FAILURE" | "ACTION_REQUIRED")
-                            ),
-                            s(c, "/detailsUrl"),
-                        ),
-                        Some("StatusContext") => (
-                            s(c, "/context"),
-                            matches!(c["state"].as_str(), Some("FAILURE" | "ERROR")),
-                            s(c, "/targetUrl"),
-                        ),
-                        _ => continue,
-                    };
-                    if bad {
-                        if failing_url.is_none() && !url.is_empty() {
-                            failing_url = Some(url);
-                        }
-                        failing.push(name);
-                    }
-                }
-            }
-            Some(BranchState {
-                repo: name_with_owner,
-                branch: t.branch.clone(),
-                pushed: true,
-                oid: s(commit, "/oid"),
-                state: rollup.and_then(|r| r["state"].as_str()).map(str::to_string),
-                failing,
-                // Straight to the failing job when there is one; the commit page
-                // (which lists every check) otherwise.
-                url: failing_url.unwrap_or_else(|| s(commit, "/url")),
-                committed_at: s(commit, "/committedDate"),
-                pr,
-            })
-        });
-
-        Snapshot {
-            login,
-            total_repos: repos["totalCount"].as_i64().unwrap_or(0),
-            total_stars,
-            branch,
-            pulls,
-            requests,
-            request_count: data.pointer("/requests/issueCount").and_then(Value::as_i64).unwrap_or(0),
-        }
-    }
-
-    fn to_json(&self) -> Value {
-        let branch = self.branch.as_ref().map(|b| {
-            json!({
-                "repo": b.repo,
-                "branch": b.branch,
-                "pushed": b.pushed,
-                "state": b.state,
-                "failing": b.failing,
-                "url": b.url,
-                "committedAt": b.committed_at,
-                "pr": b.pr,
-            })
-        });
-        let pulls: Vec<Value> = self
-            .pulls
-            .iter()
-            .take(5)
-            .map(|p| {
-                json!({
-                    "repo": p.repo, "number": p.number, "title": p.title, "url": p.url,
-                    "draft": p.draft, "decision": p.decision,
-                })
-            })
-            .collect();
-        let requests: Vec<Value> = self
-            .requests
-            .iter()
-            .map(|r| {
-                json!({
-                    "repo": r.repo, "number": r.number, "title": r.title, "url": r.url,
-                    "author": r.author,
-                })
-            })
-            .collect();
-        json!({
-            "login": self.login,
-            "totalRepos": self.total_repos,
-            "totalStars": self.total_stars,
-            "branch": branch,
-            "pulls": pulls,
-            "requests": requests,
-            "requestCount": self.request_count,
-        })
-    }
-}
-
-// ── What changed since the last poll ──────────────────────────────────────────
-
-#[derive(Default)]
-struct Memory {
-    /// (repo@branch@commit, rollup state) at the last poll.
-    ci: Option<(String, Option<String>)>,
-    /// None until the first poll, which fills these without announcing anything.
-    reviews: Option<HashSet<String>>,
-    requests: Option<HashSet<String>>,
-}
-
-static MEMORY: LazyLock<Mutex<Memory>> = LazyLock::new(|| Mutex::new(Memory::default()));
-
-fn is_pending(state: &Option<String>) -> bool {
-    matches!(state.as_deref(), Some("PENDING" | "EXPECTED"))
-}
-
-impl Memory {
-    /// Remembers this snapshot and returns the one event worth announcing.
-    fn diff(&mut self, now: &Snapshot) -> Option<IntegrationEvent> {
-        // (priority, event): lower wins. A red build beats everything else.
-        let mut candidates: Vec<(u8, IntegrationEvent)> = Vec::new();
-
-        // CI: only a run we watched go from pending to done. Switching to another
-        // repo or branch, or a commit that was already finished when first seen,
-        // says nothing — that's old news, not something that just happened.
-        if let Some(b) = now.branch.as_ref().filter(|b| b.pushed) {
-            let key = format!("{}@{}@{}", b.repo, b.branch, b.oid);
-            if let Some((prev_key, prev_state)) = &self.ci {
-                if *prev_key == key && is_pending(prev_state) {
-                    match b.state.as_deref() {
-                        Some("SUCCESS") => candidates.push((5, IntegrationEvent {
-                            success: true,
-                            label: format!("CI passed · {}", b.branch),
-                            detail: Some(b.repo.clone()),
-                            attention: false, item: None,
-                        })),
-                        Some("FAILURE" | "ERROR") => candidates.push((0, IntegrationEvent {
-                            success: false,
-                            label: format!("CI failed · {}", b.branch),
-                            detail: Some(if b.failing.is_empty() {
-                                b.repo.clone()
-                            } else {
-                                b.failing.join(", ")
-                            }),
-                            attention: false, item: None,
-                        })),
-                        _ => {}
-                    }
-                }
-            }
-            self.ci = Some((key, b.state.clone()));
-        }
-
-        // Reviews on your pull requests, by anyone but you.
-        let mut review_ids = HashSet::new();
-        for p in &now.pulls {
-            for r in &p.reviews {
-                if r.author == now.login || r.id.is_empty() {
-                    continue;
-                }
-                review_ids.insert(r.id.clone());
-                if self.reviews.as_ref().is_none_or(|seen| seen.contains(&r.id)) {
-                    continue;
-                }
-                let on = format!("{} on {}", r.author, p.title);
-                match r.state.as_str() {
-                    "CHANGES_REQUESTED" => candidates.push((1, IntegrationEvent {
-                        success: false,
-                        label: format!("Changes requested · #{}", p.number),
-                        detail: Some(on),
-                        attention: false, item: None,
-                    })),
-                    "APPROVED" => candidates.push((4, IntegrationEvent {
-                        success: true,
-                        label: format!("Approved · #{}", p.number),
-                        detail: Some(on),
-                        attention: false, item: None,
-                    })),
-                    "COMMENTED" => candidates.push((3, IntegrationEvent {
-                        success: true,
-                        label: format!("New review · #{}", p.number),
-                        detail: Some(on),
-                        attention: true, item: None,
-                    })),
-                    _ => {}
-                }
-            }
-        }
-        self.reviews = Some(review_ids);
-
-        // Reviews someone asked of you.
-        let request_urls: HashSet<String> = now.requests.iter().map(|r| r.url.clone()).collect();
-        if let Some(seen) = &self.requests {
-            for r in now.requests.iter().filter(|r| !seen.contains(&r.url)) {
-                candidates.push((2, IntegrationEvent {
-                    success: true,
-                    label: format!("Review requested · #{}", r.number),
-                    detail: Some(format!("{}: {}", r.author, r.title)),
-                    attention: true, item: None,
-                }));
-            }
-        }
-        self.requests = Some(request_urls);
-
-        candidates.sort_by_key(|(p, _)| *p);
-        candidates.into_iter().next().map(|(_, e)| e)
-    }
-}
+// ── Tests (GitHubPulseTests.swift, GitHubActivityTests.swift) ────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
-    #[test]
-    fn github_urls() {
-        let ok = |u: &str| parse_github_url(u).map(|(o, n)| format!("{o}/{n}"));
-        assert_eq!(ok("https://github.com/Louis-CFM/coucou.git").as_deref(), Some("Louis-CFM/coucou"));
-        assert_eq!(ok("https://github.com/Louis-CFM/coucou").as_deref(), Some("Louis-CFM/coucou"));
-        assert_eq!(ok("https://me@github.com/a/b/").as_deref(), Some("a/b"));
-        assert_eq!(ok("git@github.com:a/b.git").as_deref(), Some("a/b"));
-        assert_eq!(ok("ssh://git@github.com/a/b.git").as_deref(), Some("a/b"));
-        assert_eq!(ok("https://gitlab.com/a/b.git"), None);
-        assert_eq!(ok("https://github.com/a"), None);
-    }
-
-    #[test]
-    fn upstream_from_config() {
-        let config = r#"
-[core]
-	bare = false
-[remote "origin"]
-	url = git@github.com:Louis-CFM/coucou.git
-	fetch = +refs/heads/*:refs/remotes/origin/*
-[remote "fork"]
-	url = https://github.com/jhoan/coucou.git
-[branch "main"]
-	remote = origin
-	merge = refs/heads/main
-[branch "local-name"]
-	remote = fork
-	merge = refs/heads/remote-name
-"#;
-        let main = resolve_upstream(config, "main").unwrap();
-        assert_eq!((main.owner.as_str(), main.name.as_str(), main.branch.as_str()), ("Louis-CFM", "coucou", "main"));
-        let forked = resolve_upstream(config, "local-name").unwrap();
-        assert_eq!((forked.owner.as_str(), forked.branch.as_str()), ("jhoan", "remote-name"));
-        // Never pushed: same name on origin.
-        let fresh = resolve_upstream(config, "feat/x").unwrap();
-        assert_eq!((fresh.owner.as_str(), fresh.branch.as_str()), ("Louis-CFM", "feat/x"));
-    }
-
-    #[test]
-    fn worktree_git_dir() {
-        let root = std::env::temp_dir().join(format!("coucou-gh-{}", std::process::id()));
-        let main_git = root.join("repo").join(".git");
-        let wt_git = main_git.join("worktrees").join("wt");
-        let wt = root.join("wt");
-        std::fs::create_dir_all(&wt_git).unwrap();
-        std::fs::create_dir_all(wt.join("sub")).unwrap();
-        std::fs::write(main_git.join("config"), "[remote \"origin\"]\n\turl = https://github.com/a/b.git\n").unwrap();
-        std::fs::write(wt_git.join("HEAD"), "ref: refs/heads/fix/thing\n").unwrap();
-        std::fs::write(wt_git.join("commondir"), "../..\n").unwrap();
-        std::fs::write(wt.join(".git"), format!("gitdir: {}\n", wt_git.display())).unwrap();
-
-        let got = branch_of(&wt.join("sub")).unwrap();
-        assert_eq!(got, BranchRef { owner: "a".into(), name: "b".into(), branch: "fix/thing".into() });
-        let _ = std::fs::remove_dir_all(&root);
-    }
-
-    #[test]
-    fn parses_a_graphql_answer() {
-        let recent = crate::time::rfc3339_utc(now_secs() - 3600);
-        let data = json!({
+    fn valid_pulse() -> Value {
+        json!({
+          "data": {
             "viewer": {
-                "login": "me",
-                "repositories": { "totalCount": 2, "nodes": [{ "stargazerCount": 3 }, { "stargazerCount": 4 }] },
-                "pullRequests": { "nodes": [
-                    { "number": 8, "title": "Calendar", "url": "u8", "isDraft": false, "headRefName": "feat/cal",
-                      "reviewDecision": null, "updatedAt": recent,
-                      "repository": { "nameWithOwner": "Louis-CFM/coucou" },
-                      "latestReviews": { "nodes": [{ "id": "r1", "state": "COMMENTED", "author": { "login": "louis" } }] } },
-                    { "number": 2, "title": "[Snyk] Fix", "url": "u2", "isDraft": false, "headRefName": "snyk-fix-1",
-                      "reviewDecision": null, "updatedAt": "2025-12-14T14:33:19Z",
-                      "repository": { "nameWithOwner": "me/old" }, "latestReviews": { "nodes": [] } },
-                ] },
+              "login": "testuser",
+              "pullRequests": { "nodes": [
+                {
+                  "number": 42, "title": "Add feature",
+                  "url": "https://github.com/testuser/myrepo/pull/42",
+                  "isDraft": false, "reviewDecision": "APPROVED",
+                  "repository": {"nameWithOwner": "testuser/myrepo", "url": "https://github.com/testuser/myrepo"},
+                  "commits": {"nodes": [{"commit": {"oid": "aaa", "statusCheckRollup": {"state": "SUCCESS"}}}]}
+                },
+                {
+                  "number": 43, "title": "Fix bug",
+                  "url": "https://github.com/testuser/myrepo/pull/43",
+                  "isDraft": true, "reviewDecision": null,
+                  "repository": {"nameWithOwner": "testuser/myrepo", "url": "https://github.com/testuser/myrepo"},
+                  "commits": {"nodes": [{"commit": {"statusCheckRollup": null}}]}
+                }
+              ]},
+              "repositories": { "nodes": [
+                {
+                  "nameWithOwner": "testuser/myrepo", "url": "https://github.com/testuser/myrepo",
+                  "isArchived": false,
+                  "defaultBranchRef": {"name": "main", "target": {"oid": "bbb", "statusCheckRollup": {"state": "PENDING"}}}
+                },
+                {
+                  "nameWithOwner": "testuser/archived", "url": "https://github.com/testuser/archived",
+                  "isArchived": true,
+                  "defaultBranchRef": {"name": "main", "target": {"statusCheckRollup": {"state": "SUCCESS"}}}
+                }
+              ]}
             },
-            "requests": { "issueCount": 0, "nodes": [] },
-            "repository": {
-                "nameWithOwner": "Louis-CFM/coucou",
-                "ref": { "target": {
-                    "oid": "abc", "url": "commit-url", "committedDate": recent,
-                    "statusCheckRollup": { "state": "FAILURE", "contexts": { "nodes": [
-                        { "__typename": "CheckRun", "name": "lint", "conclusion": "SUCCESS", "detailsUrl": "l" },
-                        { "__typename": "CheckRun", "name": "build", "conclusion": "FAILURE", "detailsUrl": "job-url" },
-                    ] } },
-                } },
-            },
-        });
-        let target = BranchRef { owner: "Louis-CFM".into(), name: "coucou".into(), branch: "feat/cal".into() };
-        let s = Snapshot::parse(&data, Some(&target));
-        assert_eq!((s.total_repos, s.total_stars), (2, 7));
-        // The ten-month-old bot PR is gone.
-        assert_eq!(s.pulls.iter().map(|p| p.number).collect::<Vec<_>>(), vec![8]);
-        let b = s.branch.unwrap();
-        assert_eq!((b.state.as_deref(), b.failing.as_slice(), b.url.as_str(), b.pr), (Some("FAILURE"), &["build".to_string()][..], "job-url", Some(8)));
+            "reviewRequested": {
+              "issueCount": 1,
+              "nodes": [{
+                "number": 7, "title": "Review this",
+                "url": "https://github.com/other/repo/pull/7",
+                "isDraft": false, "author": {"login": "otheruser"},
+                "repository": {"nameWithOwner": "other/repo", "url": "https://github.com/other/repo"}
+              }]
+            }
+          }
+        })
     }
 
-    fn snapshot(state: Option<&str>, reviews: &[(&str, &str)], requests: &[&str]) -> Snapshot {
-        Snapshot {
-            login: "me".into(),
-            branch: Some(BranchState {
-                repo: "a/b".into(),
-                branch: "fix".into(),
-                pushed: true,
-                oid: "abc".into(),
-                state: state.map(str::to_string),
-                failing: if state == Some("FAILURE") { vec!["build".into()] } else { vec![] },
-                url: String::new(),
-                committed_at: String::new(),
-                pr: Some(7),
-            }),
-            pulls: vec![Pull {
-                repo: "a/b".into(),
-                number: 7,
-                title: "Fix".into(),
-                url: "u7".into(),
-                draft: false,
-                head: "fix".into(),
-                decision: None,
-                reviews: reviews
-                    .iter()
-                    .map(|(id, st)| Review { id: (*id).into(), state: (*st).into(), author: "louis".into() })
-                    .collect(),
-            }],
-            requests: requests
-                .iter()
-                .map(|u| Request { repo: "a/b".into(), number: 9, title: "T".into(), url: (*u).into(), author: "x".into() })
-                .collect(),
-            ..Default::default()
+    fn empty_pulse() -> GitHubPulse {
+        let root = json!({
+          "data": {
+            "viewer": {"login": "testuser", "pullRequests": {"nodes": []}, "repositories": {"nodes": []}},
+            "reviewRequested": {"issueCount": 0, "nodes": []}
+          }
+        });
+        GitHubPulse::parse(&root, 0).unwrap()
+    }
+
+    fn pr(id: &str, ci: CiState, sha: Option<&str>) -> GitHubPr {
+        GitHubPr {
+            id: id.into(),
+            title: "T".into(),
+            url: String::new(),
+            repo: id.split('#').next().unwrap().into(),
+            number: 1,
+            is_draft: false,
+            ci,
+            review: ReviewState::Unknown,
+            head_sha: sha.map(str::to_string),
         }
     }
 
-    #[test]
-    fn first_poll_is_silent_then_changes_are_announced() {
-        let mut m = Memory::default();
-        // Already red when first seen, an existing review, an existing request.
-        assert!(m.diff(&snapshot(Some("FAILURE"), &[("r1", "COMMENTED")], &["p1"])).is_none());
-        // Same again: nothing new.
-        assert!(m.diff(&snapshot(Some("FAILURE"), &[("r1", "COMMENTED")], &["p1"])).is_none());
-
-        // A new review request.
-        let e = m.diff(&snapshot(Some("FAILURE"), &[("r1", "COMMENTED")], &["p1", "p2"])).unwrap();
-        assert!(e.attention && e.label.starts_with("Review requested"));
-
-        // An approval.
-        let e = m.diff(&snapshot(Some("FAILURE"), &[("r2", "APPROVED")], &["p1", "p2"])).unwrap();
-        assert!(e.success && e.label == "Approved · #7");
+    fn repo(name: &str, ci: CiState, sha: Option<&str>) -> GitHubRepoCi {
+        GitHubRepoCi { repo: name.into(), url: String::new(), branch: "main".into(), ci, head_sha: sha.map(str::to_string) }
     }
 
     #[test]
-    fn ci_is_announced_only_on_a_watched_transition() {
-        let mut m = Memory::default();
-        assert!(m.diff(&snapshot(Some("PENDING"), &[], &[])).is_none());
-        let e = m.diff(&snapshot(Some("FAILURE"), &[], &[])).unwrap();
-        assert!(!e.success && e.label == "CI failed · fix" && e.detail.as_deref() == Some("build"));
-        // Still red on the next poll: already said.
-        assert!(m.diff(&snapshot(Some("FAILURE"), &[], &[])).is_none());
+    fn parses_a_full_pulse() {
+        let p = GitHubPulse::parse(&valid_pulse(), 5).unwrap();
+        assert_eq!(p.login, "testuser");
+        assert_eq!(p.my_prs.len(), 2);
+        assert_eq!(p.my_prs[0].id, "testuser/myrepo#42");
+        assert_eq!(p.my_prs[0].ci, CiState::Success);
+        assert_eq!(p.my_prs[0].review, ReviewState::Approved);
+        assert_eq!(p.my_prs[0].head_sha.as_deref(), Some("aaa"));
+        assert_eq!(p.my_prs[1].ci, CiState::Unknown, "null rollup");
+        assert_eq!(p.my_prs[1].review, ReviewState::Unknown, "null review");
+        assert!(p.my_prs[1].is_draft);
+        assert_eq!(p.main_ci.len(), 1, "archived repo filtered out");
+        assert_eq!(p.main_ci[0].repo, "testuser/myrepo");
+        assert_eq!(p.main_ci[0].ci, CiState::Pending);
+        assert_eq!(p.main_ci[0].branch, "main");
+        assert_eq!(p.main_ci[0].head_sha.as_deref(), Some("bbb"));
+        assert_eq!(p.to_review.len(), 1);
+        assert_eq!(p.to_review[0].id, "other/repo#7");
+        assert_eq!(p.to_review[0].review, ReviewState::Pending);
+        assert!(p.has_pending(), "default branch pending");
+        assert_eq!(p.fetched_at, 5);
+    }
 
-        // A red build outranks an approval landing in the same poll.
-        let mut m = Memory::default();
-        m.diff(&snapshot(Some("PENDING"), &[], &[]));
-        let e = m.diff(&snapshot(Some("FAILURE"), &[("r9", "APPROVED")], &[])).unwrap();
-        assert!(e.label.starts_with("CI failed"));
+    #[test]
+    fn parses_an_empty_pulse() {
+        let p = empty_pulse();
+        assert!(p.my_prs.is_empty() && p.main_ci.is_empty() && p.to_review.is_empty());
+        assert!(!p.has_pending());
+    }
+
+    #[test]
+    fn rejects_bad_pulse_data() {
+        assert!(GitHubPulse::parse(&json!("garbage"), 0).is_none());
+        assert!(GitHubPulse::parse(&json!({}), 0).is_none());
+        assert!(GitHubPulse::parse(&json!({"data": null}), 0).is_none());
+    }
+
+    #[test]
+    fn keeps_the_first_of_duplicate_prs() {
+        let root = json!({
+          "data": {
+            "viewer": {
+              "login": "testuser",
+              "pullRequests": {"nodes": [
+                {"number": 42, "title": "Add feature", "url": "u", "isDraft": false, "reviewDecision": "APPROVED",
+                 "repository": {"nameWithOwner": "testuser/myrepo"},
+                 "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "SUCCESS"}}}]}},
+                {"number": 42, "title": "Duplicate entry", "url": "u", "isDraft": true, "reviewDecision": null,
+                 "repository": {"nameWithOwner": "testuser/myrepo"},
+                 "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "FAILURE"}}}]}}
+              ]},
+              "repositories": {"nodes": []}
+            },
+            "reviewRequested": {"issueCount": 0, "nodes": []}
+          }
+        });
+        let p = GitHubPulse::parse(&root, 0).unwrap();
+        assert_eq!(p.my_prs.len(), 1);
+        assert_eq!(p.my_prs[0].title, "Add feature");
+        assert_eq!(p.my_prs[0].ci, CiState::Success);
+    }
+
+    #[test]
+    fn maps_ci_states() {
+        assert_eq!(CiState::from_github(None), CiState::Unknown);
+        assert_eq!(CiState::from_github(Some("PENDING")), CiState::Pending);
+        assert_eq!(CiState::from_github(Some("EXPECTED")), CiState::Pending);
+        assert_eq!(CiState::from_github(Some("SUCCESS")), CiState::Success);
+        assert_eq!(CiState::from_github(Some("FAILURE")), CiState::Failure);
+        assert_eq!(CiState::from_github(Some("ERROR")), CiState::Failure);
+        assert_eq!(CiState::from_github(Some("WAITING")), CiState::Unknown);
+    }
+
+    #[test]
+    fn first_poll_is_silent() {
+        let p = GitHubPulse::parse(&valid_pulse(), 0).unwrap();
+        assert!(GitHubPulse::events(None, &p).is_empty());
+    }
+
+    #[test]
+    fn pending_to_success_passes() {
+        let mut old = empty_pulse();
+        old.my_prs = vec![pr("r/p#1", CiState::Pending, None)];
+        let mut new = old.clone();
+        new.my_prs[0].ci = CiState::Success;
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiPassed { pr_id: "r/p#1".into() }]);
+    }
+
+    #[test]
+    fn success_to_failure_fails() {
+        let mut old = empty_pulse();
+        old.my_prs = vec![pr("r/p#2", CiState::Success, None)];
+        let mut new = old.clone();
+        new.my_prs[0].ci = CiState::Failure;
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiFailed { pr_id: "r/p#2".into() }]);
+    }
+
+    #[test]
+    fn default_branch_breaking_alerts() {
+        let mut old = empty_pulse();
+        old.main_ci = vec![repo("a/b", CiState::Success, None)];
+        let mut new = old.clone();
+        new.main_ci[0].ci = CiState::Failure;
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::MainFailed { repo: "a/b".into() }]);
+    }
+
+    #[test]
+    fn default_branch_turning_green_is_quiet() {
+        let mut old = empty_pulse();
+        old.main_ci = vec![repo("a/b", CiState::Pending, Some("x"))];
+        let mut new = old.clone();
+        new.main_ci[0].ci = CiState::Success;
+        assert!(GitHubPulse::events(Some(&old), &new).is_empty());
+        new.main_ci[0].head_sha = Some("y".into());
+        assert!(GitHubPulse::events(Some(&old), &new).is_empty());
+    }
+
+    #[test]
+    fn new_review_request_alerts_once() {
+        let mut review = pr("o/r#7", CiState::Unknown, None);
+        review.review = ReviewState::Pending;
+        let mut old = empty_pulse();
+        let mut new = old.clone();
+        new.to_review = vec![review.clone()];
+        assert_eq!(
+            GitHubPulse::events(Some(&old), &new),
+            vec![GitHubEvent::ReviewRequested { pr_id: "o/r#7".into() }]
+        );
+        old.to_review = vec![review];
+        assert!(GitHubPulse::events(Some(&old), &new).is_empty(), "already known");
+    }
+
+    #[test]
+    fn duplicate_ids_in_old_fire_once() {
+        let mut old = empty_pulse();
+        let p = pr("r/p#1", CiState::Pending, None);
+        old.my_prs = vec![p.clone(), p.clone()];
+        let mut new = empty_pulse();
+        let mut passed = p;
+        passed.ci = CiState::Success;
+        new.my_prs = vec![passed];
+        let events = GitHubPulse::events(Some(&old), &new);
+        assert_eq!(events.iter().filter(|e| matches!(e, GitHubEvent::CiPassed { .. })).count(), 1);
+    }
+
+    #[test]
+    fn new_pr_already_green_passes() {
+        let old = empty_pulse();
+        let mut new = old.clone();
+        new.my_prs = vec![pr("r/p#10", CiState::Success, Some("abc111"))];
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiPassed { pr_id: "r/p#10".into() }]);
+    }
+
+    #[test]
+    fn new_pr_still_pending_is_quiet() {
+        let old = empty_pulse();
+        let mut new = old.clone();
+        new.my_prs = vec![pr("r/p#11", CiState::Pending, Some("abc222"))];
+        assert!(GitHubPulse::events(Some(&old), &new).is_empty());
+    }
+
+    #[test]
+    fn new_commit_already_red_fails() {
+        let mut old = empty_pulse();
+        old.my_prs = vec![pr("r/p#12", CiState::Success, Some("sha-old"))];
+        let mut new = old.clone();
+        new.my_prs[0].ci = CiState::Failure;
+        new.my_prs[0].head_sha = Some("sha-new".into());
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiFailed { pr_id: "r/p#12".into() }]);
+    }
+
+    #[test]
+    fn new_commit_already_green_passes_even_from_green() {
+        // A fast CI ran entirely between two polls: success → (new sha) success.
+        let mut old = empty_pulse();
+        old.my_prs = vec![pr("r/p#14", CiState::Success, Some("one"))];
+        let mut new = old.clone();
+        new.my_prs[0].head_sha = Some("two".into());
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::CiPassed { pr_id: "r/p#14".into() }]);
+    }
+
+    #[test]
+    fn same_sha_success_stays_quiet() {
+        let mut old = empty_pulse();
+        old.my_prs = vec![pr("r/p#13", CiState::Success, Some("same"))];
+        let new = old.clone();
+        assert!(GitHubPulse::events(Some(&old), &new).is_empty());
+    }
+
+    #[test]
+    fn new_commit_on_main_red_fails() {
+        let mut old = empty_pulse();
+        old.main_ci = vec![repo("a/b", CiState::Success, Some("sha-old"))];
+        let mut new = old.clone();
+        new.main_ci[0].ci = CiState::Failure;
+        new.main_ci[0].head_sha = Some("sha-new".into());
+        assert_eq!(GitHubPulse::events(Some(&old), &new), vec![GitHubEvent::MainFailed { repo: "a/b".into() }]);
+    }
+
+    #[test]
+    fn staleness() {
+        let now = 1_000_000;
+        assert!(is_stale(None, now, 60));
+        assert!(!is_stale(Some(now), now, 60));
+        assert!(!is_stale(Some(now - 60_000), now, 60));
+        assert!(is_stale(Some(now - 61_000), now, 60));
+        assert!(!is_stale(Some(now + 5_000), now, 60), "clock skew is not stale");
+    }
+
+    #[test]
+    fn events_serialise_for_the_island() {
+        let v = serde_json::to_value(GitHubEvent::CiFailed { pr_id: "a/b#1".into() }).unwrap();
+        assert_eq!(v, json!({"kind": "ciFailed", "prId": "a/b#1"}));
+        let v = serde_json::to_value(GitHubEvent::MainFailed { repo: "a/b".into() }).unwrap();
+        assert_eq!(v, json!({"kind": "mainFailed", "repo": "a/b"}));
+        let p = serde_json::to_value(GitHubPulse::parse(&valid_pulse(), 7).unwrap()).unwrap();
+        assert!(p.get("myPRs").is_some() && p.get("toReview").is_some() && p.get("mainCI").is_some());
+        assert_eq!(p["myPRs"][0]["isDraft"], json!(false));
+        assert_eq!(p["myPRs"][0]["headSha"], json!("aaa"));
+        assert_eq!(p["myPRs"][0]["ci"], json!("success"));
+        assert_eq!(p["myPRs"][0]["review"], json!("approved"));
+        assert_eq!(p["fetchedAt"], json!(7));
+    }
+
+    // ── Activity ──────────────────────────────────────────────────────────────
+
+    fn day(date: &str, count: i64, level: &str, weekday: i64) -> Value {
+        json!({"date": date, "contributionCount": count, "contributionLevel": level, "weekday": weekday})
+    }
+
+    fn valid_activity() -> Value {
+        json!({
+          "data": { "viewer": { "login": "testuser", "contributionsCollection": { "contributionCalendar": {
+            "totalContributions": 42,
+            "weeks": [
+              {"contributionDays": [
+                day("2026-01-05", 0, "NONE", 0),
+                day("2026-01-06", 1, "FIRST_QUARTILE", 1),
+                day("2026-01-07", 4, "SECOND_QUARTILE", 2),
+                day("2026-01-08", 8, "THIRD_QUARTILE", 3),
+                day("2026-01-09", 12, "FOURTH_QUARTILE", 4),
+                day("2026-01-10", 2, "FIRST_QUARTILE", 5),
+                day("2026-01-11", 0, "NONE", 6)
+              ]},
+              {"contributionDays": [
+                day("2026-01-12", 5, "SECOND_QUARTILE", 0),
+                day("2026-01-13", 10, "THIRD_QUARTILE", 1)
+              ]}
+            ]
+          }}}}
+        })
+    }
+
+    #[test]
+    fn parses_the_contribution_calendar() {
+        let a = GitHubActivity::parse(&valid_activity(), 3).unwrap();
+        assert_eq!(a.total, 42);
+        assert_eq!(a.weeks.len(), 2);
+        assert_eq!(a.weeks[0].len(), 7);
+        assert_eq!(a.weeks[1].len(), 2, "incomplete current week");
+        let levels: Vec<u8> = a.weeks[0][..5].iter().map(|d| d.level).collect();
+        assert_eq!(levels, vec![0, 1, 2, 3, 4]);
+        assert_eq!(a.weeks[0][0].date, "2026-01-05");
+        assert_eq!(a.weeks[0][0].count, 0);
+        assert_eq!(a.weeks[0][0].weekday, 0);
+        assert_eq!(a.weeks[1][1].date, "2026-01-13");
+        assert_eq!(a.weeks[1][1].count, 10);
+        assert_eq!(a.fetched_at, 3);
+    }
+
+    #[test]
+    fn unknown_contribution_level_is_zero() {
+        let root = json!({"data": {"viewer": {"contributionsCollection": {"contributionCalendar": {
+            "totalContributions": 1,
+            "weeks": [{"contributionDays": [day("2026-03-01", 1, "EXTRA_SPECIAL", 0)]}]
+        }}}}});
+        assert_eq!(GitHubActivity::parse(&root, 0).unwrap().weeks[0][0].level, 0);
+    }
+
+    #[test]
+    fn rejects_bad_activity_data() {
+        assert!(GitHubActivity::parse(&json!("garbage"), 0).is_none());
+        assert!(GitHubActivity::parse(&json!({}), 0).is_none());
+    }
+
+    #[test]
+    fn counts_graphql_errors() {
+        assert_eq!(graphql_error_count(&json!({"data": {}})), 0);
+        assert_eq!(graphql_error_count(&json!({"errors": [{}, {}]})), 2);
     }
 }

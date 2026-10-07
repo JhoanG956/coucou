@@ -8,6 +8,10 @@ const SERVICE: &str = "fr.louisraille.coucou";
 /// Every key Coucou may store. Anything outside this list is refused.
 pub const KNOWN_KEYS: &[&str] = &[
     "anthropic-api-key",
+    "openai-api-key",
+    "google-api-key",
+    "openrouter-api-key",
+    "openai-compatible-key",
     "n8n-url",
     "n8n-api-key",
     "vercel-token",
@@ -16,11 +20,6 @@ pub const KNOWN_KEYS: &[&str] = &[
     "resend-api-key",
     "notion-api-key",
     "calcom-api-key",
-    // Google Calendar: the user's own Desktop OAuth client, and the refresh
-    // token Google returns once they have consented.
-    "gcal-client-id",
-    "gcal-client-secret",
-    "gcal-refresh-token",
 ];
 
 fn entry(key: &str) -> Option<Entry> {
