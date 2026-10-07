@@ -1248,40 +1248,34 @@ final class HookServer: @unchecked Sendable {
     // MARK: - Claude Code settings.json hook installer
 
     private var _pendingHooksData: Data?
+    /// The bytes of settings.json the pending preview was computed from.
+    private var _pendingHooksOriginal: Data?
 
     /// Returns preview JSON without writing — call writeClaudeHooks() to confirm.
     func previewClaudeHooks() throws -> String {
-        let data = try buildHooksData()
+        let (data, original) = try buildHooksData()
         _pendingHooksData = data
+        _pendingHooksOriginal = original
         return String(data: data, encoding: .utf8) ?? ""
     }
 
     /// Writes the hooks to disk (call after user confirms preview).
+    /// Refused if settings.json changed since the preview, or cannot be backed up.
     func writeClaudeHooks() throws {
         guard let data = _pendingHooksData else { return }
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
-        // Backup first
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmm"
-        let stamp = formatter.string(from: Date())
-        let backupURL = settingsURL.deletingLastPathComponent()
-            .appendingPathComponent("settings.json.bak-\(stamp)")
-        try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
-        try? FileManager.default.createDirectory(at: settingsURL.deletingLastPathComponent(),
-                                                  withIntermediateDirectories: true)
-        try data.write(to: settingsURL, options: .atomic)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: _pendingHooksOriginal)
         _pendingHooksData = nil
+        _pendingHooksOriginal = nil
     }
 
-    private func buildHooksData() throws -> Data {
+    private func buildHooksData() throws -> (data: Data, original: Data?) {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
-        var settings: [String: Any] = [:]
-        if let data = try? Data(contentsOf: settingsURL),
-           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            settings = parsed
-        }
+        // Unreadable or invalid settings must stop here, never count as empty.
+        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
+        var settings = snapshot.object
         let hookPath = Self.hookScriptPath
         #if APPSTORE
         // Sandboxed apps create quarantined files; /bin/sh bypasses the quarantine flag
@@ -1298,9 +1292,10 @@ final class HookServer: @unchecked Sendable {
             ("Stop", 10), ("StopFailure", 10),
             ("SubagentStart", 10), ("SubagentStop", 10),
         ]
-        var hooks = settings["hooks"] as? [String: Any] ?? [:]
+        // "hooks" in a shape we do not know is refused, never replaced.
+        var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
-            var existing = hooks[event] as? [[String: Any]] ?? []
+            var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
             existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains { ($0["command"] as? String)?.contains("NotchBuddy") == true || ($0["command"] as? String)?.contains("coucou") == true } ?? false }
             existing.append(["hooks": [["type": "command", "command": quotedCmd, "timeout": timeout]]])
             hooks[event] = existing
@@ -1313,15 +1308,16 @@ final class HookServer: @unchecked Sendable {
         ])
         hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
-        return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return (data, snapshot.bytes)
     }
 
     func uninstallClaudeHooks() throws {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
-        guard let data = try? Data(contentsOf: settingsURL),
-              var settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              var hooks = settings["hooks"] as? [String: Any] else { return }
+        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
+        var settings = snapshot.object
+        guard var hooks = settings["hooks"] as? [String: Any] else { return }
 
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
@@ -1337,7 +1333,7 @@ final class HookServer: @unchecked Sendable {
         }
         settings["hooks"] = hooks
         let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: settingsURL, options: .atomic)
+        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
     }
 
     // MARK: - Claude plan status line installer
@@ -1358,6 +1354,8 @@ final class HookServer: @unchecked Sendable {
     }
 
     private var _pendingStatusLineData: Data?
+    /// The bytes of settings.json the pending preview was computed from.
+    private var _pendingStatusLineOriginal: Data?
     private var _pendingPreviousData: Data?
     private var _pendingDeletePrevious: Bool = false
 
@@ -1365,11 +1363,9 @@ final class HookServer: @unchecked Sendable {
     func previewStatusLine(install: Bool) throws -> String {
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
-        var settings: [String: Any] = [:]
-        if let d = try? Data(contentsOf: settingsURL),
-           let parsed = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] {
-            settings = parsed
-        }
+        // Unreadable or invalid settings must stop here, never count as empty.
+        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
+        let settings = snapshot.object
         let hookPath = Self.hookScriptPath
         let quotedPath = hookPath.replacingOccurrences(of: "\"", with: "\\\"")
         let quotedCmd = "\"\(quotedPath)\" --statusline"
@@ -1438,6 +1434,7 @@ final class HookServer: @unchecked Sendable {
         let data = try JSONSerialization.data(withJSONObject: newSettings,
                                               options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         _pendingStatusLineData = data
+        _pendingStatusLineOriginal = snapshot.bytes
 
         // Build a compact diff: show only the statusLine key before → after
         func slJSON(_ val: [String: Any]?) throws -> String {
@@ -1455,15 +1452,7 @@ final class HookServer: @unchecked Sendable {
         guard let data = _pendingStatusLineData else { return }
         let settingsURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/settings.json")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmm"
-        let stamp = formatter.string(from: Date())
-        let backupURL = settingsURL.deletingLastPathComponent()
-            .appendingPathComponent("settings.json.bak-\(stamp)")
-        try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
-        try? FileManager.default.createDirectory(at: settingsURL.deletingLastPathComponent(),
-                                                  withIntermediateDirectories: true)
-        try data.write(to: settingsURL, options: .atomic)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: _pendingStatusLineOriginal)
         // Commit side effects only after successful write
         if let prevData = _pendingPreviousData {
             try? prevData.write(to: statusLinePreviousURL, options: .atomic)
@@ -1472,6 +1461,7 @@ final class HookServer: @unchecked Sendable {
             try? FileManager.default.removeItem(at: statusLinePreviousURL)
         }
         _pendingStatusLineData = nil
+        _pendingStatusLineOriginal = nil
         _pendingPreviousData = nil
         _pendingDeletePrevious = false
     }
@@ -1482,7 +1472,7 @@ final class HookServer: @unchecked Sendable {
     /// Writes nb-hook script and updates settings.json in one shot.
     /// claudeURL must be a URL from NSOpenPanel (sandbox access is granted immediately — no security scope needed).
     func installAndWriteClaudeHooksAppStore(claudeURL: URL) throws {
-        let data = try buildHooksData(claudeURL: claudeURL)
+        let (data, original) = try buildHooksData(claudeURL: claudeURL)
 
         // Write nb-hook (shell wrapper) + nb-hook.py (Python relay) into ~/.claude/coucou/
         let coucouDir = claudeURL.appendingPathComponent("coucou")
@@ -1496,19 +1486,15 @@ final class HookServer: @unchecked Sendable {
 
         // Write settings.json (with backup)
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmm"
-        let backupURL = claudeURL.appendingPathComponent("settings.json.bak-\(formatter.string(from: Date()))")
-        try? FileManager.default.copyItem(at: settingsURL, to: backupURL)
-        try data.write(to: settingsURL, options: .atomic)
+        try ClaudeSettingsFile.write(data, to: settingsURL, expecting: original)
         UserDefaults.standard.set(true, forKey: "coucouHooksInstalled")
     }
 
     func uninstallClaudeHooksAppStore(claudeURL: URL) throws {
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        guard let data = try? Data(contentsOf: settingsURL),
-              var settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              var hooks = settings["hooks"] as? [String: Any] else { return }
+        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
+        var settings = snapshot.object
+        guard var hooks = settings["hooks"] as? [String: Any] else { return }
         for key in hooks.keys {
             if var matchers = hooks[key] as? [[String: Any]] {
                 matchers.removeAll { matcher in
@@ -1523,17 +1509,15 @@ final class HookServer: @unchecked Sendable {
         }
         settings["hooks"] = hooks
         let newData = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: settingsURL, options: .atomic)
+        try ClaudeSettingsFile.write(newData, to: settingsURL, expecting: snapshot.bytes)
         UserDefaults.standard.set(false, forKey: "coucouHooksInstalled")
     }
 
-    private func buildHooksData(claudeURL: URL) throws -> Data {
+    private func buildHooksData(claudeURL: URL) throws -> (data: Data, original: Data?) {
         let settingsURL = claudeURL.appendingPathComponent("settings.json")
-        var settings: [String: Any] = [:]
-        if let data = try? Data(contentsOf: settingsURL),
-           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            settings = parsed
-        }
+        // Unreadable or invalid settings must stop here, never count as empty.
+        let snapshot = try ClaudeSettingsFile.read(at: settingsURL)
+        var settings = snapshot.object
         // Derive hook path from the panel-selected claudeURL (real ~/.claude, not container)
         let hookPath = claudeURL.appendingPathComponent("coucou/nb-hook").path
         let quotedCmd = "/bin/sh \"\(hookPath.replacingOccurrences(of: "\"", with: "\\\""))\""
@@ -1546,9 +1530,10 @@ final class HookServer: @unchecked Sendable {
             ("Stop", 10), ("StopFailure", 10),
             ("SubagentStart", 10), ("SubagentStop", 10),
         ]
-        var hooks = settings["hooks"] as? [String: Any] ?? [:]
+        // "hooks" in a shape we do not know is refused, never replaced.
+        var hooks = try ClaudeSettingsFile.hooks(in: settings, name: "settings.json")
         for (event, timeout) in events {
-            var existing = hooks[event] as? [[String: Any]] ?? []
+            var existing = try ClaudeSettingsFile.hookGroups(in: hooks, event: event, name: "settings.json")
             existing.removeAll { ($0["hooks"] as? [[String: Any]])?.contains {
                 ($0["command"] as? String)?.contains("coucou") == true ||
                 ($0["command"] as? String)?.contains("NotchBuddy") == true
@@ -1564,7 +1549,8 @@ final class HookServer: @unchecked Sendable {
         ])
         hooks["PreToolUse"] = preToolUse
         settings["hooks"] = hooks
-        return try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        let data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys])
+        return (data, snapshot.bytes)
     }
     #endif
 

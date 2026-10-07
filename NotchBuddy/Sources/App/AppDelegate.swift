@@ -32,6 +32,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openIsland()
+        return true
+    }
+
     // MARK: - Menu bar
 
     private func setupMenuBarItem() {
@@ -66,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openIsland() {
+        islandController?.fsm.openedExternally()
         islandController?.expand(to: .overview)
     }
 

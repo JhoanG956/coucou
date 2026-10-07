@@ -384,11 +384,13 @@ final class AppState: ObservableObject {
 
     private func resetSessionDiffTimer(for pillId: String) {
         sessionDiffTimers[pillId]?.cancel()
+        // The closure is MainActor-isolated (AppState is @MainActor): it must run on the main
+        // queue. Scheduled on a global queue, Swift 6's isolation check traps and the app quits.
         let work = DispatchWorkItem { [weak self] in
-            DispatchQueue.main.async { self?.clearSessionDiffs(for: pillId) }
+            self?.clearSessionDiffs(for: pillId)
         }
         sessionDiffTimers[pillId] = work
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3600, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3600, execute: work)
     }
 
     #if !APPSTORE
