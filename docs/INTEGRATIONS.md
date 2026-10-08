@@ -139,7 +139,7 @@ Sur `PostToolUse` pour `Edit`, `MultiEdit` et `Write` (Claude Code, Cursor), l'a
 
 ## 1quater. GitHub (pulse)
 
-**Plateforme** : macOS (CI de la branche de session : build GitHub seulement). Windows a sa propre carte GitHub, voir section 8.
+**Plateforme** : macOS (CI de la branche de session : build GitHub seulement).
 
 **Token** : token classique avec scope `repo`, ou token fin avec accès en lecture à Pull requests, Commit statuses et Actions. Stocké dans le Trousseau (`github-token`).
 
@@ -343,21 +343,13 @@ Aucune permission Accessibilité nécessaire.
 
 ---
 
-## 8. Google Calendar (macOS et Windows) et GitHub sous Windows
+## 8. Google Calendar (macOS)
 
-Code macOS : `GoogleCalendar.swift` (règles, PKCE, écoute locale) + `GcalPoller.swift` (connexion, poll), cartes `GcalCardView` / `ReminderView` dans `IslandViewContent.swift`. Tests : `scripts/test-google-calendar.sh`. GitHub sous macOS : section 1quater (tests `scripts/test-github-pulse.sh`, `scripts/test-github-branch-ci.sh`).
-Code Windows : `windows/src-tauri/src/github.rs`, `windows/src-tauri/src/gcal.rs`, cartes dans `windows/src/views/integrations.ts`.
-Google Calendar : mêmes règles sur les deux plateformes. GitHub : la branche de session est trouvée de la même façon ; Windows garde sa propre carte et sa propre cadence (une requête par minute).
-
-### GitHub (Windows)
-- Jeton `github-token` (classic, scope `repo`). Une seule requête GraphQL par minute : dépôts + étoiles, PR ouvertes du compte (avec `latestReviews`), recherche `user-review-requested:@me`, et `statusCheckRollup` du dernier commit de la branche suivie.
-- **Branche suivie** = celle du `cwd` de la dernière session Claude Code (chaque hook qui porte un `cwd` ; sur macOS, seulement les sessions que l'île affiche), lue directement dans `.git` : `HEAD`, puis `branch.<b>.remote` / `.merge` dans `config` (le `commondir` pour un worktree). Pas de processus `git`. Version App Store : le bac à sable interdit de lire le `.git` du projet, donc pas de ligne CI (les reviews et PR restent).
-- Les PR sans activité depuis 30 jours sont ignorées (les PR de bots ouvertes au nom de l'utilisateur, typiquement Snyk).
-- Événements, un au plus par poll, jamais au premier poll : CI passée de « en cours » à terminée sur la même branche et le même commit ; nouvelle review sur une de ses PR ; nouvelle review demandée.
+Code : `GoogleCalendar.swift` (règles, PKCE, écoute locale) + `GcalPoller.swift` (connexion, poll), cartes `GcalCardView` / `ReminderView` dans `IslandViewContent.swift`. Tests : `scripts/test-google-calendar.sh`.
 
 ### Google Calendar
 - Pas de serveur Coucou, donc pas de client OAuth partagé : l'utilisateur crée un client OAuth « Desktop app » dans son propre projet Google Cloud et colle l'ID + le secret dans les Réglages. Écran de consentement à passer « In production », sinon Google invalide le refresh token au bout de 7 jours.
-- Flux installed-app : PKCE (S256 ; hash et aléa via CryptoKit / `SecRandomCopyBytes` sur macOS, CNG sur Windows), écoute ponctuelle sur `127.0.0.1:<port libre>`, consentement dans le navigateur, vérification de `state`. Seul le refresh token est gardé (Trousseau macOS / Gestionnaire d'identifiants Windows) ; le jeton d'accès reste en mémoire. La version App Store déclare `com.apple.security.network.server` pour cette écoute.
+- Flux installed-app : PKCE (S256 ; hash et aléa via CryptoKit / `SecRandomCopyBytes`), écoute ponctuelle sur `127.0.0.1:<port libre>`, consentement dans le navigateur, vérification de `state`. Seul le refresh token est gardé (Trousseau) ; le jeton d'accès reste en mémoire. La version App Store déclare `com.apple.security.network.server` pour cette écoute.
 - Scopes `calendar.events.readonly` + `calendar.calendarlist.readonly`. Tous les agendas cochés dans Google Calendar (`selected`, plus le principal), pas seulement le principal — les événements vivent souvent dans un agenda partagé ou importé. Liste rafraîchie toutes les 10 min, événements des 7 jours à venir chaque minute, dédoublonnés et triés ; chaque ligne prend la couleur de son agenda. Un jeton antérieur au scope `calendarlist` (403) retombe sur l’agenda principal jusqu’à la prochaine connexion. Les événements refusés et les « working location » sont ignorés.
 - Rappels aux mêmes moments que Google Calendar : rappels propres de l'événement (`reminders.overrides`, y compris « aucun »), sinon ceux de son agenda (`defaultReminders`), sinon ceux de l'agenda principal (les agendas importés n'en ont pas), sinon 5 min. Seul le dernier rappel échu sonne (après un redémarrage, pas de rafale), un par poll. Les événements « toute la journée » ne sonnent pas.
 - Le rappel ouvre la vue `reminder` (titre, « dans 30 min », horaire, lieu ; **Join** si visio, **Open**, **OK**), son `approval`, seulement si la pill Calendar est active. Si l'île est occupée (chat, approbation, dépôt de fichier), il reste un badge ambre sur la pill Calendar.

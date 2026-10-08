@@ -10,9 +10,10 @@ import { tickMiniBots } from "../src/mochi/minibots";
 
 const noop = () => {};
 const actions: ViewActions = {
-  setView: noop, collapse: noop, setFocus: (id) => State.setFocus(id), openTerminal: noop,
-  openTarget: noop, openUrl: noop, decide: noop, toggleSound: noop, setVolume: noop,
-  setAutoClose: noop, openSettingsWindow: noop, blip: noop,
+  setView: noop, cancelDrop: noop, collapse: noop, foldApproval: noop, setFocus: (id) => State.setFocus(id),
+  openTerminal: noop, openTarget: noop, openUrl: noop, decide: noop, answer: noop, answerInTerminal: noop,
+  toggleSound: noop, setVolume: noop, setAutoClose: noop, openSettingsWindow: noop, blip: noop,
+  chooseOutfit: noop, previewOutfit: noop,
 };
 
 State.settings.activeIntegrations = ["integration_github", "integration_gcal", "integration_vercel"];
@@ -43,43 +44,42 @@ const loaded = (data: Record<string, unknown>, error: string | null = null) => (
   data, error, loaded: true, configured: true,
 });
 
-const GITHUB_BASE = { login: "jhoan", totalRepos: 14, totalStars: 37 };
+const pr = (repo: string, number: number, title: string, ci: string, review = "unknown", isDraft = false) => ({
+  id: `${repo}#${number}`, title, url: `https://github.com/${repo}/pull/${number}`, repo, number,
+  isDraft, ci, review, headSha: null, headRef: null,
+});
+const main = (repo: string, ci: string) => ({
+  repo, url: `https://github.com/${repo}`, branch: "main", ci, headSha: null,
+});
+const branch = (name: string, ci: string, failing: string[] = [], pushed = true) => ({
+  repo: "Louis-CFM/coucou", branch: name, pushed, oid: "abc", ci, failing, url: "", prId: null,
+});
+const github = (pulse: Record<string, unknown>) => ({
+  totalRepos: 14, totalStars: 37,
+  pulse: {
+    login: "jhoan", fetchedAt: Date.now(),
+    myPRs: [pr("Louis-CFM/coucou", 8, "Windows: GitHub CI and Calendar", "failure")],
+    toReview: [pr("Louis-CFM/coucou", 9, "Mac: approval view polish", "unknown", "pending")],
+    mainCI: [main("Louis-CFM/coucou", "success"), main("jhoan/dotfiles", "success")],
+    ...pulse,
+  },
+});
 
 const scenarios: Record<string, () => void> = {
   "GitHub · CI failing": () => {
-    State.integrations.integration_github = loaded({
-      ...GITHUB_BASE,
-      branch: { repo: "Louis-CFM/coucou", branch: "feat/windows-github-ci-calendar", pushed: true, state: "FAILURE", failing: ["build-windows"], url: "", pr: 8 },
-      requests: [{ repo: "Louis-CFM/coucou", number: 9, title: "Mac: approval view polish", url: "", author: "louis" }],
-      pulls: [
-        { repo: "Louis-CFM/coucou", number: 8, title: "Windows: GitHub CI and Calendar", url: "", draft: false, decision: null },
-        { repo: "Louis-CFM/coucou", number: 7, title: "Windows: fix wake strip", url: "", draft: false, decision: "APPROVED" },
-      ],
-    });
+    State.integrations.integration_github = loaded(github({ branch: branch("feat/windows-github-ci-calendar", "failure", ["build-windows"]) }));
     State.setFocus("integration_github");
   },
   "GitHub · running": () => {
-    State.integrations.integration_github = loaded({
-      ...GITHUB_BASE,
-      branch: { repo: "Louis-CFM/coucou", branch: "fix/windows-wake-strip", pushed: true, state: "PENDING", failing: [], url: "", pr: 7 },
-      requests: [],
-      pulls: [
-        { repo: "Louis-CFM/coucou", number: 7, title: "Windows: fix wake strip", url: "", draft: false, decision: "CHANGES_REQUESTED" },
-        { repo: "jhoan/dotfiles", number: 3, title: "Add PowerShell profile", url: "", draft: true, decision: null },
-      ],
-    });
+    State.integrations.integration_github = loaded(github({ branch: branch("fix/windows-wake-strip", "pending") }));
     State.setFocus("integration_github");
   },
-  "GitHub · passing, no PR": () => {
-    State.integrations.integration_github = loaded({
-      ...GITHUB_BASE,
-      branch: { repo: "Louis-CFM/coucou", branch: "main", pushed: true, state: "SUCCESS", failing: [], url: "", pr: null },
-      requests: [], pulls: [],
-    });
+  "GitHub · not pushed": () => {
+    State.integrations.integration_github = loaded(github({ branch: branch("feat/new-thing", "unknown", [], false) }));
     State.setFocus("integration_github");
   },
-  "GitHub · nothing on": () => {
-    State.integrations.integration_github = loaded({ ...GITHUB_BASE, branch: null, requests: [], pulls: [] });
+  "GitHub · no session": () => {
+    State.integrations.integration_github = loaded(github({ branch: null }));
     State.setFocus("integration_github");
   },
   "Calendar · meeting in 4 min": () => {

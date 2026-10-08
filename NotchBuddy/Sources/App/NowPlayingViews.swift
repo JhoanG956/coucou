@@ -99,7 +99,7 @@ struct NowPlayingVolume: View {
                        onCommit: { onChange(Int(($0 * 100).rounded())) })
                 .frame(width: 44, height: 10)
         }
-        .help("Volume \(volume)%")
+        .help(String(localized: "Volume \(volume)%"))
     }
 }
 
@@ -158,7 +158,7 @@ struct NowPlayingIconButton: View {
     let icon: String
     let size: CGFloat
     let tint: Color
-    let help: String
+    let help: LocalizedStringKey
     let action: () -> Void
     @State private var hovered = false
 

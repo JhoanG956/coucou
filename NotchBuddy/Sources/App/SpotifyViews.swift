@@ -110,12 +110,12 @@ struct SpotifyCardView: View {
                 NowPlayingArtwork(image: controller.artwork, accent: green)
                     .frame(width: 36, height: 36)
                     .onTapGesture { controller.openSpotify() }
-                    .help(track.album.isEmpty ? "Open Spotify" : "\(track.album) — open Spotify")
+                    .help(track.album.isEmpty ? String(localized: "Open Spotify") : String(localized: "\(track.album) — open Spotify"))
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
                         Circle().fill(green).frame(width: 6, height: 6)
-                        Text(track.isAd ? "Advertisement" : track.title)
+                        Text(track.isAd ? String(localized: "Advertisement") : track.title)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(Color(hex: "#F5F6F8"))
                             .lineLimit(1).truncationMode(.tail)
@@ -173,7 +173,7 @@ struct SpotifyCardView: View {
                     .frame(width: 20, height: 20)
                 }
                 .buttonStyle(NowPlayingPressStyle())
-                .help(controller.isPlaying ? "Pause" : "Play")
+                .help(controller.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
                 NowPlayingIconButton(icon: "forward.fill", size: 11, tint: Color(hex: "#C5C8CD"), help: "Next") {
                     controller.nextTrack()
                 }
@@ -198,14 +198,14 @@ struct SpotifyCardView: View {
                 Circle()
                     .fill(installed ? Color(hex: "#22C55E") : Color(hex: "#F4505E"))
                     .frame(width: 5, height: 5)
-                Text(installed ? "Not playing" : "Spotify not installed")
+                Text(installed ? String(localized: "Not playing") : String(localized: "Spotify not installed"))
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "#6B7079"))
             }
             .padding(.leading, 108)
             .padding(.top, 2)
 
-            Button(installed ? "Open Spotify" : "Get Spotify") {
+            Button(installed ? String(localized: "Open Spotify") : String(localized: "Get Spotify")) {
                 installed ? controller.openSpotify() : controller.openDownloadPage()
             }
             .font(.system(size: 11, weight: .medium))
