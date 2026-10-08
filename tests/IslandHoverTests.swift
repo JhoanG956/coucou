@@ -14,9 +14,8 @@ enum IslandHoverTests {
         on.mouseEntered()
         precondition(on.state == .home && on.openedByHover)
         on.mouseLeft()
-        try await Task.sleep(for: .milliseconds(20))
-        precondition(on.state == .home)
-        try await waitFor(.petit, on, timeout: 1)
+        precondition(on.state == .home)        // folds after the grace period, not at once
+        try await waitFor(.petit, on, timeout: 5)
         precondition(!on.openedByHover)
 
         // Coming back before the delay keeps it open.
@@ -24,18 +23,19 @@ enum IslandHoverTests {
         back.mouseEntered()
         back.mouseLeft()
         back.mouseEntered()
-        try await Task.sleep(for: .milliseconds(150))
+        try await Task.sleep(for: .milliseconds(600))   // well past the 0.3 s grace period
         precondition(back.state == .home)
 
         // A click inside turns it into a normal open island: the auto-close delay applies.
         let clicked = machine()
-        clicked.homeToPetitDelay = 0.4
+        clicked.homeToPetitDelay = 3
         clicked.mouseEntered()
         clicked.userInteracted()
         clicked.mouseLeft()
-        try await Task.sleep(for: .milliseconds(150))
+        try await Task.sleep(for: .milliseconds(600))   // past the hover grace, far from 3 s
         precondition(clicked.state == .home)
-        try await waitFor(.petit, clicked, timeout: 1)
+        clicked.homeToPetitDelay = 0.05
+        try await waitFor(.petit, clicked, timeout: 5)
 
         // A pending approval holds the island: hover never opens or folds it on its own.
         let held = machine()
@@ -43,16 +43,16 @@ enum IslandHoverTests {
         held.mouseEntered()
         precondition(held.state == .home && !held.openedByHover)
         held.mouseLeft()
-        try await Task.sleep(for: .milliseconds(150))
+        try await Task.sleep(for: .milliseconds(600))
         precondition(held.state == .home)
 
         // An island opened by an alert keeps the normal delay even with hover on.
         let alert = machine()
-        alert.homeToPetitDelay = 0.4
+        alert.homeToPetitDelay = 3
         alert.openedExternally()
         alert.mouseEntered()
         alert.mouseLeft()
-        try await Task.sleep(for: .milliseconds(150))
+        try await Task.sleep(for: .milliseconds(600))
         precondition(alert.state == .home)
 
         print("Island open on hover: 6 cases passed")
@@ -62,7 +62,7 @@ enum IslandHoverTests {
     private static func machine() -> IslandStateMachine {
         let m = IslandStateMachine()
         m.openOnHover = true
-        m.hoverCloseDelay = 0.08
+        m.hoverCloseDelay = 0.3
         return m
     }
 

@@ -1272,12 +1272,49 @@ struct MailView: View {
 
 // MARK: - Prompt (chat)
 
+#if !APPSTORE
+/// The mic's right-click menu: Automatic (the user's languages) or one fixed language.
+private struct DictationLanguageMenu: View {
+    @Bindable var dictation: MacDictation
+
+    var body: some View {
+        let automatic = MacDictation.automaticLocales().map(\.identifier)
+        Picker(String(localized: "Dictation language"), selection: $dictation.language) {
+            Text(String(localized: "Automatic") + " (" + automatic.map(MacDictation.name(of:)).joined(separator: ", ") + ")")
+                .tag(MacDictation.automatic)
+            ForEach(quickChoices(automatic), id: \.self) { id in
+                Text(MacDictation.name(of: id)).tag(id)
+            }
+        }
+        .pickerStyle(.inline)
+        Menu(String(localized: "Other languages")) {
+            Picker(String(localized: "Dictation language"), selection: $dictation.language) {
+                ForEach(MacDictation.allLanguages, id: \.self) { id in
+                    Text(MacDictation.name(of: id)).tag(id)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        }
+    }
+
+    /// Automatic's languages, plus the fixed one when it is another.
+    private func quickChoices(_ automatic: [String]) -> [String] {
+        let chosen = dictation.language
+        return chosen == MacDictation.automatic || automatic.contains(chosen) ? automatic : automatic + [chosen]
+    }
+}
+#endif
+
 struct PromptView: View {
     @ObservedObject var state: AppState
     @State private var text: String = ""
     @FocusState private var focused: Bool
     @State private var showModelPicker = false
 
+    #if !APPSTORE
+    @State private var dictation = MacDictation()
+    #endif
     var body: some View {
         ZStack(alignment: .leading) {
             CardBackground(wash: .indigo)
@@ -1362,6 +1399,28 @@ struct PromptView: View {
                         .focused($focused)
                         .onSubmit { sendMessage() }
 
+                    #if !APPSTORE
+                    // Dictate instead of typing (on-device speech recognition when available)
+                    Button {
+                        Task {
+                            if dictation.isRecording { text = await dictation.finish() }
+                            else { await dictation.start(from: text) }
+                        }
+                    } label: {
+                        Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(dictation.isRecording ? Color(hex: "#F4505E") : Color(hex: "#8E939C"))
+                            .frame(width: 18, height: 18)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(dictation.isRecording ? String(localized: "Stop dictation") : String(localized: "Dictate (right-click to choose the language)"))
+                    .contextMenu { DictationLanguageMenu(dictation: dictation) }
+                    .onChange(of: dictation.transcript) { _, _ in
+                        if dictation.isRecording { text = dictation.text }
+                    }
+                    #endif
+
                     Button(action: sendMessage) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 11, weight: .semibold))
@@ -1406,6 +1465,16 @@ struct PromptView: View {
     }
 
     private func sendMessage() {
+        #if !APPSTORE
+        // Still dictating: take the final words (and the right language) before sending.
+        if dictation.isRecording {
+            Task {
+                text = await dictation.finish()
+                sendMessage()
+            }
+            return
+        }
+        #endif
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         text = ""
