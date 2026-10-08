@@ -249,6 +249,10 @@ struct OverviewView: View {
             #if !APPSTORE
             MusicController.shared.openMusic()
             #endif
+        case "integration_spotify":
+            #if !APPSTORE
+            SpotifyController.shared.openSpotify()
+            #endif
         default:
             // Non-integration real tasks
             if task.source == .n8n {
@@ -1905,6 +1909,15 @@ struct IntegrationCardView: View {
         }
     }
 
+    // Spotify: its own card for every state (playing, idle, not installed, Automation denied)
+    private var isSpotify: Bool {
+        #if !APPSTORE
+        return task.id == "integration_spotify"
+        #else
+        return false
+        #endif
+    }
+
     private var statusDot: Color {
         #if !APPSTORE
         if task.id == "integration_music" {
@@ -2026,6 +2039,11 @@ struct IntegrationCardView: View {
         } else if musicIsActive {
             #if !APPSTORE
             MusicCardView()
+                .transition(.opacity)
+            #endif
+        } else if isSpotify {
+            #if !APPSTORE
+            SpotifyCardView()
                 .transition(.opacity)
             #endif
         } else if agentSessionActive {
@@ -4075,6 +4093,9 @@ struct AgentPillsView: View {
                     if task.id == "integration_music" {
                         MusicPill(task: task, state: state, isHovered: hoveredId == task.id,
                                   onHover: hover(task.id)) { select(task.id) }
+                    } else if task.id == "integration_spotify" {
+                        SpotifyPill(task: task, isHovered: hoveredId == task.id,
+                                    onHover: hover(task.id)) { select(task.id) }
                     } else {
                         AgentPill(task: task, isHovered: hoveredId == task.id,
                                   onHover: hover(task.id)) { select(task.id) }
