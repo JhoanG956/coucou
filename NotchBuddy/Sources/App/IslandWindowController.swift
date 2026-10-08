@@ -17,6 +17,7 @@ final class IslandWindowController: NSWindowController {
     private var viewSubscription: AnyCancellable?
     private var displaySubscription: AnyCancellable?
     private var autoCloseSubscription: AnyCancellable?
+    private var openOnHoverSubscription: AnyCancellable?
 
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
@@ -256,6 +257,9 @@ final class IslandWindowController: NSWindowController {
         autoCloseSubscription = state.$autoCloseInterval.sink { [weak self] delay in
             self?.fsm.homeToPetitDelay = delay
         }
+        openOnHoverSubscription = state.$openOnHover.sink { [weak self] on in
+            self?.fsm.openOnHover = on
+        }
 
         fsm.onTransition = { [weak self] from, to in
             guard let self else { return }
@@ -380,18 +384,21 @@ final class IslandWindowController: NSWindowController {
         if state.mode == .hidden && fsm.state == .petit { fsm.hiddenExternally() }
 
         // Feed FSM hover enter/leave
-        if inIsland && !wasInIsland {
-            guard !inAttachDrag else { wasInIsland = inIsland; return }
+        // Update the hit test before feeding the FSM: its transitions read wasInIsland
+        // (a hover-opened island must not start its close timer while the pointer is on it).
+        let previouslyInIsland = wasInIsland
+        wasInIsland = inIsland
+        if inIsland && !previouslyInIsland {
+            guard !inAttachDrag else { return }
             // If in coucou: tell greeting to stay open (tc → infinity)
             if fsm.state == .coucou {
                 NotificationCenter.default.post(name: .greetingHover, object: nil)
             }
             fsm.mouseEntered()
         }
-        if !inIsland && wasInIsland {
+        if !inIsland && previouslyInIsland {
             fsm.mouseLeft()
         }
-        wasInIsland = inIsland
 
         // Bot-head hover (love emote)
         let overBot = state.mode == .expanded && state.stateOverride == nil && isBotHit(local)
@@ -816,6 +823,7 @@ final class IslandWindowController: NSWindowController {
             guard let self else { return event }
             MainActor.assumeIsolated {
                 guard self.wasInIsland else { return }
+                self.fsm.userInteracted()
                 self.pendingIslandClick = true
                 self.hoverTimer?.cancel()
                 self.botHoverTimer?.cancel()

@@ -563,6 +563,17 @@
    "ru": "Хуки Codex",
    "id": "Hooks Codex"
   },
+  "Color": {
+   "zh-Hans": "颜色",
+   "hi": "रंग",
+   "es": "Color",
+   "ar": "اللون",
+   "fr": "Couleur",
+   "bn": "রং",
+   "pt-BR": "Cor",
+   "ru": "Цвет",
+   "id": "Warna"
+  },
   "Coming soon": {
    "zh-Hans": "即将推出",
    "hi": "जल्द आ रहा है",
@@ -694,6 +705,17 @@
    "pt-BR": "Personalizado…",
    "ru": "Свой…",
    "id": "Kustom…"
+  },
+  "Default": {
+   "zh-Hans": "默认",
+   "hi": "डिफ़ॉल्ट",
+   "es": "Predeterminado",
+   "ar": "الافتراضي",
+   "fr": "Par défaut",
+   "bn": "ডিফল্ট",
+   "pt-BR": "Padrão",
+   "ru": "По умолчанию",
+   "id": "Bawaan"
   },
   "Demo": {
    "zh-Hans": "演示",

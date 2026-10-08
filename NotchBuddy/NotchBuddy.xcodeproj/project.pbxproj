@@ -22,6 +22,7 @@
 		06BF5FD95E03010CAFDBF2D0 /* NotchBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */; };
 		077ECE0906D8E820BD5FA764 /* DiffEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32FB972D02162720E566674 /* DiffEngine.swift */; };
 		07B49D6825179DAA18DFF4D3 /* PillCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C64C4C5D705CE486221B74 /* PillCatalog.swift */; };
+		07EC91820A69E8BF11EC778D /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		08A485F2AC63FF5298ED897B /* OpenLeadMochiIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D96E57E8DADE6B82628E3E /* OpenLeadMochiIntent.swift */; };
 		091EC3B2F1060D7EE1317E4E /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
 		0A267EE2955C7AD8E02A296C /* N8nPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */; };
@@ -39,6 +40,7 @@
 		17D6063D3B374FB82340314E /* IslandTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0365DDE3C554F5E8570055F4 /* IslandTypes.swift */; };
 		18D47AE663EB96BE5638D5F7 /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
 		1969590AFEE6CB21404346F1 /* CalcomPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3104222B3F17BA5E8DEA5277 /* CalcomPoller.swift */; };
+		1C2BB61FA83015C42B321E0E /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		1D23613B270FE8B11C5E27A7 /* IslandDisplayChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A09E73F1E58019EF6EA2A62 /* IslandDisplayChoice.swift */; };
 		1D4CE0CCD2B5A0FFE50C7F06 /* TerminalTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AF6F7A027AB1D46309DD49 /* TerminalTarget.swift */; };
 		1DAB0704A136FF8E6FB34191 /* ClaudeResponseText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444604C7E2C530B664849EF9 /* ClaudeResponseText.swift */; };
@@ -67,6 +69,7 @@
 		38EEB2D3A6EC538958D92575 /* GitHubPulse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */; };
 		3E84EA0AE7C450941ED943CF /* NowPlayingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56C7E1EBC74664A7F1689CF /* NowPlayingViews.swift */; };
 		40473EEC3029D466B2769672 /* AppleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681E15F99FCF1E60C2553004 /* AppleStyle.swift */; };
+		40F7576FC56ED7BC1D2B717E /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		4117E7C8AA231AAE36E7509D /* UploadCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B241B043223AFBBFB7418A5E /* UploadCanvasView.swift */; };
 		41966EEF7599793AD70DFCEA /* DiffEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32FB972D02162720E566674 /* DiffEngine.swift */; };
 		422C116E73D2D9A96DAE104D /* MochiLive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265262A422C270C1798F4A80 /* MochiLive.swift */; };
@@ -142,6 +145,7 @@
 		8881BC510155DEC038F3B552 /* ServiceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */; };
 		88A88E8704759E7F1F9D52BA /* ClaudeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F0D0F67E7C56B9E37E7648 /* ClaudeHost.swift */; };
 		88C3F0A4F3AE29DBED8710A0 /* ClaudeSettingsFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */; };
+		88F268E408FBBA2702B90E6C /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		8A6B3688D6B3BF728D106D8B /* UserIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */; };
 		8AC19BAF88822CB31519D447 /* CoucouIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708E1FD9894461B4AD727DB1 /* CoucouIntents.swift */; };
 		8C32A0C3EAF536D3836F61D5 /* GreetingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C581F7B1A9F14B281B60063E /* GreetingCanvasView.swift */; };
@@ -163,6 +167,7 @@
 		94E0849D13762C6EC8548FEF /* ClaudePlanCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */; };
 		967B525F7D3837F31D740D18 /* ResendPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B5FDDE03F5F711146937E2 /* ResendPoller.swift */; };
 		9728564FCBF0334E68E9E6E7 /* SessionPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824E56D2255CA86DAC350DBF /* SessionPublisher.swift */; };
+		992C904D46CB503D947C0940 /* PillColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37564F5F041B38C976DF3DEF /* PillColors.swift */; };
 		99A1CF41C797EA7F98F2B5B1 /* MochiActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE18399D1CD69468CCF57966 /* MochiActivityState.swift */; };
 		9A04B16AEEAB1A344D13CE74 /* InstructionComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E18E74B3586BC0861C69E70A /* InstructionComposer.swift */; };
 		9AD370335A3ECC9C82375F93 /* CodexPlanGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73FA4DF1BE5246CCFFB72E5C /* CodexPlanGauge.swift */; };
@@ -334,6 +339,7 @@
 		323F242B14A61A7C071EC115 /* MochiActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiActivityAttributes.swift; sourceTree = "<group>"; };
 		369F5AFDE37A03A1C25EB262 /* Decisions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Decisions.swift; sourceTree = "<group>"; };
 		37147F42613183DBA8896835 /* finish.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = finish.wav; sourceTree = "<group>"; };
+		37564F5F041B38C976DF3DEF /* PillColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillColors.swift; sourceTree = "<group>"; };
 		38BEAB5F20A13E5806A42EC9 /* ApprovalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCard.swift; sourceTree = "<group>"; };
 		3A27178AA6007F7B56901750 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
 		3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsFile.swift; sourceTree = "<group>"; };
@@ -647,6 +653,7 @@
 				045E7300878138F0AC385920 /* MochiStill.swift */,
 				79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */,
 				96C64C4C5D705CE486221B74 /* PillCatalog.swift */,
+				37564F5F041B38C976DF3DEF /* PillColors.swift */,
 				6C6993B34A0FFF8E3D454ADC /* QuestionPayload.swift */,
 				65F64746B2740D5FE26B7E5A /* ServiceDetail.swift */,
 				84ECC59BE7CDDEE348FC7096 /* ServiceSnapshot.swift */,
@@ -894,6 +901,7 @@
 				2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */,
 				03FDC0AA0CEDE913B59D0F4D /* NowPlayingViews.swift in Sources */,
 				BDD8A210DD6D9DA2D15BC5EE /* PillCatalog.swift in Sources */,
+				07EC91820A69E8BF11EC778D /* PillColors.swift in Sources */,
 				CD05A497A7D0B3D723D92C06 /* QuestionPayload.swift in Sources */,
 				93AB64BF47D6D1EE7DB4C22B /* QuestionRelay.swift in Sources */,
 				7A449E237CAAB62758508C7C /* RecapStore.swift in Sources */,
@@ -941,6 +949,7 @@
 				B2584220B877056366C8DCAE /* MochiWardrobe.swift in Sources */,
 				6A1AC92C431FA842928E8115 /* NotificationViewController.swift in Sources */,
 				D20B2B175A5C1D9B410B51C0 /* PillCatalog.swift in Sources */,
+				992C904D46CB503D947C0940 /* PillColors.swift in Sources */,
 				7D50086C2D8B6AEA0BD138FC /* QuestionPayload.swift in Sources */,
 				C5737FE7AE6B2BA92B9A8F72 /* ServiceDetail.swift in Sources */,
 				C209B71CDC296F561F10A443 /* ServiceSnapshot.swift in Sources */,
@@ -983,6 +992,7 @@
 				08A485F2AC63FF5298ED897B /* OpenLeadMochiIntent.swift in Sources */,
 				2104B8000768F551064B17E4 /* PhoneLink.swift in Sources */,
 				CC81DAE27417672CB93349A5 /* PillCatalog.swift in Sources */,
+				88F268E408FBBA2702B90E6C /* PillColors.swift in Sources */,
 				93CD58567884F5B7715D3A3E /* QuestionCard.swift in Sources */,
 				F9445A71BBF9E4D20224238E /* QuestionPayload.swift in Sources */,
 				9BCD79FD8CF211DC8FBD2971 /* SearchAndSpotlight.swift in Sources */,
@@ -1059,6 +1069,7 @@
 				78FCEDC8F78B683AB10E6529 /* NotionPoller.swift in Sources */,
 				3E84EA0AE7C450941ED943CF /* NowPlayingViews.swift in Sources */,
 				13663D98590927AF71C17628 /* PillCatalog.swift in Sources */,
+				40F7576FC56ED7BC1D2B717E /* PillColors.swift in Sources */,
 				535EC818E1DAF0FA588545D8 /* QuestionPayload.swift in Sources */,
 				9AEFD05D0A39D4AF3C091B3A /* QuestionRelay.swift in Sources */,
 				B69DE31E2B0C2E35594CAA87 /* RecapStore.swift in Sources */,
@@ -1110,6 +1121,7 @@
 				053B30CF4568F7FE5138A898 /* MochiWardrobe.swift in Sources */,
 				D6559770BBFB06FD4E90187B /* OpenLeadMochiIntent.swift in Sources */,
 				07B49D6825179DAA18DFF4D3 /* PillCatalog.swift in Sources */,
+				1C2BB61FA83015C42B321E0E /* PillColors.swift in Sources */,
 				654A8E7D8BA79AF90FA8B0DA /* QuestionPayload.swift in Sources */,
 				D2746E6D92F2E4C46892D5AA /* ServiceDetail.swift in Sources */,
 				8881BC510155DEC038F3B552 /* ServiceSnapshot.swift in Sources */,

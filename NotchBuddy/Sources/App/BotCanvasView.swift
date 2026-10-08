@@ -228,6 +228,11 @@ struct MiniBotCanvasView: View {
         .onChange(of: task.state) { _, newState in
             engine.setState(newState)
         }
+        // The colour is set once, when the engine is made: a colour picked in
+        // Settings has to reach a mini Mochi that is already on screen.
+        .onChange(of: task.color) { _, newColor in
+            engine.bodyColor = cgColorFromHex(newColor)
+        }
         .onAppear {
             engine.setState(task.state, force: true)
             if let emote = task.emote {

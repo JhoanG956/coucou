@@ -131,6 +131,8 @@ struct SettingsView: View {
 
     // Sidebar selection persisted across sessions
     @AppStorage("settingsSection") private var selectedSection: String = "general"
+    // Active pills: the pill whose colour palette is open, if any
+    @State private var colorPalettePill: String? = nil
     #if PHONE_LINK
     @AppStorage("iPhoneSyncEnabled") private var iPhoneSyncEnabled = false
     @AppStorage("iPhoneLiveActivityEnabled") private var iPhoneLiveActivityEnabled = false
@@ -315,6 +317,8 @@ struct SettingsView: View {
 
         GroupBox("Behavior") {
             VStack(alignment: .leading, spacing: 10) {
+                Toggle("Open on hover", isOn: $state.openOnHover)
+                    .help("Hovering the island opens it; it folds again shortly after the pointer leaves. Click inside to keep it open.")
                 HStack(spacing: 8) {
                     Text("Close after")
                     TextField("60", value: $state.autoCloseInterval, format: .number)
@@ -1838,9 +1842,31 @@ struct SettingsView: View {
             return nil
         }()
         HStack(spacing: 8) {
-            Circle()
-                .fill(Color(hex: def.color))
-                .frame(width: 10, height: 10)
+            // The dot is the row's colour control: it looks as it always did,
+            // and a click opens the palette.
+            Button {
+                colorPalettePill = def.id
+            } label: {
+                Circle()
+                    .fill(Color(hex: def.color))
+                    .frame(width: 10, height: 10)
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "Color"))
+            .accessibilityLabel(Text(def.name + " · " + String(localized: "Color")))
+            .popover(isPresented: Binding(
+                get: { colorPalettePill == def.id },
+                set: { open in if !open && colorPalettePill == def.id { colorPalettePill = nil } }
+            ), arrowEdge: .bottom) {
+                PillColorPalette(
+                    current: def.color,
+                    isCustom: state.pillColors[def.id] != nil,
+                    pick: { hex in
+                        state.setPillColor(def.id, hex)
+                        colorPalettePill = nil
+                    }
+                )
+            }
             Text(def.name)
                 .font(.system(size: 12))
                 .foregroundColor(atMax ? .secondary : .primary)
@@ -1863,6 +1889,48 @@ struct SettingsView: View {
                 .disabled(atMax)
             }
         }
+    }
+}
+
+// MARK: - Pill colour palette (Active pills, opened from a row's dot)
+
+private struct PillColorPalette: View {
+    /// The colour the pill is painted with now.
+    let current: String
+    /// The user picked it: "Default" is offered, to go back to the catalog's.
+    let isCustom: Bool
+    /// nil = back to the catalog's colour.
+    let pick: (String?) -> Void
+
+    var body: some View {
+        let now = PillColors.normalized(current)
+        HStack(spacing: 7) {
+            ForEach(PillColors.palette, id: \.self) { hex in
+                Button {
+                    pick(hex)
+                } label: {
+                    Circle()
+                        .fill(Color(hex: hex))
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.primary, lineWidth: 1.5)
+                                .padding(-3)
+                                .opacity(hex == now ? 1 : 0)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(hex))
+            }
+            if isCustom {
+                Button(String(localized: "Default")) {
+                    pick(nil)
+                }
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 }
 
