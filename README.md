@@ -34,7 +34,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 
 ## Features
 
-- 🤖 **Claude Code, Cursor, Codex, Gemini CLI, Antigravity, Copilot CLI, Muse Code, OpenCode, Amp, Hermes and other agents, live** — see every session in your notch: what it reads, edits and runs, step by step. Tag a hook payload with `coucou_agent` to give any agent its own pill (see [`docs/AGENTS.md`](docs/AGENTS.md)). Finished? Mochi does a happy little jump.
+- 🤖 **Claude Code, Cursor, Codex, Gemini CLI, Antigravity, Copilot CLI, Muse Code, OpenCode, Amp, Hermes, Claude Desktop and other agents, live** — see every session in your notch: what it reads, edits and runs, step by step. Tag a hook payload with `coucou_agent` to give any agent its own pill (see [`docs/AGENTS.md`](docs/AGENTS.md)). Finished? Mochi does a happy little jump.
 - See what Claude is editing, live in the notch: each file modification shows the file name and +N −M counts in the ticker, tap to read the full diff
 - ✅ **Approve and answer from the notch** — Claude Code permission requests show up with **Allow / Deny / Always**; `AskUserQuestion` prompts show the choices right in the notch (single or multi-select, up to 4 questions). One click, or "Reply in terminal" to fall back to the CLI. Codex also gets Allow / Deny.
 - 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
@@ -101,6 +101,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [0.2.2](https://github.com/Louis-CFM/coucou/releases/tag/v0.2.2) | Oct 8, 2026 | Choose Mochi's screen, Claude Desktop pill, Codex plan usage, full questions, safer settings.json |
 | [0.2.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.2.1) | Oct 7, 2026 | Hermes Agent support |
 | [0.2.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.2.0) | Oct 6, 2026 | Copilot CLI, Muse Code, OpenCode and Amp, weekly recap, 10 languages |
 | [0.1.9](https://github.com/Louis-CFM/coucou/releases/tag/v0.1.9) | Oct 6, 2026 | iPhone services with live details and actions, smarter Live Activity |
@@ -148,7 +149,15 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Windows
 
-Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi)** or **[Coucou-Windows-setup.exe](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe)** (Windows 10/11, always the newest version) and run it. The installer isn't code-signed yet, so SmartScreen may warn you: click **More info → Run anyway**. You can also [build it from source](#build-from-source).
+Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows.msi)** or **[Coucou-Windows-setup.exe](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe)** (Windows 10/11, always the newest version) and run it. You can also [build it from source](#build-from-source).
+
+**Windows will show a warning the first time — that's expected.** The installer isn't code-signed yet, so SmartScreen doesn't know the publisher:
+
+1. A **"Windows protected your PC"** screen appears, with *Publisher: Unknown publisher*.
+2. Click **More info** (*Informations complémentaires* in French). This reveals a **Run anyway** button.
+3. Click **Run anyway** (*Exécuter quand même*). The installer starts normally.
+
+This is only because the app isn't signed with a paid certificate yet. Coucou is open source, and Microsoft Defender scans the installer as clean.
 
 **Windows and Linux 0.2.0** catch up with the Mac: Codex, Copilot CLI, Muse Code and six more agents with approvals from the island, answers to Claude's questions, live diffs, GitHub pull requests and CI, plan usage, local models, the wardrobe, Mochi on the desktop, keyboard shortcuts, the weekly recap and 10 languages. See the [changelog](CHANGELOG.md).
 
