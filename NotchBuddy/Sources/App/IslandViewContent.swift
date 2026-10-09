@@ -33,6 +33,12 @@ struct IslandViewContent: View {
             #else
             EmptyView()
             #endif
+        case .voiceResult:
+            #if !APPSTORE
+            VoiceResultView()
+            #else
+            EmptyView()
+            #endif
         }
     }
 }

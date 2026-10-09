@@ -277,7 +277,7 @@ final class VoiceEngine: ObservableObject {
     /// wake detection is suppressed in those states to avoid interrupting the user.
     private func shouldIgnoreWake() -> Bool {
         let v = AppState.shared.view
-        return v == .approval || v == .question || v == .prompt
+        return v == .approval || v == .question || v == .prompt || v == .voiceResult
             || AppState.shared.pendingApproval != nil
     }
 

@@ -364,6 +364,10 @@ final class SpotifyController: ObservableObject {
         command("previous track")
     }
 
+    func adjustVolume(by delta: Int) {
+        setVolume(volume + delta)
+    }
+
     func seek(to seconds: Double) {
         guard isRunning, let track, !track.isAd else { return }
         let target = min(max(0, seconds), max(0, track.duration - 1))

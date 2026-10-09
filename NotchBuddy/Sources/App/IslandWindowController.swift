@@ -22,6 +22,11 @@ final class IslandWindowController: NSWindowController {
     // Confused recovery timer (set by handleDizzy)
     private var confusedRecoveryTimer: DispatchWorkItem?
 
+    // Voice result auto-dismiss timer
+    #if !APPSTORE
+    private var voiceResultWork: DispatchWorkItem?
+    #endif
+
     // Suppress peek sound on next reveal (e.g. musicReveal)
     var silentNextReveal = false
 
@@ -151,6 +156,9 @@ final class IslandWindowController: NSWindowController {
         startLocalKeyMonitor()
         startHotKeys()
         wireFSM()
+        #if !APPSTORE
+        VoiceActionRunner.shared.configureLive()
+        #endif
 
         // Make panel key whenever the prompt/chat view becomes active
         // (nonactivatingPanel never auto-becomes key, but TextField needs it)
@@ -292,11 +300,17 @@ final class IslandWindowController: NSWindowController {
         ) { [weak self] _ in
             self?.fsm.voiceWoke()
         }
-        // Voice: command session ended → close listening island
+        // Voice: command session ended — run intent, show result for 2 s, then collapse.
         NotificationCenter.default.addObserver(
             forName: .voiceFinished, object: nil, queue: .main
-        ) { [weak self] _ in
-            self?.fsm.voiceFinished()
+        ) { [weak self] note in
+            guard let self else { return }
+            let transcript = note.object as? String ?? ""
+            if transcript.isEmpty {
+                self.fsm.voiceFinished()
+            } else {
+                Task { @MainActor in await self.handleVoiceCommand(transcript) }
+            }
         }
         #endif
     }
@@ -1263,6 +1277,39 @@ struct GhostBotView: View {
             }
     }
 }
+
+// MARK: - Voice command handling
+
+#if !APPSTORE
+extension IslandWindowController {
+
+    /// Run the intent derived from `transcript`, show VoiceResultView for 2 s, then collapse.
+    @MainActor
+    func handleVoiceCommand(_ transcript: String) async {
+        let pills = PillCatalog.available
+        let intent = IntentParser.parse(transcript, pills: pills)
+        let result = await VoiceActionRunner.shared.run(intent, availablePills: pills)
+
+        // Mochi reaction
+        if result.outcome == .success {
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        }
+
+        // Switch to result view (island stays expanded)
+        AppState.shared.voiceResult = result
+        expand(to: .voiceResult)
+
+        // Auto-dismiss after 2 s
+        voiceResultWork?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            AppState.shared.voiceResult = nil
+            self?.fsm.voiceFinished()
+        }
+        voiceResultWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: item)
+    }
+}
+#endif
 
 // MARK: - Notification names
 

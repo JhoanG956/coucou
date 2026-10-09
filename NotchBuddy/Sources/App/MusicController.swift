@@ -219,6 +219,34 @@ final class MusicController: ObservableObject {
         Task { await runAppleScript(#"tell application id "com.apple.Music" to back track"#) }
     }
 
+    func adjustVolume(by delta: Int) {
+        Task {
+            let result = await runAppleScript(
+                #"tell application id "com.apple.Music" to set sound volume to (sound volume + \#(delta))"#
+            )
+            _ = result
+        }
+    }
+
+    func playArtist(_ name: String) {
+        let escaped = name.replacingOccurrences(of: "\"", with: "\\\"")
+        Task {
+            await runAppleScript("""
+                tell application id "com.apple.Music"
+                    set tr to (first track of library playlist 1 whose artist contains "\(escaped)")
+                    play tr
+                end tell
+            """)
+        }
+    }
+
+    func playPlaylist(_ name: String) {
+        let escaped = name.replacingOccurrences(of: "\"", with: "\\\"")
+        Task {
+            await runAppleScript(#"tell application id "com.apple.Music" to play playlist "\#(escaped)""#)
+        }
+    }
+
     func openMusic() {
         if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.Music" }) {
             app.activate(options: .activateIgnoringOtherApps)
