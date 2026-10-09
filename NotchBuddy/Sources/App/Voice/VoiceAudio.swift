@@ -15,6 +15,11 @@ import AVFoundation
 // - Bypass (`bypassVAD = true`): every buffer is delivered via `onBuffer` regardless of
 //   silence; `onMicLevel` fires at ~20 Hz with a smoothed level.
 //
+// AEC: `setVoiceProcessingEnabled(true)` is applied to inputNode before reading its
+// format. VP requires the output I/O unit to supply a valid downlink clock; the default
+// mainMixerNode → outputNode path provides this — we just silence it (outputVolume = 0).
+// `voiceProcessingOtherAudioDuckingConfiguration` prevents VP from ducking other apps.
+// If VP activation fails, the engine continues without echo cancellation.
 final class VoiceAudio: @unchecked Sendable {
 
     private let engine         = AVAudioEngine()
@@ -61,6 +66,22 @@ final class VoiceAudio: @unchecked Sendable {
         guard !tapInstalled else { return }
         let input = engine.inputNode
 
+        // AEC: enable voice processing BEFORE reading the input format and installing
+        // the tap — VP may renegotiate the format after activation. VP's downlink DSP
+        // needs the output I/O unit running; the default mainMixerNode → outputNode
+        // connection handles this. Silence the output so Coucou makes no sound.
+        do {
+            try input.setVoiceProcessingEnabled(true)
+            input.voiceProcessingOtherAudioDuckingConfiguration =
+                AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
+                    enableAdvancedDucking: false, duckingLevel: .min)
+            engine.mainMixerNode.outputVolume = 0
+        } catch {
+            appendAppLog("nb.log",
+                "[Voice] AEC unavailable: \(error.localizedDescription) — no echo cancellation")
+        }
+
+        // Read format AFTER VP activation (VP may renegotiate sample rate / channel count).
         let fmt = input.outputFormat(forBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, time in
             self?.processTap(buf, time: time)

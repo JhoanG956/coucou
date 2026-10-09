@@ -204,6 +204,13 @@ final class MusicController: ObservableObject {
 
     // MARK: - Playback controls
 
+    func getVolume() async -> Int? {
+        guard isMusicRunning() else { return nil }
+        let result = await runAppleScript(#"tell application id "com.apple.Music" to return sound volume"#)
+        if case .success(let vals) = result, let str = vals.first, let v = Int(str) { return v }
+        return nil
+    }
+
     func playPause() {
         guard isMusicRunning() else { return }
         Task { await runAppleScript(#"tell application id "com.apple.Music" to playpause"#) }

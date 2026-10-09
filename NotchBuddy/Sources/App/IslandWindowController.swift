@@ -589,6 +589,11 @@ final class IslandWindowController: NSWindowController {
                 islandPanel.makeKey()
                 expand(to: .wardrobe)
             }
+
+        case .talkToCoucou:
+            #if !APPSTORE
+            VoiceEngine.shared.startListeningDirectly()
+            #endif
         }
     }
 

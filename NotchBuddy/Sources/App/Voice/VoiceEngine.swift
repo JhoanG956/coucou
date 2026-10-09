@@ -63,6 +63,11 @@ final class VoiceEngine: ObservableObject {
     private var consecErrorStreak = 0
     private static let maxConsecErrors = 3
 
+    // Music ducking during command (main thread)
+    private var savedMusicVolume:   Int?  = nil
+    private var savedSpotifyVolume: Int?  = nil
+    private var isDuckingMusic             = false
+
     // Unavailability retry
     private var unavailableWork:    DispatchWorkItem?
     private var firstUnavailableAt: Date? = nil
@@ -91,6 +96,7 @@ final class VoiceEngine: ObservableObject {
 
     private init() {
         lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        appendAppLog("nb.log", "[Voice] build \(voiceBuildHash)")
         observeSystemEvents()
         if isEnabled && !isPaused { startAudioPipeline() }
     }
@@ -117,6 +123,7 @@ final class VoiceEngine: ObservableObject {
         commandTranscript     = ""
         lastWordCount         = 0
         audio.bypassVAD       = true
+        duckMusic()
         appendAppLog("nb.log", "[Voice] direct listen start")
         NotificationCenter.default.post(name: .voiceWoke, object: "direct" as NSString)
         let preroll = audio.drainPreroll()
@@ -368,6 +375,58 @@ final class VoiceEngine: ObservableObject {
         }
     }
 
+    // MARK: - Music ducking
+
+    /// Lower Apple Music and Spotify to 25 % while a command is in progress.
+    /// Saves the current volumes so `restoreMusic()` can undo the change.
+    private func duckMusic() {
+        guard !isDuckingMusic else { return }
+        isDuckingMusic = true
+
+        if SpotifyController.shared.isPlaying {
+            savedSpotifyVolume = SpotifyController.shared.volume
+            SpotifyController.shared.setVolume(25)
+            appendAppLog("nb.log", "[Voice] music duck spotify \(savedSpotifyVolume ?? -1) → 25")
+        }
+
+        if AppState.shared.musicPlaying {
+            Task {
+                if let vol = await MusicController.shared.getVolume() {
+                    savedMusicVolume = vol
+                    MusicController.shared.setVolume(25)
+                    appendAppLog("nb.log", "[Voice] music duck apple \(vol) → 25")
+                }
+            }
+        }
+    }
+
+    /// Restore volumes saved by `duckMusic()`.
+    /// Skipped when the command was itself a volume command (`volumeCommandExecuted`).
+    private func restoreMusic() {
+        guard isDuckingMusic else { return }
+        isDuckingMusic = false
+
+        if VoiceActionRunner.shared.volumeCommandExecuted {
+            // User explicitly changed volume — keep new value, discard saved.
+            VoiceActionRunner.shared.volumeCommandExecuted = false
+            savedMusicVolume   = nil
+            savedSpotifyVolume = nil
+            appendAppLog("nb.log", "[Voice] music restore skipped (volume command)")
+            return
+        }
+
+        if let vol = savedSpotifyVolume {
+            SpotifyController.shared.setVolume(vol)
+            appendAppLog("nb.log", "[Voice] music restore spotify → \(vol)")
+            savedSpotifyVolume = nil
+        }
+        if let vol = savedMusicVolume {
+            MusicController.shared.setVolume(vol)
+            appendAppLog("nb.log", "[Voice] music restore apple → \(vol)")
+            savedMusicVolume = nil
+        }
+    }
+
     // MARK: - Wake detection
 
     private func wakeDetected(transcript: String) {
@@ -383,6 +442,7 @@ final class VoiceEngine: ObservableObject {
         commandTranscript     = ""
         lastWordCount         = 0
         audio?.bypassVAD      = true
+        duckMusic()
         appendAppLog("nb.log", "[Voice] wake")
         NotificationCenter.default.post(name: .voiceWoke, object: nil)
         resetSilenceTimer()
@@ -430,6 +490,7 @@ final class VoiceEngine: ObservableObject {
         voiceSegmentActive = false
         micLevel           = 0
         spotter?.endWindow()
+        restoreMusic()
         appendAppLog("nb.log", "[Voice] command end (had transcript: \(!commandTranscript.isEmpty))")
         if !postFinished { commandTranscript = "" }
         isListeningForCommand = false

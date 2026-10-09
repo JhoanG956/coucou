@@ -69,6 +69,10 @@ final class VoiceActionRunner {
     /// Pending follow-up question (4-pill limit, ambiguity). Set when outcome is .question.
     var pendingQuestion: PendingVoiceQuestion? = nil
 
+    /// Set to true when the runner executes a volume-changing command (volumeUp/Down/setVolume).
+    /// VoiceEngine reads this flag in endCommand to skip music volume restoration.
+    var volumeCommandExecuted = false
+
     init() {}
 
     func run(_ intent: VoiceIntent,
@@ -122,6 +126,7 @@ final class VoiceActionRunner {
             guard music.isMusicRunning || music.isSpotifyRunning else {
                 return fail("voice.no-music-app")
             }
+            volumeCommandExecuted = true
             music.volumeUp()
             return ok("voice.music-vol-up")
 
@@ -129,6 +134,7 @@ final class VoiceActionRunner {
             guard music.isMusicRunning || music.isSpotifyRunning else {
                 return fail("voice.no-music-app")
             }
+            volumeCommandExecuted = true
             music.volumeDown()
             return ok("voice.music-vol-down")
 
@@ -136,6 +142,7 @@ final class VoiceActionRunner {
             guard music.isMusicRunning || music.isSpotifyRunning else {
                 return fail("voice.no-music-app")
             }
+            volumeCommandExecuted = true
             music.setVolume(pct)
             let fmt = NSLocalizedString("voice.music-vol-set", comment: "")
             return .init(outcome: .success, message: fmt.contains("%") ? String(format: fmt, pct) : "\(pct)%")
