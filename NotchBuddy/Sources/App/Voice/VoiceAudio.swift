@@ -63,17 +63,6 @@ final class VoiceAudio: @unchecked Sendable {
         guard !tapInstalled else { return }
         let input = engine.inputNode
 
-        // AEC: remove echo of Mac speakers from the mic signal (macOS 14+).
-        // Does NOT duck other apps' audio — music stays at full volume.
-        if #available(macOS 14, *) {
-            do {
-                try input.setVoiceProcessingEnabled(true)
-                appendAppLog("nb.log", "[VoiceAudio] AEC enabled")
-            } catch {
-                appendAppLog("nb.log", "[VoiceAudio] AEC unavailable: \(error.localizedDescription)")
-            }
-        }
-
         let fmt = input.outputFormat(forBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, time in
             self?.processTap(buf, time: time)

@@ -14,11 +14,11 @@ import Speech
 // All shared state is protected by a single NSLock.
 //
 // Logging (to nb.log):
-//   [WakeSpotter] task start
-//   [WakeSpotter] task refused (already active)
-//   [WakeSpotter] task refused (unavailable)
-//   [WakeSpotter] task end: final, partials N
-//   [WakeSpotter] task end: error <domain>/<code>, partials N
+//   [Voice] spotter task start
+//   [Voice] spotter task refused (already active)
+//   [Voice] spotter task refused (unavailable)
+//   [Voice] spotter task end: final, partials N
+//   [Voice] spotter task end: error <domain>/<code>, partials N
 final class WakeSpotter: @unchecked Sendable {
 
     // MARK: - Callbacks (all delivered on the main thread)
@@ -79,16 +79,16 @@ final class WakeSpotter: @unchecked Sendable {
         if let refusal {
             switch refusal {
             case .alreadyActive:
-                appendAppLog("nb.log", "[WakeSpotter] task refused (already active)")
+                appendAppLog("nb.log", "[Voice] spotter task refused (already active)")
             case .unavailable:
-                appendAppLog("nb.log", "[WakeSpotter] task refused (unavailable)")
+                appendAppLog("nb.log", "[Voice] spotter task refused (unavailable)")
             }
             return false
         }
 
         guard let r = rSnap, let req = reqSnap else { return false }
 
-        appendAppLog("nb.log", "[WakeSpotter] task start")
+        appendAppLog("nb.log", "[Voice] spotter task start")
         let t = r.recognitionTask(with: req) { [weak self] result, error in
             self?.handleResult(result, error: error)
         }
@@ -154,9 +154,9 @@ final class WakeSpotter: @unchecked Sendable {
                 phase        = .wake
                 partialCount = 0
                 if let err = error as NSError? {
-                    logMsg = "[WakeSpotter] task end: error \(err.domain)/\(err.code), partials \(n)"
+                    logMsg = "[Voice] spotter task end: error \(err.domain)/\(err.code), partials \(n)"
                 } else {
-                    logMsg = "[WakeSpotter] task end: final, partials \(n)"
+                    logMsg = "[Voice] spotter task end: final, partials \(n)"
                 }
                 return wasCommand ? .commandEnd : .wakeWindowEnded(wasError: wasError)
             }
