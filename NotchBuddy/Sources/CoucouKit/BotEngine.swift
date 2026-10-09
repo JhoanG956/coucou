@@ -268,6 +268,7 @@ final class BotEngine: ObservableObject {
     var listeningLevel:  CGFloat = 0   // smoothed mic level 0…1, set each frame by BotCanvasView
     var isInListeningMode  = false
     var listeningHasWords  = false
+    private var listeningPrevPermanentEmote: BotEmote? = nil
 
     // Dancing (Apple Music)
     var isDancing: Bool = false
@@ -600,6 +601,7 @@ final class BotEngine: ObservableObject {
     func enterListening() {
         isInListeningMode = true
         listeningHasWords  = false
+        listeningPrevPermanentEmote = permanentEmote
         interruptGreet()
 
         // Small jump
@@ -633,8 +635,9 @@ final class BotEngine: ObservableObject {
         listeningLevel    = 0
         listeningHasWords = false
 
-        // Release permanent wide eyes
-        setPermanentEmote(nil)
+        // Restore the permanent emote that was active before listening started
+        setPermanentEmote(listeningPrevPermanentEmote)
+        listeningPrevPermanentEmote = nil
 
         // Return head tilt to rest
         anim("tilt", keys: [TweenKey(target: 0, duration: 250, ease: Ease.inOut)])

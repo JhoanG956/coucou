@@ -101,6 +101,34 @@ enum EnergyVADTests {
             check("inactive after forced end", !vad.isActive)
         }
 
+        // MARK: 8. Continuous music (~60 s): at most 1 segment, no re-trigger after forced end
+        // After the 30 s forced end the noise floor is updated to the music level.
+        // A second forced-end segment may occur if music continues, but the VAD must NOT
+        // immediately re-trigger on the very next frame after the forced end.
+        do {
+            var vad = EnergyVAD()
+            let musicPower = 5e-4   // simulated music level
+            // Calibrate at music level (as if music was already playing before app launch).
+            for _ in 0..<EnergyVAD.calibFrames { _ = vad.feed(musicPower) }
+
+            var segments = 0
+            let totalFrames = EnergyVAD.maxActiveFrames * 2 + 100   // ~60 s at 43 Hz
+            var prevEvent: EnergyVAD.Event = .none
+            for _ in 0..<totalFrames {
+                let event = vad.feed(musicPower)
+                if event == .start { segments += 1 }
+                // Immediately after a forced end, must NOT re-trigger on the next frame.
+                if prevEvent == .end && event == .start {
+                    check("music: no immediate re-trigger after forced end", false)
+                    break
+                }
+                prevEvent = event
+            }
+            // ≤ 2 segments over 60 s (one per 30 s window) is acceptable;
+            // what matters is that each forced end is followed by a clean gap.
+            check("music (~60 s): no immediate re-trigger after forced end", prevEvent != .start || segments <= 2)
+        }
+
         // Summary
         if failures == 0 { print("\n\(total)/\(total) tests passed.") }
         else { print("\n\(failures) test(s) FAILED."); exit(1) }

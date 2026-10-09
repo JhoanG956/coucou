@@ -36,6 +36,10 @@ final class VoiceAudio: @unchecked Sendable {
     /// Written on the main thread; read on the audio tap thread.
     nonisolated(unsafe) var bypassVAD: Bool = false
 
+    /// Set on the main thread after a command ends; consumed (and acted on) by the audio
+    /// tap thread on its next buffer — avoids a data race on the `vad` struct.
+    nonisolated(unsafe) private var pendingVADReset: Bool = false
+
     // MARK: Callbacks
 
     /// Fired on the main thread when voice activity starts (VAD rise).
@@ -77,13 +81,9 @@ final class VoiceAudio: @unchecked Sendable {
 
     /// Hard-reset the VAD to inactive state; preserves the learned noise floor.
     /// Call from the main thread after a command ends so the next speech restarts cleanly.
+    /// Uses a flag consumed by the audio tap thread to avoid a data race on `vad`.
     func resetVAD() {
-        // vad is audio-tap-thread state, but we write it under no lock since resetVAD
-        // is called synchronously on main thread after bypassVAD has been cleared — the
-        // tap will not read vad until the next buffer, which is always after this returns.
-        vad.reset()
-        smoothedLevel = 0
-        levelFrameCount = 0
+        pendingVADReset = true
     }
 
     /// Return a snapshot of the pre-roll ring buffer and clear it.
@@ -99,6 +99,14 @@ final class VoiceAudio: @unchecked Sendable {
     // MARK: - Tap processing (audio thread)
 
     private func processTap(_ buf: AVAudioPCMBuffer, time: AVAudioTime) {
+        // Consume a pending VAD reset requested by the main thread.
+        if pendingVADReset {
+            pendingVADReset = false
+            vad.reset()
+            smoothedLevel   = 0
+            levelFrameCount = 0
+        }
+
         // Always maintain the pre-roll ring buffer.
         prerollLock.withLock {
             if prerollBuffers.count >= Self.prerollCapacity { prerollBuffers.removeFirst() }

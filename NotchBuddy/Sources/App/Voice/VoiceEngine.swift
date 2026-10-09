@@ -124,23 +124,23 @@ final class VoiceEngine: ObservableObject {
             guard let self, !isListeningForCommand, voiceSegmentActive else { return }
             let preroll = a.drainPreroll()
             s.beginWindow(locale: loc, preroll: preroll)
-            print("[Voice] window open")
+            appendAppLog("nb.log", "[Voice] window open")
             scheduleWakeWindowRestart(audio: a, spotter: s, locale: loc)
         }
 
         a.onVoiceStart = { [weak self] in
             guard let self else { return }
-            print("[Voice] vad start")
+            appendAppLog("nb.log", "[Voice] vad start")
             voiceSegmentActive = true
             let preroll = a.drainPreroll()
             s.beginWindow(locale: loc, preroll: preroll)
-            print("[Voice] window open")
+            appendAppLog("nb.log", "[Voice] window open")
             scheduleWakeWindowRestart(audio: a, spotter: s, locale: loc)
         }
 
         a.onVoiceEnd = { [weak self] in
             guard let self else { return }
-            print("[Voice] vad end")
+            appendAppLog("nb.log", "[Voice] vad end")
             voiceSegmentActive = false
             wakeWindowWork?.cancel(); wakeWindowWork = nil
             // Only close the wake window if we're not already in command mode.
@@ -148,7 +148,7 @@ final class VoiceEngine: ObservableObject {
             // isListeningForCommand is set (race with onWake dispatch).
             if !isListeningForCommand && !s.isInCommandPhase {
                 s.endWindow()
-                print("[Voice] window close")
+                appendAppLog("nb.log", "[Voice] window close")
             }
         }
 
@@ -183,9 +183,9 @@ final class VoiceEngine: ObservableObject {
             guard let self, !isListeningForCommand else { return }
             let preroll = audio.drainPreroll()
             spotter.endWindow()
-            print("[Voice] window close")
+            appendAppLog("nb.log", "[Voice] window close")
             spotter.beginWindow(locale: locale, preroll: preroll)
-            print("[Voice] window open")
+            appendAppLog("nb.log", "[Voice] window open")
             scheduleWakeWindowRestart(audio: audio, spotter: spotter, locale: locale)
         }
         wakeWindowWork = item
@@ -214,7 +214,7 @@ final class VoiceEngine: ObservableObject {
         commandTranscript     = ""
         lastWordCount         = 0
         audio?.bypassVAD      = true
-        print("[Voice] wake")
+        appendAppLog("nb.log", "[Voice] wake")
         NotificationCenter.default.post(name: .voiceWoke, object: nil)
         // Initial timeout: 3 s to start speaking, then 1.2 s silence to finish.
         resetSilenceTimer()
@@ -261,7 +261,7 @@ final class VoiceEngine: ObservableObject {
         voiceSegmentActive = false // treat the voice segment as ended after command
         micLevel           = 0
         spotter?.endWindow()
-        print("[Voice] command end (had transcript: \(!commandTranscript.isEmpty))")
+        appendAppLog("nb.log", "[Voice] command end (had transcript: \(!commandTranscript.isEmpty))")
         if !postFinished { commandTranscript = "" }
         isListeningForCommand = false
         if postFinished {

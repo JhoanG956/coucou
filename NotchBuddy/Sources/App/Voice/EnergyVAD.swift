@@ -32,14 +32,20 @@ struct EnergyVAD {
     private var silentCount = 0
     private var activeCount = 0
 
+    // Power accumulator for the current active segment (used to update noise on forced end).
+    private var segmentPowerSum:   Double = 0
+    private var segmentPowerCount: Int    = 0
+
     // MARK: - API
 
     /// Hard-reset to inactive. Preserves the calibrated noise floor.
     /// Call after a command ends so the next speech triggers a fresh VAD start.
     mutating func reset() {
-        isActive    = false
-        silentCount = 0
-        activeCount = 0
+        isActive          = false
+        silentCount       = 0
+        activeCount       = 0
+        segmentPowerSum   = 0
+        segmentPowerCount = 0
         // noisePower/calibCount: keep — calibration is done, ambient is known.
     }
 
@@ -55,18 +61,29 @@ struct EnergyVAD {
         if !isActive {
             noisePower = noisePower * 0.995 + power * 0.005
             if power > noisePower * Self.riseRatio {
-                isActive    = true
-                silentCount = 0
-                activeCount = 0
+                isActive          = true
+                silentCount       = 0
+                activeCount       = 0
+                segmentPowerSum   = power
+                segmentPowerCount = 1
                 return .start
             }
             return .none
         } else {
-            activeCount += 1
+            activeCount       += 1
+            segmentPowerSum   += power
+            segmentPowerCount += 1
             if activeCount >= Self.maxActiveFrames {
-                isActive    = false
-                silentCount = 0
-                activeCount = 0
+                // Update noise floor to the average power of this forced-end segment
+                // (continuous music/noise → treat it as new ambient level).
+                if segmentPowerCount > 0 {
+                    noisePower = segmentPowerSum / Double(segmentPowerCount)
+                }
+                isActive          = false
+                silentCount       = 0
+                activeCount       = 0
+                segmentPowerSum   = 0
+                segmentPowerCount = 0
                 return .end
             }
             if power < noisePower * Self.fallRatio {
