@@ -1719,7 +1719,81 @@ struct IntegrationCardView: View {
     @State private var githubDetailSection: GitHubDetailSection = .myPRs
 
     private var isConfigured: Bool {
-        HookServer.hooksInstalled(for: task.id)
+        switch task.id {
+        // Cursor sessions are Claude Code running in Cursor's integrated terminal,
+        // so the Cursor pill is set up exactly when the Claude Code hooks are.
+        case "integration_claude", "agent_cursor":
+            return HookServer.claudeHooksInstalled()
+        case "agent_codex":
+            #if !APPSTORE
+            return HookServer.codexHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_gemini":
+            #if !APPSTORE
+            return HookServer.geminiHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_antigravity":
+            #if !APPSTORE
+            return HookServer.agyHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_copilot":
+            #if !APPSTORE
+            return HookServer.copilotHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_muse":
+            #if !APPSTORE
+            return HookServer.museHooksInstalled()
+            #else
+            return false
+            #endif
+        case "agent_opencode":
+            #if !APPSTORE
+            return HookServer.openCodePluginInstalled()
+            #else
+            return false
+            #endif
+        case "agent_amp":
+            #if !APPSTORE
+            return HookServer.ampPluginInstalled()
+            #else
+            return false
+            #endif
+        case "agent_hermes":
+            #if !APPSTORE
+            return HookServer.hermesPluginInstalled()
+            #else
+            return false
+            #endif
+        case "agent_claude-desktop":
+            return true  // nothing to install: the relay tags desktop sessions on its own
+        case "integration_music":
+            #if !APPSTORE
+            return true  // Apple Music is always installed on macOS
+            #else
+            return false
+            #endif
+        case "ai_anthropic":  return KeychainStore.shared.get("anthropic-api-key") != nil
+        case "ai_google":     return KeychainStore.shared.get("google-api-key")    != nil
+        case "ai_openai":     return KeychainStore.shared.get("openai-api-key")    != nil
+        case "ai_ollama":     return !AppState.shared.ollamaServerURL.isEmpty
+        case "ai_lmstudio":   return !AppState.shared.lmstudioServerURL.isEmpty
+        case "integration_resend":  return KeychainStore.shared.get("resend-api-key") != nil
+        case "integration_n8n":     return KeychainStore.shared.get("n8n-api-key")    != nil
+        case "integration_vercel":  return KeychainStore.shared.get("vercel-token")   != nil
+        case "integration_github":  return KeychainStore.shared.get("github-token")   != nil
+        case "integration_stripe":  return KeychainStore.shared.get("stripe-api-key") != nil
+        case "integration_notion":  return KeychainStore.shared.get("notion-api-key") != nil
+        case "integration_calcom":  return KeychainStore.shared.get("calcom-api-key") != nil
+        default: return false
+        }
     }
 
     private var openURL: URL? {
