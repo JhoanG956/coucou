@@ -298,32 +298,34 @@ final class IslandWindowController: NSWindowController {
         NotificationCenter.default.addObserver(
             forName: .voiceWoke, object: nil, queue: .main
         ) { [weak self] note in
-            // Genuine wake phrase (not programmatic re-listen) → clear any pending question
             let isDirect = (note.object as? String) == "direct"
-            if !isDirect { VoiceActionRunner.shared.pendingQuestion = nil }
-            self?.fsm.voiceWoke()
+            Task { @MainActor [weak self] in
+                // Genuine wake phrase (not programmatic re-listen) → clear any pending question
+                if !isDirect { VoiceActionRunner.shared.pendingQuestion = nil }
+                self?.fsm.voiceWoke()
+            }
         }
         // Voice: command session ended — run intent, show result for 2 s, then collapse.
         NotificationCenter.default.addObserver(
             forName: .voiceFinished, object: nil, queue: .main
         ) { [weak self] note in
-            guard let self else { return }
             let transcript = note.object as? String ?? ""
-            if transcript.isEmpty {
-                if VoiceActionRunner.shared.pendingQuestion != nil {
-                    // Re-listen timed out with no answer → show cancellation message
-                    Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if transcript.isEmpty {
+                    if VoiceActionRunner.shared.pendingQuestion != nil {
+                        // Re-listen timed out with no answer → show cancellation message
                         let result = await VoiceActionRunner.shared.handleAnswer(
                             "", availablePills: PillCatalog.available)
                         AppState.shared.voiceResult = result
                         self.expand(to: .voiceResult)
                         self.scheduleVoiceDismiss(delay: 1.5)
+                    } else {
+                        self.fsm.voiceFinished()
                     }
                 } else {
-                    self.fsm.voiceFinished()
+                    await self.handleVoiceCommand(transcript)
                 }
-            } else {
-                Task { @MainActor in await self.handleVoiceCommand(transcript) }
             }
         }
         #endif

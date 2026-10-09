@@ -4,16 +4,20 @@ import AVFoundation
 import Speech
 
 // MARK: - VoiceEngine
-
-/// Coordinator for the «OK Coucou» voice feature.
-///
-/// - Uses VoiceAudio (energy VAD) and WakeSpotter (on-device recognition).
-/// - WakeSpotter handles both wake detection and command transcription in one session.
-/// - After wake: VoiceAudio.bypassVAD = true so the command receives continuous audio.
-/// - Fires island notifications (.voiceWoke / .voiceFinished) on the main thread.
-/// - Auto-pauses on: screen lock, screen sleep, system sleep, Low Power Mode,
-///   MacDictation active.
-/// - Wake window restarts every 20 s of continuous speech to bound recognition cost.
+//
+// Coordinator for the «OK Coucou» voice feature.
+//
+// - Uses VoiceAudio (energy VAD) and WakeSpotter (on-device recognition).
+// - WakeSpotter handles both wake detection and command transcription in one session.
+// - After wake: VoiceAudio.bypassVAD = true so the command receives continuous audio.
+// - Fires island notifications (.voiceWoke / .voiceFinished) on the main thread.
+// - Auto-pauses on: screen lock, screen sleep, system sleep, Low Power Mode,
+//   MacDictation active.
+// - Wake window restarts every 20 s of continuous speech to bound recognition cost.
+// - Backoff: onWakeWindowEnded reopens with exponential delay (0.5 s → 5 s);
+//   after maxFastFails consecutive fast-fails, waits for the next VAD segment.
+// - Auto-repair: consecutive window errors, audio stall, or device config change
+//   trigger a full pipeline teardown + rebuild.
 @MainActor
 final class VoiceEngine: ObservableObject {
     static let shared = VoiceEngine()
@@ -34,7 +38,7 @@ final class VoiceEngine: ObservableObject {
     private var screenLocked    = false
     private var screenSleeping  = false
     private var lowPowerMode    = false
-    private var dictationActive = 0    // reference count: MacDictation instances currently recording
+    private var dictationActive = 0
 
     var isPaused: Bool { screenLocked || screenSleeping || lowPowerMode || dictationActive > 0 }
 
@@ -44,21 +48,30 @@ final class VoiceEngine: ObservableObject {
     private var spotter: WakeSpotter?
     private var locale:  Locale?
 
-    /// True while the VAD has detected voice activity (VAD rose, hasn't fallen yet).
     private var voiceSegmentActive = false
 
-    // Command session timers and state
-    private var silenceWork:      DispatchWorkItem?
-    private var commandMaxWork:   DispatchWorkItem?
-    private var wakeWindowWork:   DispatchWorkItem?   // 20 s window-restart timer
-    private var lastWordCount     = 0
+    // Command session timers
+    private var silenceWork:    DispatchWorkItem?
+    private var commandMaxWork: DispatchWorkItem?
+    private var wakeWindowWork: DispatchWorkItem?   // 20 s periodic restart
+    private var lastWordCount   = 0
 
-    /// Time to start speaking after the wake phrase before the session times out.
+    // Backoff / loop prevention
+    private var backoff           = WakeWindowBackoff()
+    private var windowOpenedAt:   Date = .distantPast
+    private var consecErrorStreak = 0
+    private static let maxConsecErrors = 3
+
+    // Stall watchdog + unavailability retry
+    private var stallWork:           DispatchWorkItem?
+    private var unavailableWork:     DispatchWorkItem?
+    private var firstUnavailableAt:  Date? = nil
+    private static let stallTimeout:           TimeInterval = 2.0
+    private static let unavailableRebuildDelay: TimeInterval = 10.0
+
     private static let initialTimeout:  TimeInterval = 3.0
-    /// Silence duration that ends a command once speaking has started.
     private static let silenceTimeout:  TimeInterval = 1.2
     private static let commandMaxTime:  TimeInterval = 10.0
-    /// Restart the wake recognition window every N seconds of continuous speech.
     private static let wakeWindowMax:   TimeInterval = 20.0
 
     private static let cancelPhrases = ["annule", "annuler", "cancel", "laisse tomber", "never mind"]
@@ -83,17 +96,13 @@ final class VoiceEngine: ObservableObject {
         else if isEnabled { startAudioPipeline() }
     }
 
-    /// Called by IslandWindowController when listening is dismissed externally.
-    func cancelListening() {
-        endCommand(postFinished: false)
-    }
+    func cancelListening() { endCommand(postFinished: false) }
 
-    /// Start a command-listening session directly (without wake phrase).
-    /// Used for follow-up answers to .question outcomes.
     func startListeningDirectly() {
         guard isEnabled, !isPaused, !isListeningForCommand else { return }
         guard let audio = audio, let spotter = spotter, let loc = locale else { return }
         wakeWindowWork?.cancel(); wakeWindowWork = nil
+        stallWork?.cancel();      stallWork      = nil
         isListeningForCommand = true
         commandTranscript     = ""
         lastWordCount         = 0
@@ -110,7 +119,7 @@ final class VoiceEngine: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: maxItem)
     }
 
-    // MARK: - Audio pipeline
+    // MARK: - Pipeline lifecycle
 
     private func startAudioPipeline() {
         guard audio == nil else { return }
@@ -125,6 +134,8 @@ final class VoiceEngine: ObservableObject {
         let a = VoiceAudio()
         let s = WakeSpotter()
 
+        // ── Spotter callbacks ─────────────────────────────────────────────────
+
         s.onWake = { [weak self] transcript in
             self?.wakeDetected(transcript: transcript)
         }
@@ -137,46 +148,74 @@ final class VoiceEngine: ObservableObject {
             self?.endCommand(postFinished: true)
         }
 
-        a.onMicLevel = { [weak self] level in
-            self?.micLevel = level
+        s.onWakeWindowEnded = { [weak self] wasError in
+            guard let self, !isListeningForCommand, voiceSegmentActive else { return }
+
+            // Track consecutive error-ended windows (not clean final results).
+            if wasError {
+                consecErrorStreak += 1
+                if consecErrorStreak >= Self.maxConsecErrors {
+                    appendAppLog("nb.log",
+                        "[Voice] window error streak \(consecErrorStreak), rebuilding pipeline")
+                    self.triggerPipelineRebuild(reason: "window error streak \(consecErrorStreak)")
+                    return
+                }
+            } else {
+                consecErrorStreak = 0
+            }
+
+            // Backoff: fast-fail windows reopen with exponential delay.
+            let elapsed = Date().timeIntervalSince(windowOpenedAt)
+            switch backoff.windowEnded(elapsed: elapsed, wasError: wasError) {
+            case .open:
+                self.openWakeWindow(audio: a, spotter: s, locale: loc)
+            case .delay(let d):
+                appendAppLog("nb.log",
+                    "[Voice] window backoff \(String(format: "%.2f", d))s (streak \(backoff.streak))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + d) { [weak self] in
+                    guard let self, !isListeningForCommand, voiceSegmentActive else { return }
+                    self.openWakeWindow(audio: a, spotter: s, locale: loc)
+                }
+            case .stop:
+                appendAppLog("nb.log",
+                    "[Voice] window fast-fail limit (\(backoff.maxFastFails)), waiting for next VAD")
+            }
         }
 
-        // Wake window ended naturally (final result in wake phase) — reopen if voice is still active.
-        s.onWakeWindowEnded = { [weak self] in
-            guard let self, !isListeningForCommand, voiceSegmentActive else { return }
-            let preroll = a.drainPreroll()
-            s.beginWindow(locale: loc, preroll: preroll)
-            appendAppLog("nb.log", "[Voice] window open")
-            scheduleWakeWindowRestart(audio: a, spotter: s, locale: loc)
+        // ── Audio callbacks ───────────────────────────────────────────────────
+
+        a.onMicLevel = { [weak self] level in self?.micLevel = level }
+
+        a.onConfigChange = { [weak self] in
+            guard let self else { return }
+            self.triggerPipelineRebuild(reason: "AVAudioEngine config change")
         }
 
         a.onVoiceStart = { [weak self] in
             guard let self else { return }
             appendAppLog("nb.log", "[Voice] vad start")
             voiceSegmentActive = true
-            let preroll = a.drainPreroll()
-            s.beginWindow(locale: loc, preroll: preroll)
-            appendAppLog("nb.log", "[Voice] window open")
-            scheduleWakeWindowRestart(audio: a, spotter: s, locale: loc)
+            backoff.reset()
+            consecErrorStreak  = 0
+            self.openWakeWindow(audio: a, spotter: s, locale: loc)
+            self.startStallWatchdog(audio: a)
         }
 
         a.onVoiceEnd = { [weak self] in
             guard let self else { return }
             appendAppLog("nb.log", "[Voice] vad end")
-            voiceSegmentActive = false
+            voiceSegmentActive  = false
+            stallWork?.cancel(); stallWork = nil
+            unavailableWork?.cancel(); unavailableWork = nil
+            firstUnavailableAt  = nil
             wakeWindowWork?.cancel(); wakeWindowWork = nil
-            // Only close the wake window if we're not already in command mode.
-            // isInCommandPhase is lock-protected and safe to check on main before
-            // isListeningForCommand is set (race with onWake dispatch).
             if !isListeningForCommand && !s.isInCommandPhase {
                 s.endWindow()
                 appendAppLog("nb.log", "[Voice] window close")
             }
         }
 
-        a.onBuffer = { buf, _ in
-            s.feed(buf)
-        }
+        a.onBuffer = { buf, _ in s.feed(buf) }
 
         do {
             try a.start()
@@ -189,56 +228,120 @@ final class VoiceEngine: ObservableObject {
 
     private func stopAudioPipeline() {
         endCommand(postFinished: false)
-        wakeWindowWork?.cancel(); wakeWindowWork = nil
+        wakeWindowWork?.cancel();   wakeWindowWork   = nil
+        stallWork?.cancel();        stallWork        = nil
+        unavailableWork?.cancel();  unavailableWork  = nil
+        firstUnavailableAt  = nil
+        // Null callbacks before stop() so any queued main-thread dispatches become no-ops.
+        audio?.onVoiceStart    = nil
+        audio?.onVoiceEnd      = nil
+        audio?.onBuffer        = nil
+        audio?.onMicLevel      = nil
+        audio?.onConfigChange  = nil
+        spotter?.onWake            = nil
+        spotter?.onCommandUpdate   = nil
+        spotter?.onCommandEnd      = nil
+        spotter?.onWakeWindowEnded = nil
         audio?.stop()
-        audio   = nil
-        spotter = nil
-        locale  = nil
+        audio              = nil
+        spotter            = nil
+        locale             = nil
         voiceSegmentActive = false
+        backoff.reset()
+        consecErrorStreak  = 0
     }
 
-    // MARK: - 20-second wake-window restart
+    // MARK: - Wake window helpers
 
+    /// Open one wake+command recognition window.
+    /// Logs "[Voice] window open" only if the underlying task started.
+    /// Handles recognizer-unavailable retries and pipeline rebuild after 10 s.
+    @discardableResult
+    private func openWakeWindow(audio: VoiceAudio, spotter: WakeSpotter, locale: Locale) -> Bool {
+        let preroll = audio.drainPreroll()
+        let started = spotter.beginWindow(locale: locale, preroll: preroll)
+        if started {
+            windowOpenedAt     = Date()
+            firstUnavailableAt = nil
+            unavailableWork?.cancel(); unavailableWork = nil
+            appendAppLog("nb.log", "[Voice] window open")
+            scheduleWakeWindowRestart(audio: audio, spotter: spotter, locale: locale)
+        } else {
+            // Recognizer unavailable or already active. Retry until rebuild threshold.
+            if firstUnavailableAt == nil { firstUnavailableAt = Date() }
+            let age = Date().timeIntervalSince(firstUnavailableAt!)
+            if age >= Self.unavailableRebuildDelay {
+                appendAppLog("nb.log", "[Voice] recognizer unavailable \(Int(age))s, rebuilding")
+                triggerPipelineRebuild(reason: "recognizer unavailable \(Int(age))s")
+            } else {
+                unavailableWork?.cancel()
+                let item = DispatchWorkItem { [weak self] in
+                    guard let self, voiceSegmentActive, !isListeningForCommand else { return }
+                    self.openWakeWindow(audio: audio, spotter: spotter, locale: locale)
+                }
+                unavailableWork = item
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: item)
+            }
+        }
+        return started
+    }
+
+    /// 20-second periodic wake-window restart to bound recognition cost.
     private func scheduleWakeWindowRestart(audio: VoiceAudio, spotter: WakeSpotter, locale: Locale) {
         wakeWindowWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self, !isListeningForCommand else { return }
-            let preroll = audio.drainPreroll()
             spotter.endWindow()
-            appendAppLog("nb.log", "[Voice] window close")
-            spotter.beginWindow(locale: locale, preroll: preroll)
-            appendAppLog("nb.log", "[Voice] window open")
-            scheduleWakeWindowRestart(audio: audio, spotter: spotter, locale: locale)
+            appendAppLog("nb.log", "[Voice] window close (20s)")
+            self.openWakeWindow(audio: audio, spotter: spotter, locale: locale)
         }
         wakeWindowWork = item
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.wakeWindowMax, execute: item)
     }
 
+    /// 2-second audio stall watchdog: fires if no buffers arrive while VAD is active.
+    private func startStallWatchdog(audio: VoiceAudio) {
+        stallWork?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, voiceSegmentActive, !isListeningForCommand else { return }
+            let age = Date().timeIntervalSince(audio.lastBufferTime)
+            guard age > Self.stallTimeout else { return }
+            appendAppLog("nb.log", "[Voice] audio stall \(String(format: "%.1f", age))s, rebuilding")
+            self.triggerPipelineRebuild(reason: "audio stall \(String(format: "%.1f", age))s")
+        }
+        stallWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.stallTimeout, execute: item)
+    }
+
+    /// Tear down and rebuild the full audio pipeline.
+    private func triggerPipelineRebuild(reason: String) {
+        appendAppLog("nb.log", "[Voice] pipeline rebuild (\(reason))")
+        stopAudioPipeline()
+        guard isEnabled, !isPaused else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self, isEnabled, !isPaused else { return }
+            self.startAudioPipeline()
+        }
+    }
+
     // MARK: - Wake detection
 
     private func wakeDetected(transcript: String) {
-        // FIX: reset spotter if we're going to ignore this wake, so the window doesn't
-        // stay permanently in command phase and block future wake detections.
-        guard isEnabled, !isPaused else {
-            spotter?.endWindow()
-            return
-        }
-        guard !isListeningForCommand else {
-            spotter?.endWindow()
-            return
-        }
-        guard !shouldIgnoreWake() else {
-            spotter?.endWindow()
-            return
-        }
+        guard isEnabled, !isPaused else { spotter?.endWindow(); return }
+        guard !isListeningForCommand else { spotter?.endWindow(); return }
+        guard !shouldIgnoreWake() else { spotter?.endWindow(); return }
         wakeWindowWork?.cancel(); wakeWindowWork = nil
+        stallWork?.cancel();      stallWork      = nil
+        unavailableWork?.cancel(); unavailableWork = nil
+        firstUnavailableAt   = nil
+        backoff.reset()
+        consecErrorStreak    = 0
         isListeningForCommand = true
         commandTranscript     = ""
         lastWordCount         = 0
         audio?.bypassVAD      = true
         appendAppLog("nb.log", "[Voice] wake")
         NotificationCenter.default.post(name: .voiceWoke, object: nil)
-        // Initial timeout: 3 s to start speaking, then 1.2 s silence to finish.
         resetSilenceTimer()
         let maxItem = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
@@ -253,7 +356,6 @@ final class VoiceEngine: ObservableObject {
         if wc > lastWordCount {
             lastWordCount = wc
             resetSilenceTimer()
-            // Cancel only when the ENTIRE command is a cancel phrase (not a substring).
             let trimmed = command.trimmingCharacters(in: .whitespaces)
             if Self.cancelPhrases.contains(WakePhrase.normalise(trimmed)) {
                 endCommand(postFinished: true)
@@ -265,8 +367,6 @@ final class VoiceEngine: ObservableObject {
 
     private func resetSilenceTimer() {
         silenceWork?.cancel()
-        // Use the longer initial timeout before any words are spoken;
-        // switch to the shorter silence timeout once speaking has begun.
         let timeout = lastWordCount > 0 ? Self.silenceTimeout : Self.initialTimeout
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
@@ -275,12 +375,15 @@ final class VoiceEngine: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: item)
     }
 
+    /// Idempotent: if not in command mode, only cancels timers (no endWindow, no resetVAD).
+    /// This prevents closing a freshly opened wake window when the result view is dismissed.
     private func endCommand(postFinished: Bool) {
         silenceWork?.cancel();    silenceWork    = nil
         commandMaxWork?.cancel(); commandMaxWork = nil
+        guard isListeningForCommand else { return }
         audio?.bypassVAD  = false
-        audio?.resetVAD()         // reset VAD so next speech triggers a fresh start
-        voiceSegmentActive = false // treat the voice segment as ended after command
+        audio?.resetVAD()
+        voiceSegmentActive = false
         micLevel           = 0
         spotter?.endWindow()
         appendAppLog("nb.log", "[Voice] command end (had transcript: \(!commandTranscript.isEmpty))")
@@ -295,8 +398,6 @@ final class VoiceEngine: ObservableObject {
 
     // MARK: - Helpers
 
-    /// Returns true when the island is showing an approval, question, or chat prompt —
-    /// wake detection is suppressed in those states to avoid interrupting the user.
     private func shouldIgnoreWake() -> Bool {
         let v = AppState.shared.view
         return v == .approval || v == .question || v == .prompt || v == .voiceResult
@@ -380,6 +481,5 @@ final class VoiceEngine: ObservableObject {
 extension Notification.Name {
     static let voiceWoke     = Notification.Name("notchBuddy.voiceWoke")
     static let voiceFinished = Notification.Name("notchBuddy.voiceFinished")
-    // dictationDidStart / dictationDidEnd are defined in MacDictation.swift
 }
 #endif
