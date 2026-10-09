@@ -177,6 +177,9 @@ struct SettingsView: View {
                         SettingsSidebarRow(title: "Agents",       icon: "terminal.fill",                     color: "#3B9EFF").tag("agents")
                         SettingsSidebarRow(title: "Chat",         icon: "bubble.left.and.bubble.right.fill", color: "#E07950").tag("chat")
                         SettingsSidebarRow(title: "Integrations", icon: "puzzlepiece.extension.fill",        color: "#7C5CFF").tag("integrations")
+                        #if !APPSTORE
+                        SettingsSidebarRow(title: "Voice",        icon: "mic.fill",                          color: "#F97316").tag("voice")
+                        #endif
                         SettingsSidebarRow(title: "Shortcuts",    icon: "keyboard.fill",                     color: "#6366F1").tag("shortcuts")
                     }
                     .listStyle(.sidebar)
@@ -245,6 +248,7 @@ struct SettingsView: View {
         case "agents":       return String(localized: "Agents")
         case "chat":         return String(localized: "Chat")
         case "integrations": return String(localized: "Integrations")
+        case "voice":        return "Voice"
         case "shortcuts":    return String(localized: "Shortcuts")
         default:             return String(localized: "General")
         }
@@ -256,6 +260,9 @@ struct SettingsView: View {
         case "agents":       agentsSection
         case "chat":         chatSection
         case "integrations": integrationsSection
+        #if !APPSTORE
+        case "voice":        voiceSection
+        #endif
         case "shortcuts":    ShortcutsSettingsView()
         default:             generalSection
         }
@@ -1247,6 +1254,101 @@ struct SettingsView: View {
             .padding(6)
         }
     }
+
+    // MARK: - Voice section
+
+    #if !APPSTORE
+    @State private var voicePermissionsGranted: Bool = false
+    @ObservedObject private var voiceEngine = VoiceEngine.shared
+
+    @ViewBuilder private var voiceSection: some View {
+        GroupBox("«\u{202F}OK Coucou\u{202F}» — commande vocale mains libres") {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle("Activer la commande vocale", isOn: $voiceEngine.isEnabled)
+                    .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
+
+                Text("Quand cette option est activée, Coucou écoute le mot de réveil «\u{202F}OK Coucou\u{202F}». La reconnaissance vocale se fait entièrement sur l'appareil — aucun audio ni transcription ne quitte votre Mac.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Orange dot explanation
+                HStack(alignment: .top, spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: "#F97316"))
+                        .frame(width: 8, height: 8)
+                        .padding(.top, 2)
+                    Text("Pendant l'écoute, macOS affiche le point orange du microphone en haut à droite de la barre de menus. C'est le comportement normal du système.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if voiceEngine.recognizerUnavailable {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Aucun modèle de reconnaissance vocale disponible sur cet appareil. Installez un modèle dans Réglages Système → Clavier → Dictée.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(6)
+        }
+
+        GroupBox("Permissions") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: micStatusIcon)
+                        .foregroundColor(micStatusColor)
+                    Text("Microphone : \(micStatusLabel)")
+                        .font(.system(size: 12))
+                }
+                HStack(spacing: 6) {
+                    Image(systemName: speechStatusIcon)
+                        .foregroundColor(speechStatusColor)
+                    Text("Reconnaissance vocale : \(speechStatusLabel)")
+                        .font(.system(size: 12))
+                }
+                if !voicePermissionsGranted {
+                    Button("Demander les permissions") {
+                        Task {
+                            let ok = await VoiceSettings.requestPermissions()
+                            voicePermissionsGranted = ok
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(6)
+        }
+        .onAppear {
+            voicePermissionsGranted = VoiceSettings.micStatus == .granted
+                && VoiceSettings.speechStatus == .granted
+        }
+    }
+
+    private var micStatusIcon:  String { VoiceSettings.micStatus    == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
+    private var micStatusColor: Color  { VoiceSettings.micStatus    == .granted ? .green : .red }
+    private var micStatusLabel: String {
+        switch VoiceSettings.micStatus {
+        case .granted:      return "accordé"
+        case .denied:       return "refusé (Réglages Système → Confidentialité → Microphone)"
+        case .undetermined: return "non demandé"
+        }
+    }
+    private var speechStatusIcon:  String { VoiceSettings.speechStatus == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
+    private var speechStatusColor: Color  { VoiceSettings.speechStatus == .granted ? .green : .red }
+    private var speechStatusLabel: String {
+        switch VoiceSettings.speechStatus {
+        case .granted:      return "accordé"
+        case .denied:       return "refusé (Réglages Système → Confidentialité → Reconnaissance vocale)"
+        case .undetermined: return "non demandé"
+        }
+    }
+    #endif
 
     // MARK: - Actions
 

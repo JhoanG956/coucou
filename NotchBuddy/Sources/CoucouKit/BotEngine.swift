@@ -679,6 +679,17 @@ final class BotEngine: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                 SoundEngine.shared.play("annoyed")
             }
+        case .listening:
+            // Attentive: slight head tilt + wide-open eyes
+            anim("tilt", keys: [
+                TweenKey(target: -0.07, duration: 180, ease: Ease.out),
+                TweenKey(target: -0.07, duration: CGFloat((duration - 0.4) * 1000), ease: Ease.lin),
+                TweenKey(target: 0,     duration: 240, ease: Ease.inOut),
+            ])
+            anim("es", keys: [
+                TweenKey(target: 1.12, duration: 200, ease: Ease.out),
+                TweenKey(target: 1,    duration: 500, ease: Ease.inOut),
+            ])
         }
     }
 
@@ -1615,6 +1626,7 @@ private func emoteEyeShape(_ e: BotEmote) -> EyeShape {
     case .yawn:      return .tired
     case .happy:     return .happy
     case .annoyed:   return .line
+    case .listening: return .wide
     }
 }
 

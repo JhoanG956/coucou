@@ -248,6 +248,11 @@ final class IslandWindowController: NSWindowController {
                     } else {
                         SoundEngine.shared.play("peek")
                     }
+                } else if from == .listening {
+                    // Voice session ended — no peek sound, just compact
+                    #if !APPSTORE
+                    VoiceEngine.shared.cancelListening()
+                    #endif
                 }
                 // setMode BEFORE changing view: onChange(of: state.view) guards on .expanded,
                 // so setting view while already compact won't trigger a spurious open animation.
@@ -265,6 +270,11 @@ final class IslandWindowController: NSWindowController {
 
             case .coucou:
                 self.expand(to: .greeting)
+
+            case .listening:
+                self.expand(to: .listening)
+                NotificationCenter.default.post(name: .triggerEmote,
+                                                object: BotEmote.listening)
             }
         }
 
@@ -276,6 +286,21 @@ final class IslandWindowController: NSWindowController {
         }
 
         fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+
+        // Voice: wake phrase detected → open listening island
+        #if !APPSTORE
+        NotificationCenter.default.addObserver(
+            forName: .voiceWoke, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.fsm.voiceWoke()
+        }
+        // Voice: command session ended → close listening island
+        NotificationCenter.default.addObserver(
+            forName: .voiceFinished, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.fsm.voiceFinished()
+        }
+        #endif
     }
 
     // MARK: - Polling loop

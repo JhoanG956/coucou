@@ -6,10 +6,11 @@ import Foundation
 final class IslandStateMachine {
 
     enum State: Equatable {
-        case hidden   // island invisible (notch size)
-        case petit    // compact island (notch + ears)
-        case home     // expanded, overview
-        case coucou   // expanded, greeting animation
+        case hidden    // island invisible (notch size)
+        case petit     // compact island (notch + ears)
+        case home      // expanded, overview
+        case coucou    // expanded, greeting animation
+        case listening // expanded, voice listening («OK Coucou» detected)
     }
 
     private(set) var state: State = .hidden
@@ -81,6 +82,8 @@ final class IslandStateMachine {
         case .coucou:
             // Mouse hovering during greeting — cancel short auto-collapse, extend to hover delay
             scheduleGreetCollapse(delay: greetHoverCollapseDelay)
+        case .listening:
+            break   // already open; no action on hover
         }
     }
 
@@ -99,6 +102,8 @@ final class IslandStateMachine {
                 greetCollapseWork?.cancel(); greetCollapseWork = nil
                 transition(to: .petit)
             }
+        case .listening:
+            break   // never auto-collapse while listening
         }
     }
 
@@ -136,8 +141,23 @@ final class IslandStateMachine {
     /// 15 s home timer left the island compact on screen while the FSM still said `.home`.
     func collapse() {
         openedByHover = false
-        guard state == .home || state == .coucou else { return }
+        guard state == .home || state == .coucou || state == .listening else { return }
         cancelTimers()
+        transition(to: .petit)
+    }
+
+    // MARK: – Voice inputs
+
+    /// Wake phrase detected: open the island in listening mode from any state.
+    func voiceWoke() {
+        cancelTimers()
+        openedByHover = false
+        transition(to: .listening)
+    }
+
+    /// Command session ended (silence timeout, cancel phrase, or user dismiss).
+    func voiceFinished() {
+        guard state == .listening else { return }
         transition(to: .petit)
     }
 
