@@ -15,21 +15,66 @@ enum IntentParser {
         let words = norm.split(separator: " ").map(String.init)
         guard !words.isEmpty else { return .unknown }
 
+        // rawWords: same splits as normalise but no diacritics strip, no letter filter, original case
+        let rawWords0 = buildRawWords(raw)
+        // defilter both arrays in parallel: ma→la, mon→le, strip filler words
+        let (fwords, frawWords) = defilter(words, rawWords: rawWords0)
+        guard !fwords.isEmpty else { return .unknown }
+
         // ── 1. Explicit music-only patterns ──────────────────────────────────
-        if matchesAny(words, in: pausePrefixes)   { return .musicPause }
-        if matchesAny(words, in: nextPrefixes)    { return .musicNext }
-        if matchesAny(words, in: prevPrefixes)    { return .musicPrevious }
-        if matchesAny(words, in: volUpPrefixes)   { return .musicVolumeUp }
-        if matchesAny(words, in: volDownPrefixes) { return .musicVolumeDown }
+        if matchesAny(fwords, in: pausePrefixes)   { return .musicPause }
+        if matchesAny(fwords, in: nextPrefixes)    { return .musicNext }
+        if matchesAny(fwords, in: prevPrefixes)    { return .musicPrevious }
+        if matchesAny(fwords, in: volUpPrefixes)   { return .musicVolumeUp }
+        if matchesAny(fwords, in: volDownPrefixes) { return .musicVolumeDown }
 
         // ── 2. Volume set: "volume à 50" / "set volume 50" ──────────────────
-        if let pct = extractVolume(words) { return .musicSetVolume(pct) }
+        if let pct = extractVolume(fwords) { return .musicSetVolume(pct) }
 
-        // ── 3. "principale/principal" keyword → pillSetMain ──────────────────
+        // ── 3. Explicit music-play target: "… sur Spotify" / "… on Spotify" ─
+        if let target = extractMusicPlayTarget(fwords, pills: pills) {
+            return .musicPlay(target: target)
+        }
+
+        // ── 4. "principale/principal" keyword → pillSetMain ──────────────────
         //    "passe la pilule principale sur Cursor"
-        if words.contains("principale") || words.contains("principal") {
-            if let surIdx = words.firstIndex(of: "sur"), surIdx + 1 < words.count {
-                let entity = words[(surIdx+1)...].joined(separator: " ")
+        if fwords.contains("principale") || fwords.contains("principal") {
+            if let surIdx = fwords.firstIndex(of: "sur"), surIdx + 1 < fwords.count {
+                let entity = fwords[(surIdx+1)...].joined(separator: " ")
+                let clean  = stripArticles(entity)
+                if !clean.isEmpty,
+                   let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
+                    return .pillSetMain(id: id)
+                }
+            }
+            // "change la pilule principale pour Codex" / "pilule principale c est X"
+            for sep in ["pour", "c est", "est"] {
+                let sepWords = sep.split(separator: " ").map(String.init)
+                if let sepStart = indexOfSequence(sepWords, in: fwords) {
+                    let entity = fwords[(sepStart + sepWords.count)...].joined(separator: " ")
+                    let clean  = stripArticles(entity)
+                    if !clean.isEmpty,
+                       let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
+                        return .pillSetMain(id: id)
+                    }
+                }
+            }
+        }
+        // "mets Cursor en principal[e]"
+        if let enIdx = fwords.indices.dropLast().first(where: {
+            fwords[$0] == "en" && (fwords[$0+1] == "principal" || fwords[$0+1] == "principale")
+        }), enIdx > 0 {
+            let entity = fwords[1..<enIdx].joined(separator: " ")
+            let clean  = stripArticles(entity)
+            if !clean.isEmpty,
+               let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
+                return .pillSetMain(id: id)
+            }
+        }
+        // "Cursor comme pilule principale"
+        if fwords.contains("comme") && (fwords.contains("principale") || fwords.contains("principal")) {
+            if let comIdx = fwords.firstIndex(of: "comme"), comIdx > 0 {
+                let entity = fwords[0..<comIdx].joined(separator: " ")
                 let clean  = stripArticles(entity)
                 if !clean.isEmpty,
                    let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
@@ -37,51 +82,69 @@ enum IntentParser {
                 }
             }
         }
-        // "mets Cursor en principal" — entity BEFORE "en principal[e]"
-        if let enIdx = words.indices.dropLast().first(where: {
-            words[$0] == "en" && (words[$0+1] == "principal" || words[$0+1] == "principale")
-        }), enIdx > 0 {
-            let entity = words[1..<enIdx].joined(separator: " ")   // skip leading verb
-            let clean  = stripArticles(entity)
-            if !clean.isEmpty,
-               let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
-                return .pillSetMain(id: id)
-            }
-        }
 
-        // ── 4. pillReplace: "remplace n8n par github" ────────────────────────
-        if let (old, new) = extractReplace(words, pills: pills) {
+        // ── 5. pillReplace: "remplace n8n par github" ────────────────────────
+        if let (old, new) = extractReplace(fwords, pills: pills) {
             return .pillReplace(old: old, new: new)
         }
 
-        // ── 5. pillOnly: "garde seulement GitHub et Vercel" ──────────────────
-        if let ids = extractOnly(words, pills: pills) {
+        // ── 6. pillOnly: "garde seulement GitHub et Vercel" ──────────────────
+        if let ids = extractOnly(fwords, pills: pills) {
             return .pillOnly(ids)
         }
 
-        // ── 6. Playlist triggers (before generic music so "mets la playlist…" wins) ─
-        if let name = extractAfter(words, triggers: playlistTriggers) {
-            let clean = stripArticles(name)
-            if !clean.isEmpty { return .musicPlayPlaylist(name: clean) }
+        // ── 7. Playlist triggers (before generic music so "mets la playlist…" wins) ─
+        if let match = extractAfter(fwords, rawWords: frawWords, triggers: playlistTriggers) {
+            let clean    = stripArticles(match.norm)
+            let cleanRaw = stripArticlesRaw(match.raw)
+            if !clean.isEmpty {
+                return .musicPlayPlaylist(name: cleanRaw.isEmpty ? clean : cleanRaw)
+            }
         }
 
-        // ── 7. pillMain triggers (setMain-only verbs) ────────────────────────
-        if let name = extractAfter(words, triggers: pillMainTriggers) {
-            let clean = stripArticles(name)
+        // ── 8. pillMain triggers (setMain-only verbs) ────────────────────────
+        if let match = extractAfter(fwords, rawWords: frawWords, triggers: pillMainTriggers) {
+            let clean = stripArticles(match.norm)
             if !clean.isEmpty {
+                // "pilule" keyword present but no "principale" → pillAdd (handled in step 9)
+                if !fwords.contains("principale") && !fwords.contains("principal") {
+                    // Check if word "pilule" or "pill" is in the original (before trigger)
+                    // The trigger itself consumed "utilise/use/passe sur" etc. so "pilule" before trigger → pillAdd
+                }
                 let id = EntityResolver.resolve(clean, from: pills, category: .workspace)
                 return id != nil ? .pillSetMain(id: id!) : .unknown
             }
         }
 
-        // ── 8. Ambiguous triggers: pill-first, then music ────────────────────
-        if let name = extractAfter(words, triggers: musicPillTriggers) {
-            let clean = stripArticles(name)
+        // ── 9. Ambiguous triggers: pill-first, then music ────────────────────
+        if let match = extractAfter(fwords, rawWords: frawWords, triggers: musicPillTriggers) {
+            // Detect "pilule" keyword without "principale" → force pillAdd path
+            let hasPilule   = fwords.contains("pilule") || fwords.contains("pill")
+            let hasMainKeyword = fwords.contains("principale") || fwords.contains("principal")
+            let clean    = stripArticles(match.norm)
+            let cleanRaw = stripArticlesRaw(match.raw)
             if !clean.isEmpty {
-                // Music service pills → musicPlay
+                // Check for multi-pill: "X et Y"
+                let parts = splitByConjunction(clean)
+                if parts.count >= 2 {
+                    let ids = parts.compactMap { part -> String? in
+                        let p = stripArticles(part)
+                        return p.isEmpty ? nil : EntityResolver.resolve(p, from: pills)
+                    }
+                    if ids.count >= 2 { return .pillAddMultiple(ids: ids) }
+                }
+                // Music service pills → musicPlay with target
                 if let id = EntityResolver.resolve(clean, from: pills),
                    musicServicePillIds.contains(id) {
-                    return .musicPlay
+                    let target: MusicTarget = id == "integration_spotify" ? .spotify : .appleMusic
+                    return .musicPlay(target: target)
+                }
+                // "pilule" without "principale" → pillAdd (skip workspace check)
+                if hasPilule && !hasMainKeyword {
+                    if let id = EntityResolver.resolve(clean, from: pills) {
+                        return .pillAdd(id: id)
+                    }
+                    return .unknown
                 }
                 // Workspace pill → pillSetMain
                 if let id = EntityResolver.resolve(clean, from: pills, category: .workspace) {
@@ -91,37 +154,56 @@ enum IntentParser {
                 if let id = EntityResolver.resolve(clean, from: pills) {
                     return .pillAdd(id: id)
                 }
-                // Generic music word → musicPlay
-                if musicGenericWords.contains(clean) { return .musicPlay }
-                // Not a pill, not generic → artist
-                return .musicPlayArtist(name: clean)
+                // Generic music word → musicPlay(nil)
+                if musicGenericWords.contains(clean) { return .musicPlay(target: nil) }
+                // Not a pill, not generic → search (title or artist) with original text
+                let name = cleanRaw.isEmpty ? clean : cleanRaw
+                return .musicPlaySearch(name: name)
             }
         }
 
-        // ── 9. pillRemove triggers ────────────────────────────────────────────
-        if let name = extractAfter(words, triggers: pillRemoveTriggers) {
-            let clean = stripArticles(name)
+        // ── 10. pillRemove triggers ───────────────────────────────────────────
+        if let match = extractAfter(fwords, rawWords: frawWords, triggers: pillRemoveTriggers) {
+            let clean = stripArticles(match.norm)
             if !clean.isEmpty {
+                // Multi-pill: "X et Y"
+                let parts = splitByConjunction(clean)
+                if parts.count >= 2 {
+                    let ids = parts.compactMap { part -> String? in
+                        let p = stripArticles(part)
+                        return p.isEmpty ? nil : EntityResolver.resolve(p, from: pills)
+                    }
+                    if ids.count >= 2 { return .pillRemoveMultiple(ids: ids) }
+                }
                 if let id = EntityResolver.resolve(clean, from: pills) { return .pillRemove(id: id) }
                 return .unknown
             }
         }
 
-        // ── 10. pillAdd-only triggers (affiche, show, montre, enable) ─────────
-        if let name = extractAfter(words, triggers: pillAddOnlyTriggers) {
-            let clean = stripArticles(name)
+        // ── 11. pillAdd-only triggers (affiche, show, montre, enable) ─────────
+        if let match = extractAfter(fwords, rawWords: frawWords, triggers: pillAddOnlyTriggers) {
+            let clean = stripArticles(match.norm)
             if !clean.isEmpty {
+                // Multi-pill: "X et Y"
+                let parts = splitByConjunction(clean)
+                if parts.count >= 2 {
+                    let ids = parts.compactMap { part -> String? in
+                        let p = stripArticles(part)
+                        return p.isEmpty ? nil : EntityResolver.resolve(p, from: pills)
+                    }
+                    if ids.count >= 2 { return .pillAddMultiple(ids: ids) }
+                }
                 if let id = EntityResolver.resolve(clean, from: pills) { return .pillAdd(id: id) }
                 return .unknown
             }
         }
 
-        // ── 11. Generic musicPlay phrases (bare / multi-word) ─────────────────
-        if matchesAny(words, in: playPrefixes) { return .musicPlay }
+        // ── 12. Generic musicPlay phrases (bare / multi-word) ─────────────────
+        if matchesAny(fwords, in: playPrefixes) { return .musicPlay(target: nil) }
 
         // Bare single music verb
-        if words.count == 1, let v = words.first, bareMusicVerbs.contains(v) {
-            return .musicPlay
+        if fwords.count == 1, let v = fwords.first, bareMusicVerbs.contains(v) {
+            return .musicPlay(target: nil)
         }
 
         return .unknown
@@ -139,6 +221,38 @@ enum IntentParser {
         return r.split(separator: " ").joined(separator: " ")
     }
 
+    /// Build rawWords: original casing + accents, split on apostrophes/hyphens,
+    /// filter words that have no letter or digit (pure punctuation).
+    private static func buildRawWords(_ raw: String) -> [String] {
+        var r = raw
+        r = r.replacingOccurrences(of: "'",       with: " ")
+        r = r.replacingOccurrences(of: "\u{2019}", with: " ")
+        r = r.replacingOccurrences(of: "-",        with: " ")
+        return r.split(separator: " ").map(String.init).filter { w in
+            !w.isEmpty && w.contains(where: { $0.isLetter || $0.isNumber })
+        }
+    }
+
+    /// Apply filler-word removal and article normalisation to both arrays in parallel.
+    /// Removes: "un", "peu", "s", "il", "te", "plait", "moi" (filler words).
+    /// Replaces: "ma"→"la", "mon"→"le", "mes"→"les" (possessive → definite article).
+    private static func defilter(
+        _ words: [String], rawWords: [String]
+    ) -> ([String], [String]) {
+        let fillers:  Set<String>    = ["un", "peu", "s", "il", "te", "plait", "moi"]
+        let synonyms: [String: String] = ["ma": "la", "mon": "le", "mes": "les"]
+        var fw: [String] = []
+        var fr: [String] = []
+        for (w, r) in zip(words, rawWords) {
+            if let rep = synonyms[w] {
+                fw.append(rep); fr.append(r)
+            } else if !fillers.contains(w) {
+                fw.append(w); fr.append(r)
+            }
+        }
+        return (fw, fr)
+    }
+
     // MARK: - Pattern helpers
 
     private static func matchesAny(_ words: [String], in table: [[String]]) -> Bool {
@@ -153,26 +267,68 @@ enum IntentParser {
         return false
     }
 
-    private static func extractAfter(_ words: [String], triggers: [[String]]) -> String? {
+    /// Return (normTail, rawTail) after the first matching trigger, longest first.
+    private static func extractAfter(
+        _ words: [String],
+        rawWords: [String],
+        triggers: [[String]]
+    ) -> (norm: String, raw: String)? {
         let sorted = triggers.sorted { $0.count > $1.count }
         for trigger in sorted {
             guard trigger.count < words.count else { continue }
             for i in 0...(words.count - trigger.count) {
                 if words[i..<(i + trigger.count)].elementsEqual(trigger) {
-                    let tail = words[(i + trigger.count)...].joined(separator: " ")
-                    if !tail.isEmpty { return tail }
+                    let norm = words[(i + trigger.count)...].joined(separator: " ")
+                    let raw  = i + trigger.count < rawWords.count
+                               ? rawWords[(i + trigger.count)...].joined(separator: " ")
+                               : ""
+                    if !norm.isEmpty { return (norm, raw) }
                 }
             }
         }
         return nil
     }
 
+    /// First index where `seq` appears as a contiguous subsequence in `words`.
+    private static func indexOfSequence(_ seq: [String], in words: [String]) -> Int? {
+        guard !seq.isEmpty, seq.count <= words.count else { return nil }
+        for i in 0...(words.count - seq.count) {
+            if words[i..<(i + seq.count)].elementsEqual(seq) { return i }
+        }
+        return nil
+    }
+
     private static func stripArticles(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
-                                      "some", "the", "a", "an", "pilule", "pill"]
+                                      "some", "the", "a", "an", "pilule", "pill",
+                                      "ma", "mon", "mes"]
         var ws = name.split(separator: " ").map(String.init)
         while let first = ws.first, articles.contains(first) { ws.removeFirst() }
         return ws.joined(separator: " ")
+    }
+
+    /// stripArticles applied to a raw (original-casing) string by comparing lowercased.
+    private static func stripArticlesRaw(_ name: String) -> String {
+        let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
+                                      "some", "the", "a", "an", "pilule", "pill",
+                                      "ma", "mon", "mes"]
+        var ws = name.split(separator: " ").map(String.init)
+        while let first = ws.first, articles.contains(first.lowercased()) { ws.removeFirst() }
+        return ws.joined(separator: " ")
+    }
+
+    /// Split entity string by "et"/"and" conjunctions.
+    private static func splitByConjunction(_ name: String) -> [String] {
+        let words = name.split(separator: " ").map(String.init)
+        var parts: [[String]] = []
+        var cur:   [String]  = []
+        for w in words {
+            if w == "et" || w == "and" {
+                if !cur.isEmpty { parts.append(cur); cur = [] }
+            } else { cur.append(w) }
+        }
+        if !cur.isEmpty { parts.append(cur) }
+        return parts.map { $0.joined(separator: " ") }
     }
 
     // MARK: - Volume extraction
@@ -181,11 +337,27 @@ enum IntentParser {
         guard words.contains("volume"),
               let numStr = words.last(where: { Int($0) != nil }),
               let pct = Int(numStr), pct >= 0, pct <= 100 else { return nil }
-        // Ensure "volume" appears before the number
         guard let volIdx  = words.firstIndex(of: "volume"),
               let numIdx  = words.indices.last(where: { Int(words[$0]) != nil }),
               volIdx < numIdx else { return nil }
         return pct
+    }
+
+    // MARK: - Music target extraction: "… sur Spotify" / "… on Spotify"
+
+    private static func extractMusicPlayTarget(
+        _ words: [String], pills: [PillDefinition]
+    ) -> MusicTarget? {
+        for preposition in ["sur", "on"] {
+            guard let idx = words.lastIndex(of: preposition), idx + 1 < words.count else { continue }
+            let afterWords = Array(words[(idx+1)...])
+            let entity = afterWords.joined(separator: " ")
+            if let id = EntityResolver.resolve(entity, from: pills) {
+                if id == "integration_spotify"  { return .spotify }
+                if id == "integration_music"    { return .appleMusic }
+            }
+        }
+        return nil
     }
 
     // MARK: - pillReplace extraction
@@ -195,7 +367,8 @@ enum IntentParser {
         let separators = ["par", "for", "contre", "with", "by"]
         for start in startTriggers {
             guard contains(words, sequence: start) else { continue }
-            let rest = Array(words[start.count...])
+            guard let startIdx = indexOfSequence(start, in: words) else { continue }
+            let rest = Array(words[(startIdx + start.count)...])
             for sep in separators {
                 guard let sepIdx = rest.firstIndex(of: sep), sepIdx > 0, sepIdx < rest.count - 1 else { continue }
                 let e1 = stripArticles(rest[..<sepIdx].joined(separator: " "))
@@ -238,20 +411,26 @@ enum IntentParser {
     // MARK: - Keyword tables
 
     private static let pausePrefixes: [[String]] = [
-        ["pause"], ["stop"], ["stoppe"],
+        ["pause"], ["stop"], ["stoppe"], ["coupe"],
         ["mets", "en", "pause"], ["met", "en", "pause"],
         ["arrete", "la", "musique"], ["arrete", "la", "chanson"],
         ["arrete", "la", "lecture"],
+        ["arrete"],
+        ["coupe", "la", "musique"],
     ]
 
     private static let nextPrefixes: [[String]] = [
         ["morceau", "suivant"], ["chanson", "suivante"], ["suivant"], ["prochain"],
         ["next", "track"], ["next", "song"], ["next"], ["skip"],
+        ["chanson", "d", "apres"], ["d", "apres"],
+        ["passe", "a", "la", "suivante"],
     ]
 
     private static let prevPrefixes: [[String]] = [
         ["morceau", "precedent"], ["chanson", "precedente"], ["precedent"], ["en", "arriere"],
         ["previous", "track"], ["previous", "song"], ["previous"], ["back"],
+        ["remets", "la", "chanson", "d", "avant"], ["chanson", "d", "avant"],
+        ["reviens", "en", "arriere"],
     ]
 
     private static let volUpPrefixes: [[String]] = [

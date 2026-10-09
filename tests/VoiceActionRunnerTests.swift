@@ -9,7 +9,7 @@ final class MockMusic: MusicControlling, @unchecked Sendable {
     var isSpotifyRunning: Bool { spotifyRunning }
 
     var calls: [String] = []
-    var artistResult  = true   // mock return for playArtist
+    var searchResult  = true   // mock return for playSearch
     var playlistResult = true  // mock return for playPlaylist
 
     @MainActor func play()                     { calls.append("play") }
@@ -19,9 +19,10 @@ final class MockMusic: MusicControlling, @unchecked Sendable {
     @MainActor func volumeUp()                 { calls.append("volUp") }
     @MainActor func volumeDown()               { calls.append("volDown") }
     @MainActor func setVolume(_ p: Int)        { calls.append("setVolume:\(p)") }
-    @MainActor func playArtist(_ n: String) async -> Bool  { calls.append("artist:\(n)"); return artistResult }
+    @MainActor func playSearch(_ n: String) async -> Bool  { calls.append("search:\(n)"); return searchResult }
     @MainActor func playPlaylist(_ n: String) async -> Bool { calls.append("playlist:\(n)"); return playlistResult }
     @MainActor func launchAndPlay() async      { calls.append("launchAndPlay") }
+    @MainActor func launchSpotify() async      { calls.append("launchSpotify") }
 }
 
 @MainActor
@@ -38,7 +39,6 @@ final class MockPills: PillControlling {
         if active.contains(id) { active.remove(id) } else { active.insert(id) }
     }
     func setMainPill(_ id: String) { calls.append("setMain:\(id)"); main = id }
-    func hooksInstalled(for id: String) -> Bool { true }
 }
 
 let pills = PillFixture.available
@@ -60,15 +60,31 @@ enum VoiceActionRunnerTests {
         music.musicRunning   = false
         music.spotifyRunning = false
         music.calls = []
-        let noApp = await runner.run(.musicPlay, availablePills: pills)
+        let noApp = await runner.run(.musicPlay(target: nil), availablePills: pills)
         check("no music app → launch",   noApp.outcome, .success)
         check("no music app → launchAndPlay called", music.calls.contains("launchAndPlay"), true)
+
+        // ── Music: target spotify → launchSpotify ────────────────────────────
+        music.musicRunning   = false
+        music.spotifyRunning = false
+        music.calls = []
+        let spotifyNoApp = await runner.run(.musicPlay(target: .spotify), availablePills: pills)
+        check("spotify no app → launch",   spotifyNoApp.outcome, .success)
+        check("spotify no app → launchSpotify", music.calls.contains("launchSpotify"), true)
+
+        // ── Music: target appleMusic → launchAndPlay ─────────────────────────
+        music.musicRunning   = false
+        music.spotifyRunning = false
+        music.calls = []
+        let amNoApp = await runner.run(.musicPlay(target: .appleMusic), availablePills: pills)
+        check("appleMusic no app → launch",   amNoApp.outcome, .success)
+        check("appleMusic no app → launchAndPlay", music.calls.contains("launchAndPlay"), true)
 
         // ── Music commands with app running ───────────────────────────────────
         music.musicRunning = true
         music.calls = []
 
-        let play = await runner.run(.musicPlay, availablePills: pills)
+        let play = await runner.run(.musicPlay(target: nil), availablePills: pills)
         check("play → success",       play.outcome, .success)
         check("play → play called",   music.calls.last, "play")
         music.calls = []
@@ -103,16 +119,16 @@ enum VoiceActionRunnerTests {
         check("setVolume(50) → setVolume:50", music.calls.last, "setVolume:50")
         music.calls = []
 
-        let artist = await runner.run(.musicPlayArtist(name: "Daft Punk"), availablePills: pills)
-        check("artist → success",     artist.outcome, .success)
-        check("artist → artist:Daft Punk", music.calls.last, "artist:Daft Punk")
+        let search = await runner.run(.musicPlaySearch(name: "Daft Punk"), availablePills: pills)
+        check("search → success",     search.outcome, .success)
+        check("search → search:Daft Punk", music.calls.last, "search:Daft Punk")
         music.calls = []
 
-        // Artist not found → failure
-        music.artistResult = false
-        let artistFail = await runner.run(.musicPlayArtist(name: "XYZ"), availablePills: pills)
-        check("artist not found → failure", artistFail.outcome, .failure)
-        music.artistResult = true
+        // Search not found → failure
+        music.searchResult = false
+        let searchFail = await runner.run(.musicPlaySearch(name: "XYZ"), availablePills: pills)
+        check("search not found → failure", searchFail.outcome, .failure)
+        music.searchResult = true
         music.calls = []
 
         let pl = await runner.run(.musicPlayPlaylist(name: "Workout"), availablePills: pills)
@@ -138,6 +154,31 @@ enum VoiceActionRunnerTests {
         let addLimit  = await runner.run(.pillAdd(id: "agent_cursor"), availablePills: pills)
         if case .question(_) = addLimit.outcome { print("✓  pillAdd limit → question"); pass += 1 }
         else { print("✗  pillAdd limit — got \(addLimit.outcome)"); fail += 1 }
+        check("pillAdd limit sets pendingQuestion", runner.pendingQuestion != nil, true)
+
+        // ── Follow-up answer after question ──────────────────────────────────
+        // pills_ has 4 active: github, vercel, notion, resend. Pending: add agent_cursor.
+        // User says "Stripe" → resolve to integration_stripe? But stripe is not active...
+        // Let's use "GitHub" as the answer (it's active, will be removed, cursor added)
+        pills_.active = Set(["integration_github","integration_vercel","integration_notion","integration_resend"])
+        pills_.calls  = []
+        // Re-set pending (it was consumed if we ran again, so re-trigger):
+        _ = await runner.run(.pillAdd(id: "agent_cursor"), availablePills: pills)
+        check("pending question set before answer", runner.pendingQuestion != nil, true)
+        pills_.calls = []
+        let answer = await runner.handleAnswer("GitHub", availablePills: pills)
+        check("question answer → success", answer.outcome, .success)
+        check("question answer → github removed", pills_.calls.contains("toggle:integration_github"), true)
+        check("question answer → cursor added",   pills_.calls.contains("toggle:agent_cursor"), true)
+        check("pending question cleared after answer", runner.pendingQuestion == nil, true)
+
+        // ── Pills: add multiple ───────────────────────────────────────────────
+        pills_.active = ["integration_github"]
+        pills_.calls  = []
+        let addMulti = await runner.run(.pillAddMultiple(ids: ["integration_vercel", "integration_stripe"]), availablePills: pills)
+        check("pillAddMultiple → success",  addMulti.outcome, .success)
+        check("pillAddMultiple → vercel",   pills_.calls.contains("toggle:integration_vercel"), true)
+        check("pillAddMultiple → stripe",   pills_.calls.contains("toggle:integration_stripe"), true)
 
         // ── Pills: remove ─────────────────────────────────────────────────────
         pills_.active = ["integration_github", "integration_vercel"]
@@ -149,6 +190,14 @@ enum VoiceActionRunnerTests {
         pills_.active = ["integration_vercel"]
         let remAbsent = await runner.run(.pillRemove(id: "integration_github"), availablePills: pills)
         check("pillRemove not active → failure", remAbsent.outcome, .failure)
+
+        // ── Pills: remove multiple ────────────────────────────────────────────
+        pills_.active = ["integration_stripe", "integration_notion", "integration_github"]
+        pills_.calls  = []
+        let remMulti = await runner.run(.pillRemoveMultiple(ids: ["integration_stripe", "integration_notion"]), availablePills: pills)
+        check("pillRemoveMultiple → success", remMulti.outcome, .success)
+        check("pillRemoveMultiple → stripe",  pills_.calls.contains("toggle:integration_stripe"), true)
+        check("pillRemoveMultiple → notion",  pills_.calls.contains("toggle:integration_notion"), true)
 
         // ── Pills: setMain ────────────────────────────────────────────────────
         pills_.main  = "integration_claude"
@@ -170,7 +219,6 @@ enum VoiceActionRunnerTests {
         pills_.calls  = []
         let only = await runner.run(.pillOnly(["integration_github", "integration_vercel"]), availablePills: pills)
         check("pillOnly → success", only.outcome, .success)
-        // n8n and notion should be removed; vercel should be added
         check("pillOnly → removed n8n",    pills_.calls.contains("toggle:integration_n8n"),    true)
         check("pillOnly → removed notion", pills_.calls.contains("toggle:integration_notion"), true)
         check("pillOnly → added vercel",   pills_.calls.contains("toggle:integration_vercel"), true)

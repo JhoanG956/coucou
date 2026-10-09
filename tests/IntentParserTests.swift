@@ -19,19 +19,24 @@ enum IntentParserTests {
         check("mets en pause",               parse("mets en pause"),           .musicPause)
         check("arrête la musique",           parse("arrête la musique"),       .musicPause)
         check("PAUSE",                       parse("PAUSE"),                   .musicPause)
+        check("coupe la musique",            parse("coupe la musique"),        .musicPause)
+        check("arrête",                      parse("arrête"),                  .musicPause)
 
-        // ── Music: play (generic) ─────────────────────────────────────────────
-        check("lance la musique",            parse("lance la musique"),        .musicPlay)
-        check("reprends",                    parse("reprends"),                .musicPlay)
-        check("reprends la musique",         parse("reprends la musique"),     .musicPlay)
-        check("play music",                  parse("play music"),              .musicPlay)
-        check("resume music",                parse("resume music"),            .musicPlay)
-        check("play some music",             parse("play some music"),         .musicPlay)
-        check("balance de la musique",       parse("balance de la musique"),   .musicPlay)
-        check("mets de la musique",          parse("mets de la musique"),      .musicPlay)
-        check("mets du son",                 parse("mets du son"),             .musicPlay)
-        check("lance Apple Music",           parse("lance Apple Music", pills: pills), .musicPlay)
-        check("lance Spotify",               parse("lance Spotify", pills: pills),     .musicPlay)
+        // ── Music: play (generic, nil target) ────────────────────────────────
+        check("lance la musique",            parse("lance la musique"),        .musicPlay(target: nil))
+        check("reprends",                    parse("reprends"),                .musicPlay(target: nil))
+        check("reprends la musique",         parse("reprends la musique"),     .musicPlay(target: nil))
+        check("play music",                  parse("play music"),              .musicPlay(target: nil))
+        check("resume music",                parse("resume music"),            .musicPlay(target: nil))
+        check("play some music",             parse("play some music"),         .musicPlay(target: nil))
+        check("balance de la musique",       parse("balance de la musique"),   .musicPlay(target: nil))
+        check("mets de la musique",          parse("mets de la musique"),      .musicPlay(target: nil))
+        check("mets du son",                 parse("mets du son"),             .musicPlay(target: nil))
+
+        // ── Music: play with target ───────────────────────────────────────────
+        check("lance Apple Music",           parse("lance Apple Music", pills: pills), .musicPlay(target: .appleMusic))
+        check("lance Spotify",               parse("lance Spotify", pills: pills),     .musicPlay(target: .spotify))
+        check("mets de la musique sur Spotify", parse("mets de la musique sur Spotify", pills: pills), .musicPlay(target: .spotify))
 
         // ── Music: next/prev ──────────────────────────────────────────────────
         check("suivant",                     parse("suivant"),                 .musicNext)
@@ -41,11 +46,15 @@ enum IntentParserTests {
         check("next track",                  parse("next track"),              .musicNext)
         check("skip",                        parse("skip"),                    .musicNext)
         check("next song",                   parse("next song"),               .musicNext)
+        check("chanson d'après",             parse("chanson d'après"),         .musicNext)
+        check("passe à la suivante",         parse("passe à la suivante"),     .musicNext)
         check("précédent",                   parse("précédent"),               .musicPrevious)
         check("morceau précédent",           parse("morceau précédent"),       .musicPrevious)
         check("previous",                    parse("previous"),                .musicPrevious)
         check("previous track",              parse("previous track"),          .musicPrevious)
         check("back",                        parse("back"),                    .musicPrevious)
+        check("remets la chanson d'avant",   parse("remets la chanson d'avant"), .musicPrevious)
+        check("reviens en arrière",          parse("reviens en arrière"),      .musicPrevious)
 
         // ── Music: volume ─────────────────────────────────────────────────────
         check("monte le son",                parse("monte le son"),            .musicVolumeUp)
@@ -53,13 +62,14 @@ enum IntentParserTests {
         check("plus fort",                   parse("plus fort"),               .musicVolumeUp)
         check("volume up",                   parse("volume up"),               .musicVolumeUp)
         check("louder",                      parse("louder"),                  .musicVolumeUp)
+        check("monte un peu le volume",      parse("monte un peu le volume"),  .musicVolumeUp)
         check("baisse le son",               parse("baisse le son"),           .musicVolumeDown)
         check("baisse le volume",            parse("baisse le volume"),        .musicVolumeDown)
         check("moins fort",                  parse("moins fort"),              .musicVolumeDown)
         check("volume down",                 parse("volume down"),             .musicVolumeDown)
         check("quieter",                     parse("quieter"),                 .musicVolumeDown)
         check("turn down",                   parse("turn down"),               .musicVolumeDown)
-        check("monte le son",                parse("monte le son"),            .musicVolumeUp)
+        check("baisse un peu le son",        parse("baisse un peu le son"),    .musicVolumeDown)
 
         // ── Music: volume set ─────────────────────────────────────────────────
         check("volume à 50",                 parse("volume à 50"),             .musicSetVolume(50))
@@ -67,15 +77,16 @@ enum IntentParserTests {
         check("volume 0",                    parse("volume 0"),                .musicSetVolume(0))
         check("volume 100",                  parse("volume 100"),              .musicSetVolume(100))
 
-        // ── Music: artist ─────────────────────────────────────────────────────
-        checkArtist("mets du Daft Punk",     parse("mets du Daft Punk",   pills: pills), "daft punk")
-        checkArtist("mets de la jazz",       parse("mets de la jazz",     pills: pills), "jazz")
-        checkArtist("joue du rock",          parse("joue du rock",        pills: pills), "rock")
-        checkArtist("joue Daft Punk",        parse("joue Daft Punk",      pills: pills), "daft punk")
-        checkArtist("play Radiohead",        parse("play Radiohead",      pills: pills), "radiohead")
-        checkArtist("lance du Bowie",        parse("lance du Bowie",      pills: pills), "bowie")
-        checkArtist("mets les Beatles",      parse("mets les Beatles",    pills: pills), "beatles")
-        checkArtist("joue de l'électro",     parse("joue de l'électro",   pills: pills), "electro")
+        // ── Music: search (title or artist) ───────────────────────────────────
+        checkSearch("mets du Daft Punk",     parse("mets du Daft Punk",   pills: pills), "daft punk")
+        checkSearch("mets de la jazz",       parse("mets de la jazz",     pills: pills), "jazz")
+        checkSearch("joue du rock",          parse("joue du rock",        pills: pills), "rock")
+        checkSearch("joue Daft Punk",        parse("joue Daft Punk",      pills: pills), "daft punk")
+        checkSearch("play Radiohead",        parse("play Radiohead",      pills: pills), "radiohead")
+        checkSearch("lance du Bowie",        parse("lance du Bowie",      pills: pills), "bowie")
+        checkSearch("mets les Beatles",      parse("mets les Beatles",    pills: pills), "beatles")
+        checkSearch("joue de l'électro",     parse("joue de l'électro",   pills: pills), "electro")
+        checkSearch("joue Get Lucky",        parse("joue Get Lucky",      pills: pills), "get lucky")
 
         // ── Music: playlist ───────────────────────────────────────────────────
         checkPlaylist("mets la playlist Workout",   parse("mets la playlist Workout",  pills: pills), "workout")
@@ -84,6 +95,8 @@ enum IntentParserTests {
         checkPlaylist("play playlist My Favs",      parse("play playlist My Favs",     pills: pills), "my favs")
         checkPlaylist("start playlist Chill",       parse("start playlist Chill",      pills: pills), "chill")
         checkPlaylist("mets la playlist Focus",     parse("mets la playlist Focus",    pills: pills), "focus")
+        checkPlaylist("mets ma playlist Focus",     parse("mets ma playlist Focus",    pills: pills), "focus")
+        checkPlaylist("lance ma playlist Focus",    parse("lance ma playlist Focus",   pills: pills), "focus")
 
         // ── Pill: add ─────────────────────────────────────────────────────────
         check("ajoute GitHub",               parse("ajoute GitHub",        pills: pills), .pillAdd(id: "integration_github"))
@@ -96,6 +109,12 @@ enum IntentParserTests {
         check("ajoute gemini",               parse("ajoute gemini",         pills: pills), .pillAdd(id: "agent_gemini"))
         check("ajoute claude",               parse("ajoute claude",         pills: pills), .pillAdd(id: "integration_claude"))
         check("mets la pilule Gemini",       parse("mets la pilule Gemini", pills: pills), .pillAdd(id: "agent_gemini"))
+        check("mets la pilule Codex",        parse("mets la pilule Codex",  pills: pills), .pillAdd(id: "agent_codex"))
+
+        // ── Pill: add multiple ────────────────────────────────────────────────
+        check("ajoute Vercel et Stripe",
+              parse("ajoute Vercel et Stripe", pills: pills),
+              .pillAddMultiple(ids: ["integration_vercel", "integration_stripe"]))
 
         // ── Pill: remove ──────────────────────────────────────────────────────
         check("enlève GitHub",               parse("enlève GitHub",        pills: pills), .pillRemove(id: "integration_github"))
@@ -107,6 +126,11 @@ enum IntentParserTests {
         check("hide Notion",                 parse("hide Notion",           pills: pills), .pillRemove(id: "integration_notion"))
         check("enlève stripe",               parse("enlève stripe",         pills: pills), .pillRemove(id: "integration_stripe"))
 
+        // ── Pill: remove multiple ─────────────────────────────────────────────
+        check("enlève Stripe et Notion",
+              parse("enlève Stripe et Notion", pills: pills),
+              .pillRemoveMultiple(ids: ["integration_stripe", "integration_notion"]))
+
         // ── Pill: setMain ─────────────────────────────────────────────────────
         check("passe sur Cursor",            parse("passe sur Cursor",         pills: pills), .pillSetMain(id: "agent_cursor"))
         check("switch to Cursor",            parse("switch to Cursor",         pills: pills), .pillSetMain(id: "agent_cursor"))
@@ -116,6 +140,15 @@ enum IntentParserTests {
               .pillSetMain(id: "agent_cursor"))
         check("mets Cursor en principal",
               parse("mets Cursor en principal", pills: pills),
+              .pillSetMain(id: "agent_cursor"))
+        check("change la pilule principale pour Codex",
+              parse("change la pilule principale pour Codex", pills: pills),
+              .pillSetMain(id: "agent_codex"))
+        check("la pilule principale c'est Cursor",
+              parse("la pilule principale c'est Cursor", pills: pills),
+              .pillSetMain(id: "agent_cursor"))
+        check("Cursor comme pilule principale",
+              parse("Cursor comme pilule principale", pills: pills),
               .pillSetMain(id: "agent_cursor"))
 
         // ── Pill: replace / only ──────────────────────────────────────────────
@@ -156,12 +189,12 @@ enum IntentParserTests {
         }
     }
 
-    static func checkArtist(_ label: String, _ got: VoiceIntent, _ want: String) {
-        if case .musicPlayArtist(let name) = got,
+    static func checkSearch(_ label: String, _ got: VoiceIntent, _ want: String) {
+        if case .musicPlaySearch(let name) = got,
            IntentParser.normalise(name) == want {
             print("✓  \(label)"); pass += 1
         } else {
-            print("✗  \(label) — got \(got), want artist '\(want)'"); fail += 1
+            print("✗  \(label) — got \(got), want search '\(want)'"); fail += 1
         }
     }
 

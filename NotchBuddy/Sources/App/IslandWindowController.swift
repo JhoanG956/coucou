@@ -1287,6 +1287,15 @@ extension IslandWindowController {
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
         let pills  = PillCatalog.available
+
+        // ── Follow-up answer to a pending question ────────────────────────────────
+        if VoiceActionRunner.shared.pendingQuestion != nil {
+            let result = await VoiceActionRunner.shared.handleAnswer(transcript, availablePills: pills)
+            showVoiceResult(result, emote: result.outcome == .success ? BotEmote.happy : nil)
+            return
+        }
+
+        // ── Normal command ────────────────────────────────────────────────────────
         let intent = IntentParser.parse(transcript, pills: pills)
         let result = await VoiceActionRunner.shared.run(intent, availablePills: pills, rawTranscript: transcript)
 
@@ -1297,22 +1306,47 @@ extension IslandWindowController {
         case .failure:
             NotificationCenter.default.post(name: .botDizzy, object: nil)
         case .question:
-            break
+            break   // Mochi will show listening after re-open
         }
 
-        // Switch to result view
+        // Show result view
         AppState.shared.voiceResult = result
         expand(to: .voiceResult)
 
+        if case .question = result.outcome {
+            // Re-open listening immediately (without wake phrase) so Mochi listens for the answer
+            voiceResultWork?.cancel()
+            voiceResultWork = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                guard self != nil else { return }
+                VoiceEngine.shared.startListeningDirectly()
+            }
+        } else {
+            scheduleVoiceDismiss(delay: result.outcome == .success ? 2.0 : 2.0)
+        }
+    }
+
+    @MainActor
+    private func showVoiceResult(_ result: VoiceActionResult, emote: BotEmote? = nil) {
+        if let emote = emote {
+            NotificationCenter.default.post(name: .triggerEmote, object: emote)
+        } else if result.outcome == .failure {
+            NotificationCenter.default.post(name: .botDizzy, object: nil)
+        }
+        AppState.shared.voiceResult = result
+        expand(to: .voiceResult)
+        scheduleVoiceDismiss(delay: 2.0)
+    }
+
+    @MainActor
+    private func scheduleVoiceDismiss(delay: TimeInterval) {
         voiceResultWork?.cancel()
-        let dismissDelay: TimeInterval
-        if case .question = result.outcome { dismissDelay = 6.0 } else { dismissDelay = 2.0 }
         let item = DispatchWorkItem { [weak self] in
             AppState.shared.voiceResult = nil
             self?.fsm.voiceFinished()
         }
         voiceResultWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + dismissDelay, execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 }
 #endif

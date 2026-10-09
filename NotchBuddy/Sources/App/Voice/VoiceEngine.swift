@@ -88,6 +88,28 @@ final class VoiceEngine: ObservableObject {
         endCommand(postFinished: false)
     }
 
+    /// Start a command-listening session directly (without wake phrase).
+    /// Used for follow-up answers to .question outcomes.
+    func startListeningDirectly() {
+        guard isEnabled, !isPaused, !isListeningForCommand else { return }
+        guard let audio = audio, let spotter = spotter, let loc = locale else { return }
+        wakeWindowWork?.cancel(); wakeWindowWork = nil
+        isListeningForCommand = true
+        commandTranscript     = ""
+        lastWordCount         = 0
+        audio.bypassVAD       = true
+        appendAppLog("nb.log", "[Voice] direct listen start")
+        NotificationCenter.default.post(name: .voiceWoke, object: nil)
+        let preroll = audio.drainPreroll()
+        spotter.beginWindow(locale: loc, preroll: preroll)
+        resetSilenceTimer()
+        let maxItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in self?.endCommand(postFinished: true) }
+        }
+        commandMaxWork = maxItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: maxItem)
+    }
+
     // MARK: - Audio pipeline
 
     private func startAudioPipeline() {

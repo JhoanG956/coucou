@@ -39,9 +39,9 @@ final class LiveMusicControl: MusicControlling, @unchecked Sendable {
         if isMusicRunning   { MusicController.shared.setVolume(pct) }
         else                { SpotifyController.shared.setVolume(pct) }
     }
-    @MainActor func playArtist(_ name: String) async -> Bool {
+    @MainActor func playSearch(_ name: String) async -> Bool {
         guard isMusicRunning else { return false }
-        return await MusicController.shared.playArtist(name)
+        return await MusicController.shared.playSearch(name)
     }
     @MainActor func playPlaylist(_ name: String) async -> Bool {
         guard isMusicRunning else { return false }
@@ -50,11 +50,18 @@ final class LiveMusicControl: MusicControlling, @unchecked Sendable {
     @MainActor func launchAndPlay() async {
         if !isMusicRunning {
             NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Music.app"))
-            // Give Music ~1.5 s to launch before sending play
             try? await Task.sleep(nanoseconds: 1_500_000_000)
         }
         if isMusicRunning { MusicController.shared.play() }
     }
+    @MainActor func launchSpotify() async {
+        guard !isSpotifyRunning else { music_play_spotify(); return }
+        let url = URL(fileURLWithPath: "/Applications/Spotify.app")
+        NSWorkspace.shared.open(url)
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        if isSpotifyRunning { SpotifyController.shared.play() }
+    }
+    private func music_play_spotify() { SpotifyController.shared.play() }
 }
 
 // MARK: - LivePillControl
@@ -66,13 +73,6 @@ final class LivePillControl: PillControlling {
     func activeCount() -> Int        { AppState.shared.activeIntegrations.count }
     func toggleIntegration(_ id: String) { AppState.shared.toggleIntegration(id) }
     func setMainPill(_ id: String)       { AppState.shared.setMainPill(id) }
-    func hooksInstalled(for id: String) -> Bool {
-        // Hooks are irrelevant for workspace pills (they auto-detect via process name)
-        // For service/agent pills, check if the user has gone through hook setup
-        guard let def = PillCatalog.definition(for: id) else { return true }
-        if def.source == .claudeCode || def.category == .workspace { return true }
-        return AppState.shared.installedHookPills.contains(id)
-    }
 }
 
 // MARK: - Configuration

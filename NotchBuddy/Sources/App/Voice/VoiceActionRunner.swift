@@ -14,9 +14,10 @@ protocol MusicControlling: Sendable {
     @MainActor func volumeUp()
     @MainActor func volumeDown()
     @MainActor func setVolume(_ pct: Int)
-    @MainActor func playArtist(_ name: String) async -> Bool
+    @MainActor func playSearch(_ name: String) async -> Bool
     @MainActor func playPlaylist(_ name: String) async -> Bool
     @MainActor func launchAndPlay() async
+    @MainActor func launchSpotify() async
 }
 
 /// Abstraction over AppState pill management.
@@ -27,7 +28,6 @@ protocol PillControlling {
     func activeCount() -> Int
     func toggleIntegration(_ id: String)
     func setMainPill(_ id: String)
-    func hooksInstalled(for id: String) -> Bool
 }
 
 // MARK: - Null implementations (test-safe, no AppKit)
@@ -35,16 +35,17 @@ protocol PillControlling {
 private final class NullMusic: MusicControlling, @unchecked Sendable {
     var isMusicRunning: Bool   { false }
     var isSpotifyRunning: Bool { false }
-    @MainActor func play()                        {}
-    @MainActor func pause()                       {}
-    @MainActor func nextTrack()                   {}
-    @MainActor func previousTrack()               {}
-    @MainActor func volumeUp()                    {}
-    @MainActor func volumeDown()                  {}
-    @MainActor func setVolume(_ pct: Int)         {}
-    @MainActor func playArtist(_ n: String) async -> Bool  { false }
+    @MainActor func play()                           {}
+    @MainActor func pause()                          {}
+    @MainActor func nextTrack()                      {}
+    @MainActor func previousTrack()                  {}
+    @MainActor func volumeUp()                       {}
+    @MainActor func volumeDown()                     {}
+    @MainActor func setVolume(_ pct: Int)            {}
+    @MainActor func playSearch(_ n: String) async -> Bool   { false }
     @MainActor func playPlaylist(_ n: String) async -> Bool { false }
-    @MainActor func launchAndPlay() async         {}
+    @MainActor func launchAndPlay() async            {}
+    @MainActor func launchSpotify() async            {}
 }
 
 @MainActor
@@ -54,7 +55,6 @@ private final class NullPills: PillControlling {
     func activeCount() -> Int              { 0 }
     func toggleIntegration(_ id: String)   {}
     func setMainPill(_ id: String)         {}
-    func hooksInstalled(for id: String) -> Bool { true }
 }
 
 // MARK: - VoiceActionRunner
@@ -66,6 +66,9 @@ final class VoiceActionRunner {
     var music: MusicControlling = NullMusic()
     var pills: PillControlling  = NullPills()
 
+    /// Pending follow-up question (4-pill limit, ambiguity). Set when outcome is .question.
+    var pendingQuestion: PendingVoiceQuestion? = nil
+
     init() {}
 
     func run(_ intent: VoiceIntent,
@@ -75,13 +78,24 @@ final class VoiceActionRunner {
 
         // ── Music ─────────────────────────────────────────────────────────────
 
-        case .musicPlay:
-            if !music.isMusicRunning && !music.isSpotifyRunning {
+        case .musicPlay(let target):
+            switch target {
+            case .spotify:
+                if !music.isSpotifyRunning { await music.launchSpotify() }
+                else { music.play() }
+                return ok("voice.music-playing")
+            case .appleMusic:
+                if !music.isMusicRunning { await music.launchAndPlay() }
+                else { music.play() }
+                return ok("voice.music-playing")
+            case nil:
+                if music.isMusicRunning || music.isSpotifyRunning {
+                    music.play()
+                    return ok("voice.music-playing")
+                }
                 await music.launchAndPlay()
                 return ok("voice.music-launch")
             }
-            music.play()
-            return ok("voice.music-playing")
 
         case .musicPause:
             guard music.isMusicRunning || music.isSpotifyRunning else {
@@ -124,28 +138,17 @@ final class VoiceActionRunner {
             }
             music.setVolume(pct)
             let fmt = NSLocalizedString("voice.music-vol-set", comment: "")
-            return .init(outcome: .success, message: String(format: fmt, pct))
+            return .init(outcome: .success, message: fmt.contains("%") ? String(format: fmt, pct) : "\(pct)%")
 
-        case .musicPlayArtist(let name):
-            // "spotify" / "apple music" entity → route to appropriate service
-            let norm = IntentParser.normalise(name)
-            if norm == "spotify" {
-                if !music.isSpotifyRunning { await music.launchAndPlay() }
-                else { music.play() }
-                return ok("voice.music-playing")
-            }
-            if norm == "apple music" || norm == "music" {
-                if !music.isMusicRunning { await music.launchAndPlay() }
-                else { music.play() }
-                return ok("voice.music-playing")
-            }
+        case .musicPlaySearch(let name):
             if !music.isMusicRunning && !music.isSpotifyRunning {
                 await music.launchAndPlay()
             }
-            let found = await music.playArtist(name)
+            let found = await music.playSearch(name)
             if found { return ok("voice.music-playing") }
             let fmt = NSLocalizedString("voice.music-artist-err", comment: "")
-            return .init(outcome: .failure, message: String(format: fmt, name))
+            return .init(outcome: .failure,
+                         message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
         case .musicPlayPlaylist(let name):
             if !music.isMusicRunning && !music.isSpotifyRunning {
@@ -154,7 +157,8 @@ final class VoiceActionRunner {
             let found = await music.playPlaylist(name)
             if found { return ok("voice.music-playing") }
             let fmt = NSLocalizedString("voice.music-artist-err", comment: "")
-            return .init(outcome: .failure, message: String(format: fmt, name))
+            return .init(outcome: .failure,
+                         message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
         // ── Pills ─────────────────────────────────────────────────────────────
 
@@ -164,18 +168,27 @@ final class VoiceActionRunner {
             }
             guard pills.activeCount() < 4 else {
                 let qFmt = NSLocalizedString("voice.ask-which-remove", comment: "")
+                pendingQuestion = PendingVoiceQuestion(kind: .removeWhich(toAdd: id), text: qFmt)
                 return .init(outcome: .question(text: qFmt), message: qFmt)
             }
             pills.toggleIntegration(id)
             let name = pillName(id, from: availablePills)
             let fmt  = NSLocalizedString("voice.pill-added", comment: "")
             let msg  = fmt.contains("%@") ? String(format: fmt, name) : name
-            if !pills.hooksInstalled(for: id) {
-                let hFmt = NSLocalizedString("voice.pill-no-hooks", comment: "")
-                let hMsg = hFmt.contains("%@") ? String(format: hFmt, name) : "\(name) — hooks non installés"
-                return .init(outcome: .success, message: hMsg)
-            }
             return .init(outcome: .success, message: msg)
+
+        case .pillAddMultiple(let ids):
+            var added: [String] = []
+            for id in ids {
+                guard !pills.activeIds().contains(id), pills.activeCount() < 4 else { continue }
+                pills.toggleIntegration(id)
+                added.append(pillName(id, from: availablePills))
+            }
+            let names = added.joined(separator: ", ")
+            let fmt   = NSLocalizedString("voice.pill-added", comment: "")
+            let msg   = fmt.contains("%@") ? String(format: fmt, names) : names
+            return .init(outcome: added.isEmpty ? .failure : .success,
+                         message: added.isEmpty ? NSLocalizedString("voice.unknown", comment: "") : msg)
 
         case .pillRemove(let id):
             guard pills.activeIds().contains(id) else {
@@ -186,6 +199,19 @@ final class VoiceActionRunner {
             let fmt  = NSLocalizedString("voice.pill-removed", comment: "")
             let msg  = fmt.contains("%@") ? String(format: fmt, name) : name
             return .init(outcome: .success, message: msg)
+
+        case .pillRemoveMultiple(let ids):
+            var removed: [String] = []
+            for id in ids {
+                guard pills.activeIds().contains(id) else { continue }
+                pills.toggleIntegration(id)
+                removed.append(pillName(id, from: availablePills))
+            }
+            let names = removed.joined(separator: ", ")
+            let fmt   = NSLocalizedString("voice.pill-removed", comment: "")
+            let msg   = fmt.contains("%@") ? String(format: fmt, names) : names
+            return .init(outcome: removed.isEmpty ? .failure : .success,
+                         message: removed.isEmpty ? NSLocalizedString("voice.unknown", comment: "") : msg)
 
         case .pillSetMain(let id):
             pills.setMainPill(id)
@@ -204,7 +230,6 @@ final class VoiceActionRunner {
             return .init(outcome: .success, message: msg)
 
         case .pillOnly(let ids):
-            // Remove all active pills not in the list, add all in the list
             let current = pills.activeIds()
             for id in current { if !ids.contains(id) { pills.toggleIntegration(id) } }
             for id in ids { if !pills.activeIds().contains(id) { pills.toggleIntegration(id) } }
@@ -214,12 +239,39 @@ final class VoiceActionRunner {
             return .init(outcome: .success, message: msg)
 
         case .unknown:
-            if rawTranscript.isEmpty {
-                return fail("voice.unknown")
-            }
+            if rawTranscript.isEmpty { return fail("voice.unknown") }
             let fmt = NSLocalizedString("voice.unknown-transcript", comment: "")
             let msg = fmt.contains("%@") ? String(format: fmt, rawTranscript) : rawTranscript
             return .init(outcome: .failure, message: msg)
+        }
+    }
+
+    // MARK: - Follow-up question answer
+
+    /// Handle a follow-up answer transcript after a .question outcome.
+    func handleAnswer(_ transcript: String, availablePills: [PillDefinition] = []) async -> VoiceActionResult {
+        guard let pending = pendingQuestion else { return fail("voice.unknown") }
+        pendingQuestion = nil
+
+        let norm = IntentParser.normalise(transcript)
+        guard let entity = EntityResolver.resolve(norm, from: availablePills) else {
+            return fail("voice.unknown")
+        }
+
+        switch pending.kind {
+        case .removeWhich(let toAdd):
+            if pills.activeIds().contains(entity) {
+                pills.toggleIntegration(entity)
+            }
+            if !pills.activeIds().contains(toAdd), pills.activeCount() < 4 {
+                pills.toggleIntegration(toAdd)
+            }
+            let removedName = pillName(entity, from: availablePills)
+            let addedName   = pillName(toAdd,  from: availablePills)
+            let fmt = NSLocalizedString("voice.pill-replaced", comment: "")
+            let msg = fmt.contains("%@") ? String(format: fmt, removedName, addedName)
+                                         : "\(removedName) → \(addedName)"
+            return .init(outcome: .success, message: msg)
         }
     }
 
