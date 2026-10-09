@@ -15,18 +15,18 @@ import AVFoundation
 // - Bypass (`bypassVAD = true`): every buffer is delivered via `onBuffer` regardless of
 //   silence; `onMicLevel` fires at ~20 Hz with a smoothed level.
 //
-// AEC strategy (robust two-attempt start):
-//   1. Enable VP on inputNode BEFORE reading format (VP may renegotiate format/rate).
-//      The default mainMixerNode → outputNode path provides the downlink clock VP needs;
-//      outputVolume = 0 so Coucou never makes sound.
-//   2. If engine.start() fails with VP active (e.g. kAudioUnitErr_FailedInitialization
-//      −10875 on some Macs), log the full error, tear down, recreate AVAudioEngine,
-//      and start again WITHOUT VP. The engine must never fail silently.
+// Audio format:
+// - Input format is whatever the mic reports (48 kHz 1ch on most Macs, varies by device).
+// - Buffers delivered to `onBuffer` / stored in preroll are converted to mono 16 kHz Float32
+//   via an AVAudioConverter created once on start. VAD and level metering use the raw format.
 final class VoiceAudio: @unchecked Sendable {
 
-    private var engine         = AVAudioEngine()
+    private let engine         = AVAudioEngine()
     private var tapInstalled   = false
     private var configObserver: NSObjectProtocol? = nil
+
+    // Mono 16 kHz Float32 converter — created once per input format, audio tap thread.
+    private var converter: AVAudioConverter?
 
     // VAD — read/written only on the audio tap thread.
     private var vad = EnergyVAD()
@@ -64,32 +64,40 @@ final class VoiceAudio: @unchecked Sendable {
 
     // MARK: - Control
 
-    /// Start the audio pipeline. Tries AEC first; falls back to no-AEC on failure.
-    /// Throws only when both attempts fail.
     func start() throws {
         guard !tapInstalled else { return }
 
-        // Attempt 1 — with AEC.
-        do {
-            let fmt = try setupEngine(aec: true)
-            let desc = "\(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch"
-            appendAppLog("nb.log", "[Voice] engine started (AEC on, \(desc))")
-            return
-        } catch {
-            let e = error as NSError
+        let input = engine.inputNode
+        let fmt   = input.outputFormat(forBus: 0)
+
+        // Build a stateful mono 16 kHz Float32 converter for the recognizer.
+        let target = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                   sampleRate: 16_000, channels: 1, interleaved: false)!
+        if let conv = AVAudioConverter(from: fmt, to: target) {
+            conv.primeMethod = .none
+            converter = conv
             appendAppLog("nb.log",
-                "[Voice] engine start failed with AEC (\(e.domain)/\(e.code)): \(e.localizedDescription) — retrying without AEC")
+                "[Voice] audio format: input \(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch → 16000 Hz 1ch")
+        } else {
+            appendAppLog("nb.log",
+                "[Voice] audio converter unavailable: \(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch — feeding raw")
         }
 
-        // Tear down any partially installed state (setupEngine's catch already undoes tap +
-        // observer, but the engine itself may be in a bad state — always recreate it).
-        engine.stop()
-        engine = AVAudioEngine()
+        input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, time in
+            self?.processTap(buf, time: time)
+        }
+        tapInstalled = true
 
-        // Attempt 2 — without AEC. Let any error propagate to the caller.
-        let fmt = try setupEngine(aec: false)
-        let desc = "\(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch"
-        appendAppLog("nb.log", "[Voice] engine started (AEC off, \(desc))")
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine, queue: .main
+        ) { [weak self] _ in
+            self?.onConfigChange?()
+        }
+
+        engine.prepare()
+        try engine.start()
+        appendAppLog("nb.log", "[Voice] engine started (\(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch)")
     }
 
     func stop() {
@@ -100,7 +108,8 @@ final class VoiceAudio: @unchecked Sendable {
         }
         engine.stop()
         engine.inputNode.removeTap(onBus: 0)
-        tapInstalled = false
+        tapInstalled   = false
+        converter      = nil
         prerollLock.withLock { prerollBuffers.removeAll() }
         if vad.isActive {
             vad.reset()
@@ -118,51 +127,6 @@ final class VoiceAudio: @unchecked Sendable {
         }
     }
 
-    // MARK: - Private setup
-
-    /// Configure `engine`, install tap, start. Returns the input format used.
-    /// On failure, undoes tap + observer and rethrows (engine.stop() left to caller).
-    private func setupEngine(aec: Bool) throws -> AVAudioFormat {
-        let input = engine.inputNode
-
-        if aec {
-            // VP must be enabled BEFORE reading the format — it may change after activation.
-            try input.setVoiceProcessingEnabled(true)
-            input.voiceProcessingOtherAudioDuckingConfiguration =
-                AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
-                    enableAdvancedDucking: false, duckingLevel: .min)
-            engine.mainMixerNode.outputVolume = 0
-        }
-
-        let fmt = input.outputFormat(forBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, time in
-            self?.processTap(buf, time: time)
-        }
-        tapInstalled = true
-
-        configObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine, queue: .main
-        ) { [weak self] _ in
-            self?.onConfigChange?()
-        }
-
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            // Undo tap and observer so caller can safely recreate engine.
-            input.removeTap(onBus: 0)
-            tapInstalled = false
-            if let obs = configObserver {
-                NotificationCenter.default.removeObserver(obs)
-                configObserver = nil
-            }
-            throw error
-        }
-        return fmt
-    }
-
     // MARK: - Tap processing (audio thread)
 
     private func processTap(_ buf: AVAudioPCMBuffer, time: AVAudioTime) {
@@ -175,14 +139,17 @@ final class VoiceAudio: @unchecked Sendable {
             levelFrameCount = 0
         }
 
+        // Convert to mono 16 kHz for the recognizer; fall back to raw if converter absent.
+        let deliverBuf = convertToMono16k(buf) ?? buf
+
         prerollLock.withLock {
             if prerollBuffers.count >= Self.prerollCapacity { prerollBuffers.removeFirst() }
-            prerollBuffers.append(buf)
+            prerollBuffers.append(deliverBuf)
         }
 
         if bypassVAD {
-            onBuffer?(buf, time)
-            let power = buf.meanSquarePower
+            onBuffer?(deliverBuf, time)
+            let power = buf.meanSquarePower   // raw format for accuracy
             smoothedLevel = smoothedLevel * 0.6 + power * 0.4
             levelFrameCount += 1
             if levelFrameCount % 2 == 0 {
@@ -192,7 +159,7 @@ final class VoiceAudio: @unchecked Sendable {
             return
         }
 
-        let power = buf.meanSquarePower
+        let power = buf.meanSquarePower   // raw format for accuracy
         let event = vad.feed(power)
 
         switch event {
@@ -204,7 +171,27 @@ final class VoiceAudio: @unchecked Sendable {
             break
         }
 
-        if vad.isActive { onBuffer?(buf, time) }
+        if vad.isActive { onBuffer?(deliverBuf, time) }
+    }
+
+    // MARK: - Conversion
+
+    private func convertToMono16k(_ buf: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        guard let conv = converter else { return nil }
+        let ratio      = conv.outputFormat.sampleRate / buf.format.sampleRate
+        let outFrames  = AVAudioFrameCount(ceil(Double(buf.frameLength) * ratio)) + 16
+        guard let out  = AVAudioPCMBuffer(pcmFormat: conv.outputFormat,
+                                          frameCapacity: max(1, outFrames)) else { return nil }
+        var provided   = false
+        var convError: NSError?
+        let status = conv.convert(to: out, error: &convError) { _, outStatus in
+            guard !provided else { outStatus.pointee = .noDataNow; return nil }
+            provided = true
+            outStatus.pointee = .haveData
+            return buf
+        }
+        guard status != .error, convError == nil, out.frameLength > 0 else { return nil }
+        return out
     }
 }
 
