@@ -55,13 +55,12 @@ final class LiveMusicControl: MusicControlling, @unchecked Sendable {
         if isMusicRunning { MusicController.shared.play() }
     }
     @MainActor func launchSpotify() async {
-        guard !isSpotifyRunning else { music_play_spotify(); return }
+        guard !isSpotifyRunning else { SpotifyController.shared.play(); return }
         let url = URL(fileURLWithPath: "/Applications/Spotify.app")
         NSWorkspace.shared.open(url)
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         if isSpotifyRunning { SpotifyController.shared.play() }
     }
-    private func music_play_spotify() { SpotifyController.shared.play() }
 }
 
 // MARK: - LivePillControl
