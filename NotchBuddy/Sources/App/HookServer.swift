@@ -1584,6 +1584,37 @@ final class HookServer: @unchecked Sendable {
 
     // MARK: Installed-state detection
 
+    /// Single entry point used by voice commands and Settings pill rows.
+    /// Returns true when the given pill's hooks/plugin are installed.
+    /// Workspace pills (integration_claude, agent_cursor) use claudeHooksInstalled().
+    /// Unknown pill ids return true (assumed not hook-dependent).
+    static func hooksInstalled(for pillId: String) -> Bool {
+        switch pillId {
+        case "integration_claude", "agent_cursor":
+            return claudeHooksInstalled()
+        #if !APPSTORE
+        case "agent_gemini":
+            return geminiHooksInstalled()
+        case "agent_antigravity":
+            return agyHooksInstalled()
+        case "agent_codex":
+            return codexHooksInstalled()
+        case "agent_copilot":
+            return copilotHooksInstalled()
+        case "agent_muse":
+            return museHooksInstalled()
+        case "agent_opencode":
+            return openCodePluginInstalled()
+        case "agent_amp":
+            return ampPluginInstalled()
+        case "agent_hermes":
+            return hermesPluginInstalled()
+        #endif
+        default:
+            return true
+        }
+    }
+
     static func geminiHooksInstalled() -> Bool {
         guard let data = try? Data(contentsOf: geminiSettingsURL),
               let settings = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
