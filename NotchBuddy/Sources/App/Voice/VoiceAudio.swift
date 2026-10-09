@@ -15,14 +15,16 @@ import AVFoundation
 // - Bypass (`bypassVAD = true`): every buffer is delivered via `onBuffer` regardless of
 //   silence; `onMicLevel` fires at ~20 Hz with a smoothed level.
 //
-// AEC: `setVoiceProcessingEnabled(true)` is applied to inputNode before reading its
-// format. VP requires the output I/O unit to supply a valid downlink clock; the default
-// mainMixerNode → outputNode path provides this — we just silence it (outputVolume = 0).
-// `voiceProcessingOtherAudioDuckingConfiguration` prevents VP from ducking other apps.
-// If VP activation fails, the engine continues without echo cancellation.
+// AEC strategy (robust two-attempt start):
+//   1. Enable VP on inputNode BEFORE reading format (VP may renegotiate format/rate).
+//      The default mainMixerNode → outputNode path provides the downlink clock VP needs;
+//      outputVolume = 0 so Coucou never makes sound.
+//   2. If engine.start() fails with VP active (e.g. kAudioUnitErr_FailedInitialization
+//      −10875 on some Macs), log the full error, tear down, recreate AVAudioEngine,
+//      and start again WITHOUT VP. The engine must never fail silently.
 final class VoiceAudio: @unchecked Sendable {
 
-    private let engine         = AVAudioEngine()
+    private var engine         = AVAudioEngine()
     private var tapInstalled   = false
     private var configObserver: NSObjectProtocol? = nil
 
@@ -62,42 +64,32 @@ final class VoiceAudio: @unchecked Sendable {
 
     // MARK: - Control
 
+    /// Start the audio pipeline. Tries AEC first; falls back to no-AEC on failure.
+    /// Throws only when both attempts fail.
     func start() throws {
         guard !tapInstalled else { return }
-        let input = engine.inputNode
 
-        // AEC: enable voice processing BEFORE reading the input format and installing
-        // the tap — VP may renegotiate the format after activation. VP's downlink DSP
-        // needs the output I/O unit running; the default mainMixerNode → outputNode
-        // connection handles this. Silence the output so Coucou makes no sound.
+        // Attempt 1 — with AEC.
         do {
-            try input.setVoiceProcessingEnabled(true)
-            input.voiceProcessingOtherAudioDuckingConfiguration =
-                AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
-                    enableAdvancedDucking: false, duckingLevel: .min)
-            engine.mainMixerNode.outputVolume = 0
+            let fmt = try setupEngine(aec: true)
+            let desc = "\(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch"
+            appendAppLog("nb.log", "[Voice] engine started (AEC on, \(desc))")
+            return
         } catch {
+            let e = error as NSError
             appendAppLog("nb.log",
-                "[Voice] AEC unavailable: \(error.localizedDescription) — no echo cancellation")
+                "[Voice] engine start failed with AEC (\(e.domain)/\(e.code)): \(e.localizedDescription) — retrying without AEC")
         }
 
-        // Read format AFTER VP activation (VP may renegotiate sample rate / channel count).
-        let fmt = input.outputFormat(forBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, time in
-            self?.processTap(buf, time: time)
-        }
-        tapInstalled = true
+        // Tear down any partially installed state (setupEngine's catch already undoes tap +
+        // observer, but the engine itself may be in a bad state — always recreate it).
+        engine.stop()
+        engine = AVAudioEngine()
 
-        // Rebuild on device change (headphones, sample-rate switch…).
-        configObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine, queue: .main
-        ) { [weak self] _ in
-            self?.onConfigChange?()
-        }
-
-        engine.prepare()
-        try engine.start()
+        // Attempt 2 — without AEC. Let any error propagate to the caller.
+        let fmt = try setupEngine(aec: false)
+        let desc = "\(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch"
+        appendAppLog("nb.log", "[Voice] engine started (AEC off, \(desc))")
     }
 
     func stop() {
@@ -124,6 +116,51 @@ final class VoiceAudio: @unchecked Sendable {
             prerollBuffers.removeAll()
             return snap
         }
+    }
+
+    // MARK: - Private setup
+
+    /// Configure `engine`, install tap, start. Returns the input format used.
+    /// On failure, undoes tap + observer and rethrows (engine.stop() left to caller).
+    private func setupEngine(aec: Bool) throws -> AVAudioFormat {
+        let input = engine.inputNode
+
+        if aec {
+            // VP must be enabled BEFORE reading the format — it may change after activation.
+            try input.setVoiceProcessingEnabled(true)
+            input.voiceProcessingOtherAudioDuckingConfiguration =
+                AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
+                    enableAdvancedDucking: false, duckingLevel: .min)
+            engine.mainMixerNode.outputVolume = 0
+        }
+
+        let fmt = input.outputFormat(forBus: 0)
+        input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, time in
+            self?.processTap(buf, time: time)
+        }
+        tapInstalled = true
+
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine, queue: .main
+        ) { [weak self] _ in
+            self?.onConfigChange?()
+        }
+
+        engine.prepare()
+        do {
+            try engine.start()
+        } catch {
+            // Undo tap and observer so caller can safely recreate engine.
+            input.removeTap(onBus: 0)
+            tapInstalled = false
+            if let obs = configObserver {
+                NotificationCenter.default.removeObserver(obs)
+                configObserver = nil
+            }
+            throw error
+        }
+        return fmt
     }
 
     // MARK: - Tap processing (audio thread)

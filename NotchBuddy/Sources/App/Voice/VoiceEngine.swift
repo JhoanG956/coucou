@@ -142,6 +142,7 @@ final class VoiceEngine: ObservableObject {
         guard audio == nil else { return }
         guard let loc = suitableLocale() else {
             recognizerUnavailable = true
+            appendAppLog("nb.log", "[Voice] no suitable on-device recognizer — voice disabled")
             return
         }
         recognizerUnavailable = false
@@ -241,7 +242,10 @@ final class VoiceEngine: ObservableObject {
             pipelineStartTime = Date()
             startAudioStallTask(audio: a)
         } catch {
-            audioError = error.localizedDescription
+            let e = error as NSError
+            let msg = "[Voice] pipeline start failed: \(e.domain)/\(e.code) \(e.localizedDescription)"
+            appendAppLog("nb.log", msg)
+            audioError = "\(e.domain)/\(e.code): \(e.localizedDescription)"
         }
     }
 

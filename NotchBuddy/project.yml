@@ -25,6 +25,8 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Manual
     OTHER_SWIFT_FLAGS: "-strict-concurrency=complete"
+    # Prevent Xcode from scanning Swift source and rewriting Localizable.xcstrings.
+    SWIFT_EMIT_LOC_STRINGS: NO
   configs:
     Debug:
       CODE_SIGNING_REQUIRED: NO
