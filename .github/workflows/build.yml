@@ -39,6 +39,9 @@ jobs:
       - name: Wake phrase tests
         run: bash scripts/test-voice-wake.sh
 
+      - name: Energy VAD tests
+        run: bash scripts/test-voice-vad.sh
+
       - name: Voice island FSM tests
         run: bash scripts/test-voice-island.sh
 

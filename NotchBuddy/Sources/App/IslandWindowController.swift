@@ -273,8 +273,6 @@ final class IslandWindowController: NSWindowController {
 
             case .listening:
                 self.expand(to: .listening)
-                NotificationCenter.default.post(name: .triggerEmote,
-                                                object: BotEmote.listening)
             }
         }
 
