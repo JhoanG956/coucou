@@ -4,119 +4,143 @@ import Speech
 
 // MARK: - WakeSpotter
 
-/// Runs a single SFSpeechRecognizer window to detect the "OK Coucou" wake phrase.
+/// Runs a single SFSpeechRecognizer window to detect the "OK Coucou" wake phrase,
+/// then switches to command mode in the same recognition session so words spoken
+/// immediately after the wake phrase are not lost.
 ///
-/// Rules:
-/// - `requiresOnDeviceRecognition = true`; never falls back to a server recognizer.
-///   If the device has no on-device model for the locale, the window silently closes.
-/// - Audio and transcriptions are never written to disk or to any log.
-/// - `matchesWake(_:)` is a pure function: testable in isolation.
-///
-/// Thread model: `beginWindow`, `endWindow`, and the `onWake` callback all run on the
-/// thread of the caller. `feed(_:)` may be called from any thread (the audio tap thread).
+/// Thread model: `beginWindow`, `endWindow` are called on the main actor.
+/// `feed(_:)` may be called from any thread (the audio tap thread).
+/// Recognition callbacks arrive on an internal Apple thread.
+/// All shared state is protected by a single `NSLock`.
 final class WakeSpotter: @unchecked Sendable {
 
-    /// Called when the wake phrase is detected. Receives the raw transcript (may include
-    /// words spoken after the wake phrase — those become the command).
-    var onWake: ((String) -> Void)?
+    // MARK: - Callbacks (all delivered on the main thread)
 
+    /// Called once when the wake phrase is detected. Receives the raw partial transcript.
+    var onWake: ((String) -> Void)?
+    /// Called during the command phase with the transcript stripped of the wake phrase.
+    var onCommandUpdate: ((String) -> Void)?
+    /// Called when the recognition session ends naturally (final result or error)
+    /// while in command phase.
+    var onCommandEnd: (() -> Void)?
+
+    // MARK: - State (all guarded by `lock`)
+
+    private let lock = NSLock()
     private var recognizer: SFSpeechRecognizer?
     private var request:    SFSpeechAudioBufferRecognitionRequest?
     private var task:       SFSpeechRecognitionTask?
     private var active      = false
+    private var phase:      Phase = .wake
 
-    // MARK: - Recognition window lifecycle
+    private enum Phase { case wake, command }
 
-    /// Begin a recognition window, listening for the wake phrase in `locale`.
-    /// No-op if a window is already active. If the locale has no on-device model,
-    /// the window is not opened (never falls back to server).
-    func beginWindow(locale: Locale) {
-        guard !active else { return }
-        guard let r = SFSpeechRecognizer(locale: locale),
-              r.supportsOnDeviceRecognition,
-              r.isAvailable else { return }
+    // MARK: - Public API
 
-        let req = SFSpeechAudioBufferRecognitionRequest()
-        req.shouldReportPartialResults   = true
-        req.requiresOnDeviceRecognition  = true
-        req.contextualStrings            = ["Coucou", "OK Coucou", "okay Coucou",
-                                            "hey Coucou"]
-        active     = true
-        recognizer = r
-        request    = req
+    /// True when the session has advanced to command phase (thread-safe).
+    var isInCommandPhase: Bool { lock.withLock { phase == .command } }
 
-        task = r.recognitionTask(with: req) { [weak self] result, error in
-            guard let self else { return }
-            if let transcript = result?.bestTranscription.formattedString,
-               Self.matchesWake(transcript) {
-                let text = transcript
-                DispatchQueue.main.async { self.onWake?(text) }
-                self.endWindow()
-                return
-            }
-            if result?.isFinal == true || error != nil {
-                self.endWindow()
-            }
+    /// Begin a recognition window for the given locale.
+    /// Pre-roll buffers (audio captured before VAD fired) are injected first.
+    func beginWindow(locale: Locale, preroll: [AVAudioPCMBuffer] = []) {
+        var recognizerSnap: SFSpeechRecognizer?
+        var requestSnap:    SFSpeechAudioBufferRecognitionRequest?
+
+        lock.withLock {
+            guard !active else { return }
+            guard let r = SFSpeechRecognizer(locale: locale),
+                  r.supportsOnDeviceRecognition,
+                  r.isAvailable else { return }
+
+            let req = SFSpeechAudioBufferRecognitionRequest()
+            req.shouldReportPartialResults  = true
+            req.requiresOnDeviceRecognition = true
+            req.contextualStrings           = ["Coucou", "OK Coucou", "okay Coucou",
+                                               "hey Coucou"]
+            preroll.forEach { req.append($0) }
+
+            recognizer = r
+            request    = req
+            active     = true
+            phase      = .wake
+            recognizerSnap = r
+            requestSnap    = req
         }
+
+        guard let r = recognizerSnap, let req = requestSnap else { return }
+
+        // Start the task outside the lock (Apple's callback is always async).
+        let t = r.recognitionTask(with: req) { [weak self] result, error in
+            self?.handleResult(result, error: error)
+        }
+        lock.withLock { task = t }
     }
 
-    /// Append an audio buffer to the current window. Thread-safe.
+    /// Append an audio buffer (audio tap thread).
     func feed(_ buffer: AVAudioPCMBuffer) {
-        request?.append(buffer)
+        // Get the request reference under lock; append outside (append is thread-safe).
+        lock.withLock { request }?.append(buffer)
     }
 
-    /// Close the current recognition window without firing `onWake`.
+    /// Close the window without firing any callback.
     func endWindow() {
-        request?.endAudio()
-        task?.cancel()
-        request    = nil
-        task       = nil
-        recognizer = nil
-        active     = false
+        lock.withLock {
+            request?.endAudio()
+            task?.cancel()
+            request    = nil
+            task       = nil
+            recognizer = nil
+            active     = false
+            phase      = .wake
+        }
     }
 
-    // MARK: - Wake phrase matching (pure — no side effects)
+    // MARK: - Recognition callback
 
-    /// Returns `true` when `raw` contains one of the recognised wake patterns.
-    ///
-    /// Accepted patterns (case-insensitive, after phonetic normalisation):
-    /// - "coucou" — exactly that word alone (not mid-sentence, not "coucou ça va")
-    /// - "ok coucou" and its variants: "okay coucou", "ok cuckoo", "ok kuku" …
-    /// - "hey coucou", "dis coucou"
-    ///
-    /// The match may be followed by command words (e.g. "ok coucou add GitHub").
-    static func matchesWake(_ raw: String) -> Bool {
-        // 1. Lower-case and strip punctuation
-        var text = raw.lowercased()
-            .components(separatedBy: .punctuationCharacters)
-            .joined()
-            .trimmingCharacters(in: .whitespaces)
+    private enum Action {
+        case woke(String)
+        case commandUpdate(String)
+        case commandEnd
+    }
 
-        // 2. Normalise common phonetic / OCR variants
-        text = text
-            .replacingOccurrences(of: "cuckoo",   with: "coucou")
-            .replacingOccurrences(of: "kuku",     with: "coucou")
-            .replacingOccurrences(of: "kucou",    with: "coucou")
-            .replacingOccurrences(of: "cou cou",  with: "coucou")
-            .replacingOccurrences(of: "okay",     with: "ok")
-            .replacingOccurrences(of: "o k ",     with: "ok ")
-        // Remove internal double spaces that normalisation may introduce
-        while text.contains("  ") { text = text.replacingOccurrences(of: "  ", with: " ") }
+    private func handleResult(_ result: SFSpeechRecognitionResult?, error: Error?) {
+        let action: Action? = lock.withLock { () -> Action? in
+            guard active else { return nil }
 
-        // 3. Standalone "coucou" — the entire transcript is just "coucou".
-        //    "coucou ça va" or "dis coucou à Marie" must NOT trigger.
-        if text == "coucou" { return true }
+            if let transcript = result?.bestTranscription.formattedString {
+                switch phase {
+                case .wake:
+                    if WakePhrase.matchesWake(transcript) {
+                        phase = .command
+                        return .woke(transcript)
+                    }
+                case .command:
+                    let stripped = WakePhrase.stripWakePhrase(transcript)
+                    return .commandUpdate(stripped)
+                }
+            }
 
-        // 4. Prefix-based patterns (may be followed by a command).
-        // "dis coucou" is excluded: in French it also means "say hello to [person]" and
-        // creates too many false positives (e.g. "dis coucou à Marie"). Added in a later phase.
-        let wakePrefixes = ["ok coucou", "hey coucou"]
-        for prefix in wakePrefixes {
-            if text == prefix              { return true }
-            if text.hasPrefix(prefix + " ") { return true }
+            if result?.isFinal == true || error != nil {
+                let wasCommand = phase == .command
+                request    = nil
+                task       = nil
+                recognizer = nil
+                active     = false
+                phase      = .wake
+                return wasCommand ? .commandEnd : nil
+            }
+            return nil
         }
 
-        return false
+        guard let action else { return }
+        switch action {
+        case .woke(let t):
+            DispatchQueue.main.async { [weak self] in self?.onWake?(t) }
+        case .commandUpdate(let s):
+            DispatchQueue.main.async { [weak self] in self?.onCommandUpdate?(s) }
+        case .commandEnd:
+            DispatchQueue.main.async { [weak self] in self?.onCommandEnd?() }
+        }
     }
 }
 #endif

@@ -7,16 +7,12 @@ import Speech
 
 /// Coordinator for the «OK Coucou» voice feature.
 ///
-/// Responsibilities:
-/// - Manages VoiceAudio (energy VAD) and WakeSpotter (on-device recognition).
-/// - Routes audio buffers to the wake spotter or, after a wake event, to the
-///   command recognizer.
-/// - Fires island notifications (.voiceWoke / .voiceFinished) so
-///   IslandWindowController keeps the FSM in sync.
-/// - Auto-pauses on: screen lock/sleep, Low Power Mode, voice disabled.
-///
-/// Audio transcriptions are never logged beyond the per-session command
-/// transcript held in `commandTranscript` (in-memory only).
+/// - Uses VoiceAudio (energy VAD) and WakeSpotter (on-device recognition).
+/// - WakeSpotter handles both wake detection and command transcription in one session.
+/// - After wake: VoiceAudio.bypassVAD = true so the command receives continuous audio.
+/// - Fires island notifications (.voiceWoke / .voiceFinished) on the main thread.
+/// - Auto-pauses on: screen lock, screen sleep, system sleep, Low Power Mode,
+///   MacDictation active.
 @MainActor
 final class VoiceEngine: ObservableObject {
     static let shared = VoiceEngine()
@@ -24,50 +20,35 @@ final class VoiceEngine: ObservableObject {
     // MARK: - Published state
 
     @Published var isEnabled: Bool = VoiceSettings.isEnabled {
-        didSet {
-            VoiceSettings.isEnabled = isEnabled
-            handleEnabledChanged()
-        }
+        didSet { VoiceSettings.isEnabled = isEnabled; handleEnabledChanged() }
     }
-    /// True while the engine is actively listening for a command (after wake detection).
     @Published private(set) var isListeningForCommand: Bool = false
-    /// Live command transcript (in-memory only, never written to disk or logs).
     @Published private(set) var commandTranscript: String = ""
-    /// True when no on-device speech model is available for any supported locale.
     @Published private(set) var recognizerUnavailable: Bool = false
+    @Published private(set) var audioError: String? = nil
 
     // MARK: - Pause reasons
 
     private var screenLocked   = false
     private var screenSleeping = false
     private var lowPowerMode   = false
+    private var dictationActive = 0   // reference count: MacDictation instances recording
 
-    var isPaused: Bool { screenLocked || screenSleeping || lowPowerMode }
+    var isPaused: Bool { screenLocked || screenSleeping || lowPowerMode || dictationActive > 0 }
 
     // MARK: - Audio pipeline (main-thread owned)
 
     private var audio:   VoiceAudio?
     private var spotter: WakeSpotter?
 
-    // Command recognition
-    private var commandRecognizer: SFSpeechRecognizer?
-    private var commandTask:       SFSpeechRecognitionTask?
-    private var silenceWork:       DispatchWorkItem?
-    private var commandMaxWork:    DispatchWorkItem?
-    private var lastWordCount      = 0
+    // Command session timers and state
+    private var silenceWork:    DispatchWorkItem?
+    private var commandMaxWork: DispatchWorkItem?
+    private var lastWordCount   = 0
 
-    // Lock protecting tap-thread-accessible references
-    private let tapLock = NSLock()
-    nonisolated(unsafe) private var tapSpotter:    WakeSpotter?
-    nonisolated(unsafe) private var tapCommandReq: SFSpeechAudioBufferRecognitionRequest?
-    nonisolated(unsafe) private var tapMode:       TapMode = .wake
-
-    private enum TapMode { case wake, command }
-
-    // Timing constants
-    private static let silenceTimeout:  TimeInterval = 1.2
-    private static let commandMaxTime:  TimeInterval = 10.0
-    private static let cancelPhrases  = ["annule", "annuler", "cancel", "laisse tomber"]
+    private static let silenceTimeout: TimeInterval = 1.2
+    private static let commandMaxTime: TimeInterval = 10.0
+    private static let cancelPhrases = ["annule", "annuler", "cancel", "laisse tomber"]
 
     // MARK: - Init
 
@@ -89,8 +70,7 @@ final class VoiceEngine: ObservableObject {
         else if isEnabled { startAudioPipeline() }
     }
 
-    /// Called by IslandWindowController when the listening island is dismissed by
-    /// a user action (Escape, external collapse) so the command session ends cleanly.
+    /// Called by IslandWindowController when listening is dismissed externally.
     func cancelListening() {
         endCommand(postFinished: false)
     }
@@ -104,43 +84,41 @@ final class VoiceEngine: ObservableObject {
             return
         }
         recognizerUnavailable = false
+        audioError = nil
 
         let a = VoiceAudio()
         let s = WakeSpotter()
 
-        // Give spotter access to the tap-thread-safe slot
-        tapLock.withLock {
-            tapSpotter    = s
-            tapCommandReq = nil
-            tapMode       = .wake
-        }
-
         s.onWake = { [weak self] transcript in
-            // Already dispatched to main by WakeSpotter
             self?.wakeDetected(transcript: transcript, locale: locale)
         }
 
+        s.onCommandUpdate = { [weak self] stripped in
+            self?.commandUpdate(stripped)
+        }
+
+        s.onCommandEnd = { [weak self] in
+            self?.endCommand(postFinished: true)
+        }
+
         a.onVoiceStart = { [weak self] in
-            s.beginWindow(locale: locale)
+            guard let self else { return }
+            let preroll = a.drainPreroll()
+            s.beginWindow(locale: locale, preroll: preroll)
         }
 
         a.onVoiceEnd = { [weak self] in
             guard let self else { return }
-            // VAD ended without wake → close the recognition window
-            tapLock.withLock {
-                if tapMode == .wake { s.endWindow() }
+            // Only close the wake window if we're not already in command mode.
+            // `isInCommandPhase` is lock-protected and safe to check on main before
+            // `isListeningForCommand` is set (race with onWake dispatch).
+            if !self.isListeningForCommand && !s.isInCommandPhase {
+                s.endWindow()
             }
         }
 
-        // Audio tap → spotter or command recognizer (audio thread)
-        a.onBuffer = { [weak self] buf, _ in
-            guard let self else { return }
-            self.tapLock.withLock {
-                switch self.tapMode {
-                case .wake:    self.tapSpotter?.feed(buf)
-                case .command: self.tapCommandReq?.append(buf)
-                }
-            }
+        a.onBuffer = { buf, _ in
+            s.feed(buf)
         }
 
         do {
@@ -148,7 +126,7 @@ final class VoiceEngine: ObservableObject {
             audio   = a
             spotter = s
         } catch {
-            // Microphone unavailable or permission denied
+            audioError = error.localizedDescription
         }
     }
 
@@ -157,77 +135,41 @@ final class VoiceEngine: ObservableObject {
         audio?.stop()
         audio   = nil
         spotter = nil
-        tapLock.withLock {
-            tapSpotter    = nil
-            tapCommandReq = nil
-            tapMode       = .wake
-        }
     }
 
     // MARK: - Wake detection
 
     private func wakeDetected(transcript: String, locale: Locale) {
         guard isEnabled, !isPaused, !isListeningForCommand else { return }
+        guard !shouldIgnoreWake() else { return }
         isListeningForCommand = true
         commandTranscript     = ""
         lastWordCount         = 0
+        audio?.bypassVAD      = true
         NotificationCenter.default.post(name: .voiceWoke, object: nil)
-        startCommandRecognizer(locale: locale)
-    }
-
-    // MARK: - Command recognition
-
-    private func startCommandRecognizer(locale: Locale) {
-        guard let r = SFSpeechRecognizer(locale: locale),
-              r.supportsOnDeviceRecognition,
-              r.isAvailable else {
-            endCommand(postFinished: true)
-            return
-        }
-        let req = SFSpeechAudioBufferRecognitionRequest()
-        req.shouldReportPartialResults  = true
-        req.requiresOnDeviceRecognition = true
-
-        commandRecognizer = r
-        tapLock.withLock {
-            tapCommandReq = req
-            tapMode       = .command
-        }
-
-        commandTask = r.recognitionTask(with: req) { [weak self] result, error in
-            guard let self else { return }
-            Task { @MainActor in
-                if let text = result?.bestTranscription.formattedString {
-                    let stripped = Self.stripWakePhrase(text)
-                    self.commandTranscript = stripped
-                    let wc = stripped.split(separator: " ").count
-                    if wc > self.lastWordCount {
-                        self.lastWordCount = wc
-                        self.resetSilenceTimer()
-                        // Check for cancel phrase
-                        let lower = stripped.lowercased()
-                        if Self.cancelPhrases.contains(where: { lower.contains($0) }) {
-                            self.endCommand(postFinished: true)
-                            return
-                        }
-                    }
-                }
-                if result?.isFinal == true || error != nil {
-                    self.endCommand(postFinished: true)
-                }
-            }
-        }
-
-        // Hard cap on command duration
+        // Silence and max-duration timers
+        resetSilenceTimer()
         let maxItem = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
         }
         commandMaxWork = maxItem
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.commandMaxTime, execute: maxItem)
-
-        // Initial silence timer (fires if nothing is said after wake)
-        resetSilenceTimer()
     }
+
+    private func commandUpdate(_ stripped: String) {
+        commandTranscript = stripped
+        let wc = stripped.split(separator: " ").count
+        if wc > lastWordCount {
+            lastWordCount = wc
+            resetSilenceTimer()
+            let lower = stripped.lowercased()
+            if Self.cancelPhrases.contains(where: { lower.contains($0) }) {
+                endCommand(postFinished: true)
+            }
+        }
+    }
+
+    // MARK: - Command session management
 
     private func resetSilenceTimer() {
         silenceWork?.cancel()
@@ -241,26 +183,26 @@ final class VoiceEngine: ObservableObject {
     private func endCommand(postFinished: Bool) {
         silenceWork?.cancel();    silenceWork    = nil
         commandMaxWork?.cancel(); commandMaxWork = nil
-
-        tapLock.withLock {
-            tapCommandReq?.endAudio()
-            tapCommandReq = nil
-            tapMode       = .wake
-        }
-        commandTask?.cancel()
-        commandTask       = nil
-        commandRecognizer = nil
+        audio?.bypassVAD = false
+        spotter?.endWindow()
         isListeningForCommand = false
-
         if postFinished {
             let cmd = commandTranscript
-            NotificationCenter.default.post(name: .voiceFinished, object: cmd.isEmpty ? nil : cmd as NSString)
+            NotificationCenter.default.post(name: .voiceFinished,
+                                            object: cmd.isEmpty ? nil : cmd as NSString)
         }
     }
 
     // MARK: - Helpers
 
-    /// Returns the first locale whose SFSpeechRecognizer supports on-device recognition.
+    /// Returns true when the island is showing an approval, question, or chat prompt —
+    /// wake detection is suppressed in those states to avoid interrupting the user.
+    private func shouldIgnoreWake() -> Bool {
+        let v = AppState.shared.view
+        return v == .approval || v == .question || v == .prompt
+            || AppState.shared.pendingApproval != nil
+    }
+
     private func suitableLocale() -> Locale? {
         var candidates = MacDictation.automaticLocales()
         candidates += [Locale(identifier: "fr-FR"), Locale(identifier: "en-US")]
@@ -273,51 +215,35 @@ final class VoiceEngine: ObservableObject {
         return nil
     }
 
-    /// Strip the wake phrase from the start of a transcript.
-    private static func stripWakePhrase(_ raw: String) -> String {
-        let lower = raw.lowercased()
-        let phrases = ["ok coucou", "okay coucou", "ok cuckoo", "ok kuku",
-                       "hey coucou", "dis coucou", "coucou"]
-        for phrase in phrases where lower.hasPrefix(phrase) {
-            return String(raw.dropFirst(phrase.count))
-                .trimmingCharacters(in: .whitespaces)
-        }
-        return raw
-    }
-
     // MARK: - System event observers
 
     private func observeSystemEvents() {
         let dc = DistributedNotificationCenter.default()
         dc.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"),
                        object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in
-                self?.screenLocked = true
-                self?.updatePause()
-            }
+            Task { @MainActor in self?.screenLocked = true;  self?.updatePause() }
         }
         dc.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"),
                        object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in
-                self?.screenLocked = false
-                self?.updatePause()
-            }
+            Task { @MainActor in self?.screenLocked = false; self?.updatePause() }
         }
 
         let ws = NSWorkspace.shared.notificationCenter
         ws.addObserver(forName: NSWorkspace.willSleepNotification,
                        object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in
-                self?.screenSleeping = true
-                self?.updatePause()
-            }
+            Task { @MainActor in self?.screenSleeping = true;  self?.updatePause() }
         }
         ws.addObserver(forName: NSWorkspace.didWakeNotification,
                        object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in
-                self?.screenSleeping = false
-                self?.updatePause()
-            }
+            Task { @MainActor in self?.screenSleeping = false; self?.updatePause() }
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification,
+                       object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.screenSleeping = true;  self?.updatePause() }
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification,
+                       object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.screenSleeping = false; self?.updatePause() }
         }
 
         NotificationCenter.default.addObserver(
@@ -329,16 +255,32 @@ final class VoiceEngine: ObservableObject {
                 self?.updatePause()
             }
         }
+
+        // Pause while chat dictation is active.
+        NotificationCenter.default.addObserver(
+            forName: .dictationDidStart, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.dictationActive += 1
+                self?.updatePause()
+            }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .dictationDidEnd, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.dictationActive = max(0, (self?.dictationActive ?? 0) - 1)
+                self?.updatePause()
+            }
+        }
     }
 }
 
-// MARK: - Voice notification names (defined alongside the engine that posts them)
+// MARK: - Voice notification names
 
 extension Notification.Name {
-    /// Posted (main thread) when the wake phrase is detected. Island opens in .listening.
     static let voiceWoke     = Notification.Name("notchBuddy.voiceWoke")
-    /// Posted (main thread) when listening ends (silence, cancel, max time, or user dismiss).
-    /// `object` is the command String if any words were captured, nil otherwise.
     static let voiceFinished = Notification.Name("notchBuddy.voiceFinished")
+    // dictationDidStart / dictationDidEnd are defined in MacDictation.swift
 }
 #endif

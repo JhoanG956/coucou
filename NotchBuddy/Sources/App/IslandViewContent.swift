@@ -29,7 +29,7 @@ struct IslandViewContent: View {
         case .recap:     WeeklyRecapCardView(state: state)
         case .listening:
             #if !APPSTORE
-            VoiceListeningView()
+            VoiceListeningView(isActive: state.view == .listening)
             #else
             EmptyView()
             #endif

@@ -36,6 +36,12 @@ jobs:
       - name: Test open on hover
         run: bash scripts/test-island-hover.sh
 
+      - name: Wake phrase tests
+        run: bash scripts/test-voice-wake.sh
+
+      - name: Voice island FSM tests
+        run: bash scripts/test-voice-island.sh
+
       - name: Test terminal target
         run: bash scripts/test-terminal-target.sh
 

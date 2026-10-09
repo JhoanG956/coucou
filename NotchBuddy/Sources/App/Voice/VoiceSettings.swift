@@ -35,10 +35,6 @@ enum VoiceSettings {
         }
     }
 
-    var bothGranted: Bool {
-        VoiceSettings.micStatus == .granted && VoiceSettings.speechStatus == .granted
-    }
-
     /// Request microphone then speech recognition. Returns true if both granted.
     @MainActor
     static func requestPermissions() async -> Bool {

@@ -47,6 +47,7 @@ final class IslandStateMachine {
     private var petitHideWork: DispatchWorkItem?
     private var homeCollapseWork: DispatchWorkItem?
     private var greetCollapseWork: DispatchWorkItem?
+    private var stateBeforeListening: State = .hidden
 
     // MARK: – Inputs
 
@@ -150,6 +151,7 @@ final class IslandStateMachine {
 
     /// Wake phrase detected: open the island in listening mode from any state.
     func voiceWoke() {
+        stateBeforeListening = state
         cancelTimers()
         openedByHover = false
         transition(to: .listening)
@@ -158,7 +160,7 @@ final class IslandStateMachine {
     /// Command session ended (silence timeout, cancel phrase, or user dismiss).
     func voiceFinished() {
         guard state == .listening else { return }
-        transition(to: .petit)
+        transition(to: stateBeforeListening == .home ? .home : .petit)
     }
 
     /// Greeting animation finished (called at T.end ≈ 4.60 s).

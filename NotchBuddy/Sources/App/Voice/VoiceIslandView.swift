@@ -6,9 +6,11 @@ import SwiftUI
 /// Content of the island while the voice engine is listening for a command.
 /// Shown when `AppState.view == .listening`.
 ///
-/// Layout mirrors other 160-pt views: Mochi (BotPlacement) occupies the left ~110 pt;
-/// the card fills the remaining space to the right.
+/// `isActive` must be true only when this view is the currently displayed island view.
+/// Pass `state.view == .listening` from IslandViewContent. This prevents the MicDot
+/// animation from running while the view is off-screen (ForEach instantiates all views).
 struct VoiceListeningView: View {
+    let isActive: Bool
     @ObservedObject private var voice = VoiceEngine.shared
 
     var body: some View {
@@ -16,21 +18,18 @@ struct VoiceListeningView: View {
             CardBackground(wash: .cyan)
 
             HStack(spacing: 0) {
-                // Reserve space for BotPlacement (injected by IslandContainer)
                 Spacer().frame(width: 110)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    // Status row: pulsing mic dot + "À l'écoute…" label
                     HStack(spacing: 7) {
-                        MicDotView()
-                        Text("À l'écoute…")
+                        MicDotView(active: isActive)
+                        Text("Listening\u{2026}", tableName: "Localizable")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(hex: "#F5F6F8"))
                     }
 
-                    // Live transcript (empty until user starts speaking)
                     if voice.commandTranscript.isEmpty {
-                        Text("Dites votre commande")
+                        Text("Say your command", tableName: "Localizable")
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: "#8E939C"))
                     } else {
@@ -51,21 +50,26 @@ struct VoiceListeningView: View {
 
 // MARK: - MicDotView
 
-/// A pulsing microphone-indicator dot (matches macOS orange recording dot convention).
+/// Pulsing microphone indicator. Animation only runs when `active` is true,
+/// preventing CPU waste when the view is in the ForEach but not visible.
 private struct MicDotView: View {
+    let active: Bool
     @State private var pulsing = false
 
     var body: some View {
         Circle()
-            .fill(Color(hex: "#F97316"))   // warm orange
+            .fill(Color(hex: "#F97316"))
             .frame(width: 8, height: 8)
-            .scaleEffect(pulsing ? 1.35 : 1.0)
-            .opacity(pulsing ? 0.65 : 1.0)
+            .scaleEffect((active && pulsing) ? 1.35 : 1.0)
+            .opacity((active && pulsing) ? 0.65 : 1.0)
             .animation(
-                .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                active
+                    ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
+                    : .default,
                 value: pulsing
             )
-            .onAppear { pulsing = true }
+            .onChange(of: active) { _, newValue in pulsing = newValue }
+            .onAppear  { pulsing = active }
             .onDisappear { pulsing = false }
     }
 }
