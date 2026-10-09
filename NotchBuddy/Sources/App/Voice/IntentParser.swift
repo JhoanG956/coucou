@@ -225,6 +225,37 @@ enum IntentParser {
         return .unknown
     }
 
+    // MARK: - Multi-action splitting
+
+    /// Try to parse `raw` as two or more sequential intents separated by "et/puis/ensuite/and/then".
+    /// Returns nil if fewer than 2 valid (non-.unknown) intents can be extracted — the caller
+    /// should fall back to single-intent `parse()` in that case.
+    ///
+    /// Safe against single-intent uses of conjunctions: if any part produces `.unknown`,
+    /// the whole call returns nil (e.g. "mets Gemini et Cursor" splits to ["mets Gemini", "Cursor"];
+    /// "Cursor" alone is unknown → falls back to the single-intent parser which returns
+    /// `.pillAddMultiple`).
+    static func parseMultiAction(_ raw: String, pills: [PillDefinition] = []) -> [VoiceIntent]? {
+        let conjunctions: Set<String> = ["et", "puis", "ensuite", "and", "then"]
+        let normWords = normalise(raw).split(separator: " ").map(String.init)
+
+        // Split normalised word array on conjunctions.
+        var normParts: [[String]] = []
+        var cur: [String] = []
+        for w in normWords {
+            if conjunctions.contains(w) {
+                if !cur.isEmpty { normParts.append(cur); cur = [] }
+            } else { cur.append(w) }
+        }
+        if !cur.isEmpty { normParts.append(cur) }
+        guard normParts.count >= 2 else { return nil }
+
+        // Each part must produce a non-.unknown intent.
+        let intents = normParts.map { parse($0.joined(separator: " "), pills: pills) }
+        let allValid = intents.allSatisfy { if case .unknown = $0 { return false }; return true }
+        return allValid ? intents : nil
+    }
+
     // MARK: - Normalisation
 
     static func normalise(_ s: String) -> String {
@@ -255,7 +286,10 @@ enum IntentParser {
     private static func defilter(
         _ words: [String], rawWords: [String]
     ) -> ([String], [String]) {
-        let fillers:  Set<String>    = ["un", "peu", "s", "il", "te", "plait", "moi"]
+        // "truc", "chose", "machin", "bidule" = placeholder words used before an entity name
+        // e.g. "mets le truc Gemini" → "mets Gemini"
+        let fillers:  Set<String>    = ["un", "peu", "s", "il", "te", "plait", "moi",
+                                        "truc", "chose", "machin", "bidule"]
         let synonyms: [String: String] = ["ma": "la", "mon": "le", "mes": "les"]
         var fw: [String] = []
         var fr: [String] = []

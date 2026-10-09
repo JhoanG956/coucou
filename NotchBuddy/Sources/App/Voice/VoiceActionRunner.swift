@@ -73,6 +73,10 @@ final class VoiceActionRunner {
     /// VoiceEngine reads this flag in endCommand to skip music volume restoration.
     var volumeCommandExecuted = false
 
+    /// Locale of the current recognition session — set by IslandWindowController before calling
+    /// run() or handleAnswer(). Used to produce responses in the spoken language rather than the UI language.
+    var commandLocale: Locale? = nil
+
     init() {}
 
     func run(_ intent: VoiceIntent,
@@ -144,7 +148,7 @@ final class VoiceActionRunner {
             }
             volumeCommandExecuted = true
             music.setVolume(pct)
-            let fmt = NSLocalizedString("voice.music-vol-set", comment: "")
+            let fmt = Self.localizedString("voice.music-vol-set", locale: commandLocale)
             return .init(outcome: .success, message: fmt.contains("%") ? String(format: fmt, pct) : "\(pct)%")
 
         case .musicPlaySearch(let name):
@@ -153,7 +157,7 @@ final class VoiceActionRunner {
             }
             let found = await music.playSearch(name)
             if found { return ok("voice.music-playing") }
-            let fmt = NSLocalizedString("voice.music-artist-err", comment: "")
+            let fmt = Self.localizedString("voice.music-artist-err", locale: commandLocale)
             return .init(outcome: .failure,
                          message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
@@ -163,7 +167,7 @@ final class VoiceActionRunner {
             }
             let found = await music.playPlaylist(name)
             if found { return ok("voice.music-playing") }
-            let fmt = NSLocalizedString("voice.music-artist-err", comment: "")
+            let fmt = Self.localizedString("voice.music-artist-err", locale: commandLocale)
             return .init(outcome: .failure,
                          message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
@@ -174,13 +178,13 @@ final class VoiceActionRunner {
                 return ok("voice.pill-already-active")
             }
             guard pills.activeCount() < 4 else {
-                let qFmt = NSLocalizedString("voice.ask-which-remove", comment: "")
+                let qFmt = Self.localizedString("voice.ask-which-remove", locale: commandLocale)
                 pendingQuestion = PendingVoiceQuestion(kind: .removeWhich(toAdd: id), text: qFmt)
                 return .init(outcome: .question(text: qFmt), message: qFmt)
             }
             pills.toggleIntegration(id)
             let name = pillName(id, from: availablePills)
-            let fmt  = NSLocalizedString("voice.pill-added", comment: "")
+            let fmt  = Self.localizedString("voice.pill-added", locale: commandLocale)
             let msg  = fmt.contains("%@") ? String(format: fmt, name) : name
             return .init(outcome: .success, message: msg)
 
@@ -192,10 +196,10 @@ final class VoiceActionRunner {
                 added.append(pillName(id, from: availablePills))
             }
             let names = added.joined(separator: ", ")
-            let fmt   = NSLocalizedString("voice.pill-added", comment: "")
+            let fmt   = Self.localizedString("voice.pill-added", locale: commandLocale)
             let msg   = fmt.contains("%@") ? String(format: fmt, names) : names
             return .init(outcome: added.isEmpty ? .failure : .success,
-                         message: added.isEmpty ? NSLocalizedString("voice.unknown", comment: "") : msg)
+                         message: added.isEmpty ? Self.localizedString("voice.unknown", locale: commandLocale) : msg)
 
         case .pillRemove(let id):
             guard pills.activeIds().contains(id) else {
@@ -203,7 +207,7 @@ final class VoiceActionRunner {
             }
             pills.toggleIntegration(id)
             let name = pillName(id, from: availablePills)
-            let fmt  = NSLocalizedString("voice.pill-removed", comment: "")
+            let fmt  = Self.localizedString("voice.pill-removed", locale: commandLocale)
             let msg  = fmt.contains("%@") ? String(format: fmt, name) : name
             return .init(outcome: .success, message: msg)
 
@@ -215,15 +219,15 @@ final class VoiceActionRunner {
                 removed.append(pillName(id, from: availablePills))
             }
             let names = removed.joined(separator: ", ")
-            let fmt   = NSLocalizedString("voice.pill-removed", comment: "")
+            let fmt   = Self.localizedString("voice.pill-removed", locale: commandLocale)
             let msg   = fmt.contains("%@") ? String(format: fmt, names) : names
             return .init(outcome: removed.isEmpty ? .failure : .success,
-                         message: removed.isEmpty ? NSLocalizedString("voice.unknown", comment: "") : msg)
+                         message: removed.isEmpty ? Self.localizedString("voice.unknown", locale: commandLocale) : msg)
 
         case .pillSetMain(let id):
             pills.setMainPill(id)
             let name = pillName(id, from: availablePills)
-            let fmt  = NSLocalizedString("voice.pill-main", comment: "")
+            let fmt  = Self.localizedString("voice.pill-main", locale: commandLocale)
             let msg  = fmt.contains("%@") ? String(format: fmt, name) : name
             return .init(outcome: .success, message: msg)
 
@@ -232,7 +236,7 @@ final class VoiceActionRunner {
             if !pills.activeIds().contains(newId) { pills.toggleIntegration(newId) }
             let n1  = pillName(oldId, from: availablePills)
             let n2  = pillName(newId, from: availablePills)
-            let fmt = NSLocalizedString("voice.pill-replaced", comment: "")
+            let fmt = Self.localizedString("voice.pill-replaced", locale: commandLocale)
             let msg = fmt.contains("%@") ? String(format: fmt, n1, n2) : "\(n1) → \(n2)"
             return .init(outcome: .success, message: msg)
 
@@ -241,13 +245,13 @@ final class VoiceActionRunner {
             for id in current { if !ids.contains(id) { pills.toggleIntegration(id) } }
             for id in ids { if !pills.activeIds().contains(id) { pills.toggleIntegration(id) } }
             let names = ids.map { pillName($0, from: availablePills) }.joined(separator: ", ")
-            let fmt   = NSLocalizedString("voice.pill-only", comment: "")
+            let fmt   = Self.localizedString("voice.pill-only", locale: commandLocale)
             let msg   = fmt.contains("%@") ? String(format: fmt, names) : names
             return .init(outcome: .success, message: msg)
 
         case .unknown:
             if rawTranscript.isEmpty { return fail("voice.unknown") }
-            let fmt = NSLocalizedString("voice.unknown-transcript", comment: "")
+            let fmt = Self.localizedString("voice.unknown-transcript", locale: commandLocale)
             let msg = fmt.contains("%@") ? String(format: fmt, rawTranscript) : rawTranscript
             return .init(outcome: .failure, message: msg)
         }
@@ -279,7 +283,7 @@ final class VoiceActionRunner {
             }
             let removedName = pillName(entity, from: availablePills)
             let addedName   = pillName(toAdd,  from: availablePills)
-            let fmt = NSLocalizedString("voice.pill-replaced", comment: "")
+            let fmt = Self.localizedString("voice.pill-replaced", locale: commandLocale)
             let msg = fmt.contains("%@") ? String(format: fmt, removedName, addedName)
                                          : "\(removedName) → \(addedName)"
             return .init(outcome: .success, message: msg)
@@ -289,15 +293,33 @@ final class VoiceActionRunner {
     // MARK: - Helpers
 
     private func ok(_ key: String) -> VoiceActionResult {
-        .init(outcome: .success, message: NSLocalizedString(key, comment: ""))
+        .init(outcome: .success, message: Self.localizedString(key, locale: commandLocale))
     }
 
     private func fail(_ key: String) -> VoiceActionResult {
-        .init(outcome: .failure, message: NSLocalizedString(key, comment: ""))
+        .init(outcome: .failure, message: Self.localizedString(key, locale: commandLocale))
     }
 
     private func pillName(_ id: String, from available: [PillDefinition]) -> String {
         available.first(where: { $0.id == id })?.name ?? id
+    }
+
+    /// Look up `key` in the lproj bundle matching `locale`, falling back to NSLocalizedString.
+    static func localizedString(_ key: String, locale: Locale?) -> String {
+        guard let locale else { return NSLocalizedString(key, comment: "") }
+        // Try locale.identifier ("fr-FR" → "fr_FR"), hyphenated form, then base language code.
+        let langCode = locale.language.languageCode?.identifier ?? ""
+        let candidates = [locale.identifier,
+                          locale.identifier.replacingOccurrences(of: "_", with: "-"),
+                          langCode].filter { !$0.isEmpty }
+        for code in candidates {
+            if let path   = Bundle.main.path(forResource: code, ofType: "lproj"),
+               let bundle = Bundle(path: path) {
+                let s = bundle.localizedString(forKey: key, value: nil, table: "Localizable")
+                if s != key { return s }
+            }
+        }
+        return NSLocalizedString(key, comment: "")
     }
 }
 #endif

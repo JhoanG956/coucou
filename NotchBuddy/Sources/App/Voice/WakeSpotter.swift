@@ -53,10 +53,15 @@ final class WakeSpotter: @unchecked Sendable {
 
     var isInCommandPhase: Bool { lock.withLock { phase == .command } }
 
-    /// Open a wake+command recognition window.
+    /// Open a recognition window.
+    /// - `startInCommandPhase`: when `true`, skip the wake-phrase gate and start
+    ///   delivering transcripts directly as command updates (used for follow-up
+    ///   answers and the ⌃⌥V direct-listen shortcut).
     /// Returns `true` if the underlying recognition task was successfully started.
     @discardableResult
-    func beginWindow(locale: Locale, preroll: [AVAudioPCMBuffer] = []) -> Bool {
+    func beginWindow(locale: Locale,
+                     preroll: [AVAudioPCMBuffer] = [],
+                     startInCommandPhase: Bool = false) -> Bool {
         enum Refusal { case alreadyActive, unavailable }
         var refusal:  Refusal? = nil
         var rSnap:    SFSpeechRecognizer?
@@ -78,7 +83,7 @@ final class WakeSpotter: @unchecked Sendable {
             recognizer   = r
             request      = req
             active       = true
-            phase        = .wake
+            phase        = startInCommandPhase ? .command : .wake
             partialCount = 0
             taskGen      = gen.bump()   // new generation for this task
             rSnap        = r

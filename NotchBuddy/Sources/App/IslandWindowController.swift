@@ -1310,17 +1310,45 @@ extension IslandWindowController {
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
         let pills  = PillCatalog.available
+        let runner = VoiceActionRunner.shared
+
+        // Propagate recognition locale so responses are in the spoken language.
+        runner.commandLocale = VoiceEngine.shared.speechLocale
 
         // ── Follow-up answer to a pending question ────────────────────────────────
-        if VoiceActionRunner.shared.pendingQuestion != nil {
-            let result = await VoiceActionRunner.shared.handleAnswer(transcript, availablePills: pills)
+        if runner.pendingQuestion != nil {
+            let result = await runner.handleAnswer(transcript, availablePills: pills)
             showVoiceResult(result, emote: result.outcome == .success ? BotEmote.happy : nil)
             return
         }
 
-        // ── Normal command ────────────────────────────────────────────────────────
+        // ── Multi-action: "mets Gemini et enlève GitHub" ──────────────────────────
+        if let intents = IntentParser.parseMultiAction(transcript, pills: pills), intents.count >= 2 {
+            var parts: [String] = []
+            var anyFailure = false
+            for intent in intents {
+                let r = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+                parts.append(r.message)
+                if case .failure = r.outcome { anyFailure = true }
+                // .question in multi-action: treat as failure (no re-listen in combined flow).
+                if case .question = r.outcome { anyFailure = true }
+            }
+            let combined = VoiceActionResult(
+                outcome: anyFailure ? .failure : .success,
+                message: parts.joined(separator: " · ")
+            )
+            if anyFailure {
+                NotificationCenter.default.post(name: .botDizzy, object: nil)
+            } else {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            }
+            showVoiceResult(combined)
+            return
+        }
+
+        // ── Single command ────────────────────────────────────────────────────────
         let intent = IntentParser.parse(transcript, pills: pills)
-        let result = await VoiceActionRunner.shared.run(intent, availablePills: pills, rawTranscript: transcript)
+        let result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
 
         // Mochi reaction
         switch result.outcome {
@@ -1337,15 +1365,16 @@ extension IslandWindowController {
         expand(to: .voiceResult)
 
         if case .question = result.outcome {
-            // Re-open listening immediately (without wake phrase) so Mochi listens for the answer
+            // Re-open listening in command phase (skip wake gate) so the answer goes straight
+            // to the command pipeline. Give 5 s initial silence — user needs to read the question.
             voiceResultWork?.cancel()
             voiceResultWork = nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 guard self != nil else { return }
-                VoiceEngine.shared.startListeningDirectly()
+                VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
             }
         } else {
-            scheduleVoiceDismiss(delay: result.outcome == .success ? 2.0 : 2.0)
+            scheduleVoiceDismiss(delay: 2.0)
         }
     }
 

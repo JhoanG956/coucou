@@ -82,6 +82,11 @@ final class VoiceEngine: ObservableObject {
     private var minuteWindowStart:  Date = .distantPast
 
     private static let initialTimeout:           TimeInterval = 3.0
+    private static let directListenInitialTimeout: TimeInterval = 5.0   // follow-up: user reads question first
+    private static let directListenMaxTime:        TimeInterval = 20.0
+
+    /// Initial silence timeout for the current direct-listen session.
+    private var directInitialTimeout: TimeInterval = 3.0
     private static let silenceTimeout:           TimeInterval = 1.2
     private static let commandMaxTime:           TimeInterval = 10.0
     private static let wakeWindowMax:            TimeInterval = 20.0
@@ -115,26 +120,34 @@ final class VoiceEngine: ObservableObject {
 
     func cancelListening() { endCommand(postFinished: false) }
 
-    func startListeningDirectly() {
+    /// `firstWordTimeout`: seconds of silence allowed before the first word (default 3 s;
+    /// pass `Self.directListenInitialTimeout` = 5 s for follow-up questions so the user
+    /// has time to read the question before speaking).
+    func startListeningDirectly(firstWordTimeout: TimeInterval = 3.0) {
         guard isEnabled, !isPaused, !isListeningForCommand else { return }
         guard let audio = audio, let spotter = spotter, let loc = locale else { return }
         wakeWindowWork?.cancel(); wakeWindowWork = nil
         isListeningForCommand = true
         commandTranscript     = ""
         lastWordCount         = 0
+        directInitialTimeout  = firstWordTimeout
         audio.bypassVAD       = true
         duckMusic()
-        appendAppLog("nb.log", "[Voice] direct listen start")
+        appendAppLog("nb.log", "[Voice] direct listen start (firstWordTimeout: \(firstWordTimeout)s)")
         NotificationCenter.default.post(name: .voiceWoke, object: "direct" as NSString)
         let preroll = audio.drainPreroll()
-        spotter.beginWindow(locale: loc, preroll: preroll)
+        // startInCommandPhase: skip wake-phrase gate, deliver speech directly as command.
+        spotter.beginWindow(locale: loc, preroll: preroll, startInCommandPhase: true)
         resetSilenceTimer()
         let maxItem = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
         }
         commandMaxWork = maxItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: maxItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.directListenMaxTime, execute: maxItem)
     }
+
+    /// Locale used for the current recognition session — nil if pipeline is not running.
+    var speechLocale: Locale? { locale }
 
     // MARK: - Pipeline lifecycle
 
@@ -487,7 +500,7 @@ final class VoiceEngine: ObservableObject {
 
     private func resetSilenceTimer() {
         silenceWork?.cancel()
-        let timeout = lastWordCount > 0 ? Self.silenceTimeout : Self.initialTimeout
+        let timeout = lastWordCount > 0 ? Self.silenceTimeout : directInitialTimeout
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
         }

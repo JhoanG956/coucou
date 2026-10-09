@@ -188,6 +188,37 @@ enum IntentParserTests {
               parse("tu pourrais baisser le son"),
               .musicVolumeDown)
 
+        // ── Filler words: "truc", "chose", "machin" ──────────────────────────
+        check("mets le truc Gemini",
+              parse("mets le truc Gemini", pills: pills),
+              .pillAdd(id: "agent_gemini"))
+        check("ajoute la chose GitHub",
+              parse("ajoute la chose GitHub", pills: pills),
+              .pillAdd(id: "integration_github"))
+        check("enlève le machin Vercel",
+              parse("enlève le machin Vercel", pills: pills),
+              .pillRemove(id: "integration_vercel"))
+        check("mets le bidule Stripe",
+              parse("mets le bidule Stripe", pills: pills),
+              .pillAdd(id: "integration_stripe"))
+
+        // ── parseMultiAction ─────────────────────────────────────────────────
+        checkMultiAction("mets le truc Gemini et enlève GitHub",
+                         parseMulti("mets le truc Gemini et enlève GitHub"),
+                         [.pillAdd(id: "agent_gemini"), .pillRemove(id: "integration_github")])
+        checkMultiAction("ajoute Stripe puis enlève Vercel",
+                         parseMulti("ajoute Stripe puis enlève Vercel"),
+                         [.pillAdd(id: "integration_stripe"), .pillRemove(id: "integration_vercel")])
+        checkMultiAction("add GitHub then remove Vercel",
+                         parseMulti("add GitHub then remove Vercel"),
+                         [.pillAdd(id: "integration_github"), .pillRemove(id: "integration_vercel")])
+        // Single pill with conjunction → NOT multi-action (fallback to single-intent)
+        checkNilMultiAction("mets Gemini et Cursor",
+                            parseMulti("mets Gemini et Cursor"))
+        // Unknown part → not multi-action
+        checkNilMultiAction("mets Gemini et blahblah",
+                            parseMulti("mets Gemini et blahblah"))
+
         // Summary
         let total = pass + fail
         if fail == 0 { print("\n\(total)/\(total) passed.") }
@@ -196,6 +227,29 @@ enum IntentParserTests {
 
     static func parse(_ s: String, pills: [PillDefinition] = []) -> VoiceIntent {
         IntentParser.parse(s, pills: pills)
+    }
+
+    static func parseMulti(_ s: String) -> [VoiceIntent]? {
+        IntentParser.parseMultiAction(s, pills: pills)
+    }
+
+    static func checkMultiAction(_ label: String, _ got: [VoiceIntent]?, _ want: [VoiceIntent]) {
+        guard let got else {
+            print("✗  \(label) — got nil, want \(want)"); fail += 1; return
+        }
+        if got == want {
+            print("✓  \(label)"); pass += 1
+        } else {
+            print("✗  \(label) — got \(got), want \(want)"); fail += 1
+        }
+    }
+
+    static func checkNilMultiAction(_ label: String, _ got: [VoiceIntent]?) {
+        if got == nil {
+            print("✓  \(label) → nil (expected)"); pass += 1
+        } else {
+            print("✗  \(label) — expected nil, got \(got!)"); fail += 1
+        }
     }
 
     static func check(_ label: String, _ got: VoiceIntent, _ want: VoiceIntent) {
