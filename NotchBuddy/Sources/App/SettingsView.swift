@@ -1262,23 +1262,22 @@ struct SettingsView: View {
     @ObservedObject private var voiceEngine = VoiceEngine.shared
 
     @ViewBuilder private var voiceSection: some View {
-        GroupBox("«\u{202F}OK Coucou\u{202F}» — commande vocale mains libres") {
+        GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
             VStack(alignment: .leading, spacing: 10) {
-                Toggle("Activer la commande vocale", isOn: $voiceEngine.isEnabled)
+                Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
-                Text("Quand cette option est activée, Coucou écoute le mot de réveil «\u{202F}OK Coucou\u{202F}». La reconnaissance vocale se fait entièrement sur l'appareil — aucun audio ni transcription ne quitte votre Mac.")
+                Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                // Orange dot explanation
                 HStack(alignment: .top, spacing: 6) {
                     Circle()
                         .fill(Color(hex: "#F97316"))
                         .frame(width: 8, height: 8)
                         .padding(.top, 2)
-                    Text("Pendant l'écoute, macOS affiche le point orange du microphone en haut à droite de la barre de menus. C'est le comportement normal du système.")
+                    Text("While listening, macOS shows the orange microphone dot in the top-right of the menu bar. This is normal system behaviour.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1288,7 +1287,7 @@ struct SettingsView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
-                        Text("Aucun modèle de reconnaissance vocale disponible sur cet appareil. Installez un modèle dans Réglages Système → Clavier → Dictée.")
+                        Text("No speech recognition model available on this device. Install one in System Settings \u{2192} Keyboard \u{2192} Dictation.")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1299,7 +1298,7 @@ struct SettingsView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.red)
-                        Text(String(localized: "Microphone unavailable: \(err)"))
+                        Text("\(String(localized: "Microphone unavailable")): \(err)")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1309,22 +1308,22 @@ struct SettingsView: View {
             .padding(6)
         }
 
-        GroupBox("Permissions") {
+        GroupBox(String(localized: "Permissions")) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
                     Image(systemName: micStatusIcon)
                         .foregroundColor(micStatusColor)
-                    Text("Microphone : \(micStatusLabel)")
+                    Text("\(String(localized: "Microphone:")) \(micStatusLabel)")
                         .font(.system(size: 12))
                 }
                 HStack(spacing: 6) {
                     Image(systemName: speechStatusIcon)
                         .foregroundColor(speechStatusColor)
-                    Text("Reconnaissance vocale : \(speechStatusLabel)")
+                    Text("\(String(localized: "Speech recognition:")) \(speechStatusLabel)")
                         .font(.system(size: 12))
                 }
                 if !voicePermissionsGranted {
-                    Button("Demander les permissions") {
+                    Button(String(localized: "Request permissions")) {
                         Task {
                             let ok = await VoiceSettings.requestPermissions()
                             voicePermissionsGranted = ok
@@ -1345,18 +1344,18 @@ struct SettingsView: View {
     private var micStatusColor: Color  { VoiceSettings.micStatus    == .granted ? .green : .red }
     private var micStatusLabel: String {
         switch VoiceSettings.micStatus {
-        case .granted:      return "accordé"
-        case .denied:       return "refusé (Réglages Système → Confidentialité → Microphone)"
-        case .undetermined: return "non demandé"
+        case .granted:      return String(localized: "Granted")
+        case .denied:       return String(localized: "Denied")
+        case .undetermined: return String(localized: "Not requested")
         }
     }
     private var speechStatusIcon:  String { VoiceSettings.speechStatus == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
     private var speechStatusColor: Color  { VoiceSettings.speechStatus == .granted ? .green : .red }
     private var speechStatusLabel: String {
         switch VoiceSettings.speechStatus {
-        case .granted:      return "accordé"
-        case .denied:       return "refusé (Réglages Système → Confidentialité → Reconnaissance vocale)"
-        case .undetermined: return "non demandé"
+        case .granted:      return String(localized: "Granted")
+        case .denied:       return String(localized: "Denied")
+        case .undetermined: return String(localized: "Not requested")
         }
     }
     #endif

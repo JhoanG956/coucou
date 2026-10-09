@@ -8,6 +8,9 @@ import Speech
 /// then switches to command mode in the same recognition session so words spoken
 /// immediately after the wake phrase are not lost.
 ///
+/// Wake detection uses `WakePhrase.split` which searches anywhere in the transcript
+/// at a word boundary, not just the start ("euh ok coucou…" matches).
+///
 /// Thread model: `beginWindow`, `endWindow` are called on the main actor.
 /// `feed(_:)` may be called from any thread (the audio tap thread).
 /// Recognition callbacks arrive on an internal Apple thread.
@@ -18,11 +21,14 @@ final class WakeSpotter: @unchecked Sendable {
 
     /// Called once when the wake phrase is detected. Receives the raw partial transcript.
     var onWake: ((String) -> Void)?
-    /// Called during the command phase with the transcript stripped of the wake phrase.
+    /// Called during the command phase with the command portion of the transcript (normalised).
     var onCommandUpdate: ((String) -> Void)?
     /// Called when the recognition session ends naturally (final result or error)
     /// while in command phase.
     var onCommandEnd: (() -> Void)?
+    /// Called when the recognition session ends in wake phase (no command captured).
+    /// VoiceEngine uses this to reopen the window immediately if the VAD is still active.
+    var onWakeWindowEnded: (() -> Void)?
 
     // MARK: - State (all guarded by `lock`)
 
@@ -101,6 +107,7 @@ final class WakeSpotter: @unchecked Sendable {
         case woke(String)
         case commandUpdate(String)
         case commandEnd
+        case wakeWindowEnded
     }
 
     private func handleResult(_ result: SFSpeechRecognitionResult?, error: Error?) {
@@ -110,13 +117,15 @@ final class WakeSpotter: @unchecked Sendable {
             if let transcript = result?.bestTranscription.formattedString {
                 switch phase {
                 case .wake:
-                    if WakePhrase.matchesWake(transcript) {
+                    let r = WakePhrase.split(transcript)
+                    if r.matched {
                         phase = .command
                         return .woke(transcript)
                     }
                 case .command:
-                    let stripped = WakePhrase.stripWakePhrase(transcript)
-                    return .commandUpdate(stripped)
+                    let r = WakePhrase.split(transcript)
+                    // In command phase, split always finds the wake prefix; fall back to full transcript.
+                    return .commandUpdate(r.matched ? r.command : transcript.lowercased())
                 }
             }
 
@@ -127,7 +136,7 @@ final class WakeSpotter: @unchecked Sendable {
                 recognizer = nil
                 active     = false
                 phase      = .wake
-                return wasCommand ? .commandEnd : nil
+                return wasCommand ? .commandEnd : .wakeWindowEnded
             }
             return nil
         }
@@ -140,6 +149,8 @@ final class WakeSpotter: @unchecked Sendable {
             DispatchQueue.main.async { [weak self] in self?.onCommandUpdate?(s) }
         case .commandEnd:
             DispatchQueue.main.async { [weak self] in self?.onCommandEnd?() }
+        case .wakeWindowEnded:
+            DispatchQueue.main.async { [weak self] in self?.onWakeWindowEnded?() }
         }
     }
 }
