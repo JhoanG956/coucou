@@ -99,7 +99,7 @@ final class VoiceEngine: ObservableObject {
         lastWordCount         = 0
         audio.bypassVAD       = true
         appendAppLog("nb.log", "[Voice] direct listen start")
-        NotificationCenter.default.post(name: .voiceWoke, object: nil)
+        NotificationCenter.default.post(name: .voiceWoke, object: "direct" as NSString)
         let preroll = audio.drainPreroll()
         spotter.beginWindow(locale: loc, preroll: preroll)
         resetSilenceTimer()

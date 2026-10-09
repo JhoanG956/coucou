@@ -171,6 +171,23 @@ enum IntentParserTests {
         check("mònte lê sôn diacritics",     parse("mònte lê sôn"),            .musicVolumeUp)
         check("next trailing punct",         parse("next!"),                   .musicNext)
 
+        // ── Politeness prefixes + infinitives ────────────────────────────────
+        check("tu peux mettre de la musique",
+              parse("tu peux mettre de la musique"),
+              .musicPlay(target: nil))
+        check("est-ce que tu peux enlever Vercel",
+              parse("est-ce que tu peux enlever Vercel", pills: pills),
+              .pillRemove(id: "integration_vercel"))
+        check("peux-tu ajouter GitHub",
+              parse("peux-tu ajouter GitHub", pills: pills),
+              .pillAdd(id: "integration_github"))
+        check("could you play some music",
+              parse("could you play some music"),
+              .musicPlay(target: nil))
+        check("tu pourrais baisser le son",
+              parse("tu pourrais baisser le son"),
+              .musicVolumeDown)
+
         // Summary
         let total = pass + fail
         if fail == 0 { print("\n\(total)/\(total) passed.") }

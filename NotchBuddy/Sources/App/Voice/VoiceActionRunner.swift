@@ -253,6 +253,10 @@ final class VoiceActionRunner {
         guard let pending = pendingQuestion else { return fail("voice.unknown") }
         pendingQuestion = nil
 
+        guard !transcript.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return ok("voice.question-cancelled")
+        }
+
         let norm = IntentParser.normalise(transcript)
         guard let entity = EntityResolver.resolve(norm, from: availablePills) else {
             return fail("voice.unknown")

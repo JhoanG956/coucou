@@ -297,7 +297,10 @@ final class IslandWindowController: NSWindowController {
         #if !APPSTORE
         NotificationCenter.default.addObserver(
             forName: .voiceWoke, object: nil, queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] note in
+            // Genuine wake phrase (not programmatic re-listen) → clear any pending question
+            let isDirect = (note.object as? String) == "direct"
+            if !isDirect { VoiceActionRunner.shared.pendingQuestion = nil }
             self?.fsm.voiceWoke()
         }
         // Voice: command session ended — run intent, show result for 2 s, then collapse.
@@ -307,7 +310,18 @@ final class IslandWindowController: NSWindowController {
             guard let self else { return }
             let transcript = note.object as? String ?? ""
             if transcript.isEmpty {
-                self.fsm.voiceFinished()
+                if VoiceActionRunner.shared.pendingQuestion != nil {
+                    // Re-listen timed out with no answer → show cancellation message
+                    Task { @MainActor in
+                        let result = await VoiceActionRunner.shared.handleAnswer(
+                            "", availablePills: PillCatalog.available)
+                        AppState.shared.voiceResult = result
+                        self.expand(to: .voiceResult)
+                        self.scheduleVoiceDismiss(delay: 1.5)
+                    }
+                } else {
+                    self.fsm.voiceFinished()
+                }
             } else {
                 Task { @MainActor in await self.handleVoiceCommand(transcript) }
             }

@@ -18,8 +18,23 @@ enum IntentParser {
         // rawWords: same splits as normalise but no diacritics strip, no letter filter, original case
         let rawWords0 = buildRawWords(raw)
         // defilter both arrays in parallel: ma→la, mon→le, strip filler words
-        let (fwords, frawWords) = defilter(words, rawWords: rawWords0)
+        var (fwords, frawWords) = defilter(words, rawWords: rawWords0)
         guard !fwords.isEmpty else { return .unknown }
+
+        // ── 0a. Strip politeness prefixes from the start ─────────────────────
+        //    "tu peux", "est-ce que tu peux", "peux-tu", "can you", etc.
+        for prefix in politenessPrefixes {
+            if fwords.starts(with: prefix) {
+                fwords    = Array(fwords[prefix.count...])
+                frawWords = Array(frawWords[min(prefix.count, frawWords.count)...])
+                break
+            }
+        }
+        guard !fwords.isEmpty else { return .unknown }
+
+        // ── 0b. Map infinitives → imperative forms ────────────────────────────
+        //    "mettre" → "mets", "lancer" → "lance", "ajouter" → "ajoute", …
+        fwords = fwords.map { infinitiveMap[$0] ?? $0 }
 
         // ── 1. Explicit music-only patterns ──────────────────────────────────
         if matchesAny(fwords, in: pausePrefixes)   { return .musicPause }
@@ -133,7 +148,10 @@ enum IntentParser {
                     }
                     if ids.count >= 2 { return .pillAddMultiple(ids: ids) }
                 }
-                // Music service pills → musicPlay with target
+                // Generic music word → musicPlay(nil) FIRST (before service-pill check so
+                // "musique" alias → integration_music doesn't force an appleMusic target)
+                if musicGenericWords.contains(clean) { return .musicPlay(target: nil) }
+                // Music service pills → musicPlay with explicit target
                 if let id = EntityResolver.resolve(clean, from: pills),
                    musicServicePillIds.contains(id) {
                     let target: MusicTarget = id == "integration_spotify" ? .spotify : .appleMusic
@@ -154,8 +172,6 @@ enum IntentParser {
                 if let id = EntityResolver.resolve(clean, from: pills) {
                     return .pillAdd(id: id)
                 }
-                // Generic music word → musicPlay(nil)
-                if musicGenericWords.contains(clean) { return .musicPlay(target: nil) }
                 // Not a pill, not generic → search (title or artist) with original text
                 let name = cleanRaw.isEmpty ? clean : cleanRaw
                 return .musicPlaySearch(name: name)
@@ -409,6 +425,38 @@ enum IntentParser {
     }
 
     // MARK: - Keyword tables
+
+    /// Polite prefix sequences stripped from the START of the word array (longest first).
+    private static let politenessPrefixes: [[String]] = [
+        ["est", "ce", "que", "tu", "peux"],
+        ["est", "ce", "que", "tu", "pourrais"],
+        ["tu", "peux"],
+        ["tu", "pourrais"],
+        ["peux", "tu"],
+        ["could", "you"],
+        ["can", "you"],
+        ["please"],
+    ]
+
+    /// Maps normalised infinitive forms → imperative/trigger forms.
+    private static let infinitiveMap: [String: String] = [
+        "mettre":      "mets",
+        "lancer":      "lance",
+        "jouer":       "joue",
+        "ajouter":     "ajoute",
+        "enlever":     "enleve",
+        "retirer":     "retire",
+        "supprimer":   "supprime",
+        "activer":     "active",
+        "desactiver":  "desactive",
+        "remplacer":   "remplace",
+        "garder":      "garde",
+        "passer":      "passe",
+        "monter":      "monte",
+        "baisser":     "baisse",
+        "couper":      "coupe",
+        "arreter":     "arrete",
+    ]
 
     private static let pausePrefixes: [[String]] = [
         ["pause"], ["stop"], ["stoppe"], ["coupe"],

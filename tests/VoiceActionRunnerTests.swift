@@ -223,6 +223,14 @@ enum VoiceActionRunnerTests {
         check("pillOnly → removed notion", pills_.calls.contains("toggle:integration_notion"), true)
         check("pillOnly → added vercel",   pills_.calls.contains("toggle:integration_vercel"), true)
 
+        // ── Follow-up: empty transcript cancels question ─────────────────────
+        pills_.active = Set(["integration_github","integration_vercel","integration_notion","integration_resend"])
+        _ = await runner.run(.pillAdd(id: "agent_cursor"), availablePills: pills)
+        check("pending set before empty answer", runner.pendingQuestion != nil, true)
+        let emptyAnswer = await runner.handleAnswer("", availablePills: pills)
+        check("empty answer → success (cancelled)", emptyAnswer.outcome, .success)
+        check("empty answer clears pendingQuestion", runner.pendingQuestion == nil, true)
+
         // ── Unknown ───────────────────────────────────────────────────────────
         let unk = await runner.run(.unknown, availablePills: pills)
         check("unknown → failure", unk.outcome, .failure)

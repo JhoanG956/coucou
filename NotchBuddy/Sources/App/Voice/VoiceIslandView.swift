@@ -12,6 +12,13 @@ import SwiftUI
 struct VoiceListeningView: View {
     let isActive: Bool
     @ObservedObject private var voice = VoiceEngine.shared
+    @ObservedObject private var state = AppState.shared
+
+    /// Question text to show above transcript when re-listening after a .question outcome.
+    private var pendingQuestionText: String? {
+        if case .question(let text) = state.voiceResult?.outcome { return text }
+        return nil
+    }
 
     var body: some View {
         ZStack {
@@ -28,11 +35,18 @@ struct VoiceListeningView: View {
                             .foregroundColor(Color(hex: "#F5F6F8"))
                     }
 
-                    if voice.commandTranscript.isEmpty {
+                    if let question = pendingQuestionText {
+                        Text(question)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "#F97316"))
+                            .lineLimit(2)
+                    } else if voice.commandTranscript.isEmpty {
                         Text("Say your command", tableName: "Localizable")
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: "#8E939C"))
-                    } else {
+                    }
+
+                    if !voice.commandTranscript.isEmpty {
                         Text(voice.commandTranscript)
                             .font(.system(size: 12))
                             .foregroundColor(Color(hex: "#C8CBD0"))
