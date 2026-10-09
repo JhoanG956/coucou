@@ -13,12 +13,17 @@ import Speech
 // Recognition callbacks arrive on an internal Apple thread.
 // All shared state is protected by a single NSLock.
 //
-// Logging (to nb.log):
+// Stale-callback filtering: every task captures a generation number at creation.
+// `endWindow()` bumps the generation, so callbacks from cancelled/superseded tasks
+// are silently ignored when they arrive after a new window has opened.
+//
+// Logging (to nb.log, prefix [Voice] for one-grep coverage):
 //   [Voice] spotter task start
 //   [Voice] spotter task refused (already active)
 //   [Voice] spotter task refused (unavailable)
 //   [Voice] spotter task end: final, partials N
 //   [Voice] spotter task end: error <domain>/<code>, partials N
+//   [Voice] spotter stale callback ignored (gen X/Y)
 final class WakeSpotter: @unchecked Sendable {
 
     // MARK: - Callbacks (all delivered on the main thread)
@@ -27,7 +32,8 @@ final class WakeSpotter: @unchecked Sendable {
     var onCommandUpdate:  ((String) -> Void)?
     var onCommandEnd:     (() -> Void)?
     /// Fired when the session ends in wake phase (no command captured).
-    /// `wasError` is true when the session ended with an error (not a clean final result).
+    /// `wasError` is true for real errors; false for clean finals, no-speech
+    /// timeout (1110) and cancellations — those do not count as backoff failures.
     var onWakeWindowEnded: ((Bool) -> Void)?
 
     // MARK: - State (all guarded by `lock`)
@@ -39,6 +45,7 @@ final class WakeSpotter: @unchecked Sendable {
     private var active        = false
     private var phase:        Phase = .wake
     private var partialCount  = 0
+    private var gen           = SpotterGeneration()   // stale-callback filter
 
     private enum Phase { case wake, command }
 
@@ -51,9 +58,10 @@ final class WakeSpotter: @unchecked Sendable {
     @discardableResult
     func beginWindow(locale: Locale, preroll: [AVAudioPCMBuffer] = []) -> Bool {
         enum Refusal { case alreadyActive, unavailable }
-        var refusal: Refusal? = nil
-        var rSnap: SFSpeechRecognizer?
-        var reqSnap: SFSpeechAudioBufferRecognitionRequest?
+        var refusal:  Refusal? = nil
+        var rSnap:    SFSpeechRecognizer?
+        var reqSnap:  SFSpeechAudioBufferRecognitionRequest?
+        var taskGen   = 0
 
         lock.withLock {
             guard !active else { refusal = .alreadyActive; return }
@@ -72,8 +80,9 @@ final class WakeSpotter: @unchecked Sendable {
             active       = true
             phase        = .wake
             partialCount = 0
-            rSnap   = r
-            reqSnap = req
+            taskGen      = gen.bump()   // new generation for this task
+            rSnap        = r
+            reqSnap      = req
         }
 
         if let refusal {
@@ -89,8 +98,9 @@ final class WakeSpotter: @unchecked Sendable {
         guard let r = rSnap, let req = reqSnap else { return false }
 
         appendAppLog("nb.log", "[Voice] spotter task start")
-        let t = r.recognitionTask(with: req) { [weak self] result, error in
-            self?.handleResult(result, error: error)
+        // Capture taskGen by value so callbacks from this specific task carry its generation.
+        let t = r.recognitionTask(with: req) { [weak self, taskGen] result, error in
+            self?.handleResult(result, error: error, expectedGen: taskGen)
         }
         lock.withLock { task = t }
         return true
@@ -100,6 +110,8 @@ final class WakeSpotter: @unchecked Sendable {
         lock.withLock { request }?.append(buffer)
     }
 
+    /// Close the window. Bumps the generation so any in-flight callbacks from the
+    /// cancelled task are ignored even if they arrive after the next `beginWindow`.
     func endWindow() {
         lock.withLock {
             request?.endAudio()
@@ -110,6 +122,7 @@ final class WakeSpotter: @unchecked Sendable {
             active       = false
             phase        = .wake
             partialCount = 0
+            gen.bump()   // invalidate callbacks from the task we just cancelled
         }
     }
 
@@ -122,11 +135,19 @@ final class WakeSpotter: @unchecked Sendable {
         case wakeWindowEnded(wasError: Bool)
     }
 
-    private func handleResult(_ result: SFSpeechRecognitionResult?, error: Error?) {
+    private func handleResult(_ result: SFSpeechRecognitionResult?,
+                               error: Error?,
+                               expectedGen: Int) {
         var logMsg: String? = nil
 
         let action: RecogAction? = lock.withLock { () -> RecogAction? in
             guard active else { return nil }
+
+            // Stale-callback guard: ignore results from superseded tasks.
+            guard gen.isValid(expectedGen) else {
+                logMsg = "[Voice] spotter stale callback ignored (gen \(expectedGen)/\(gen.current))"
+                return nil
+            }
 
             if let transcript = result?.bestTranscription.formattedString {
                 partialCount += 1
@@ -146,7 +167,8 @@ final class WakeSpotter: @unchecked Sendable {
             if result?.isFinal == true || error != nil {
                 let wasCommand = phase == .command
                 let n          = partialCount
-                let wasError   = error != nil
+                // 1110 (no speech) and cancellations are normal ends, not backoff failures.
+                let wasError   = error.map { !spotterIsExpectedError($0) } ?? false
                 request      = nil
                 task         = nil
                 recognizer   = nil

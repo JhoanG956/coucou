@@ -15,8 +15,6 @@ import AVFoundation
 // - Bypass (`bypassVAD = true`): every buffer is delivered via `onBuffer` regardless of
 //   silence; `onMicLevel` fires at ~20 Hz with a smoothed level.
 //
-// AEC: `setVoiceProcessingEnabled(true)` is applied on macOS 14+ to remove
-// acoustic echo (Mac speakers → mic feedback). Does NOT duck other apps' audio.
 final class VoiceAudio: @unchecked Sendable {
 
     private let engine         = AVAudioEngine()
