@@ -434,9 +434,22 @@ final class VoiceEngine: ObservableObject {
     // MARK: - Wake detection
 
     private func wakeDetected(transcript: String) {
-        guard isEnabled, !isPaused else { spotter?.endWindow(); return }
-        guard !isListeningForCommand else { spotter?.endWindow(); return }
-        guard !shouldIgnoreWake() else { spotter?.endWindow(); return }
+        guard isEnabled, !isPaused else {
+            let reason = isPaused ? "paused" : "disabled"
+            appendAppLog("nb.log", "[Voice] wake ignored: \(reason)")
+            spotter?.endWindow(); return
+        }
+        guard !isListeningForCommand else {
+            appendAppLog("nb.log", "[Voice] wake ignored: already listening")
+            spotter?.endWindow(); return
+        }
+        let s = AppState.shared
+        if let reason = VoiceWakeFilter.wakeBlocked(
+            view: s.view, mode: s.mode, pendingApproval: s.pendingApproval != nil
+        ) {
+            appendAppLog("nb.log", "[Voice] wake ignored: \(reason)")
+            spotter?.endWindow(); return
+        }
         wakeWindowWork?.cancel();  wakeWindowWork  = nil
         unavailableWork?.cancel(); unavailableWork = nil
         firstUnavailableAt  = nil
@@ -506,12 +519,6 @@ final class VoiceEngine: ObservableObject {
     }
 
     // MARK: - Helpers
-
-    private func shouldIgnoreWake() -> Bool {
-        let v = AppState.shared.view
-        return v == .approval || v == .question || v == .prompt || v == .voiceResult
-            || AppState.shared.pendingApproval != nil
-    }
 
     private func suitableLocale() -> Locale? {
         var candidates = MacDictation.automaticLocales()

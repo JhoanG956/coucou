@@ -265,7 +265,9 @@ final class IslandWindowController: NSWindowController {
                 // setMode BEFORE changing view: onChange(of: state.view) guards on .expanded,
                 // so setting view while already compact won't trigger a spurious open animation.
                 self.setMode(.compact)
-                if from == .coucou { self.state.view = self.defaultView() }
+                // Reset view when leaving .coucou or .listening so stale views
+                // (e.g. .voiceResult) never linger on a collapsed island.
+                if from == .coucou || from == .listening { self.state.view = self.defaultView() }
                 // Start 60s hide timer if mouse is not currently over the island
                 if !self.wasInIsland { self.fsm.mouseLeft() }
 
@@ -1363,8 +1365,11 @@ extension IslandWindowController {
     private func scheduleVoiceDismiss(delay: TimeInterval) {
         voiceResultWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
             AppState.shared.voiceResult = nil
-            self?.fsm.voiceFinished()
+            // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
+            AppState.shared.view = self.defaultView()
+            self.fsm.voiceFinished()
         }
         voiceResultWork = item
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)

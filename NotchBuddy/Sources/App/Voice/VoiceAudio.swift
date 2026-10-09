@@ -75,6 +75,7 @@ final class VoiceAudio: @unchecked Sendable {
                                    sampleRate: 16_000, channels: 1, interleaved: false)!
         if let conv = AVAudioConverter(from: fmt, to: target) {
             conv.primeMethod = .none
+            conv.downmix      = true   // collapse multi-channel mic (e.g. 3ch) to mono
             converter = conv
             appendAppLog("nb.log",
                 "[Voice] audio format: input \(Int(fmt.sampleRate)) Hz \(fmt.channelCount)ch → 16000 Hz 1ch")
