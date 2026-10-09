@@ -125,7 +125,7 @@ final class WakeSpotter: @unchecked Sendable {
                 case .command:
                     let r = WakePhrase.split(transcript)
                     // In command phase, split always finds the wake prefix; fall back to full transcript.
-                    return .commandUpdate(r.matched ? r.command : transcript.lowercased())
+                    return .commandUpdate(r.matched ? r.command : transcript)
                 }
             }
 

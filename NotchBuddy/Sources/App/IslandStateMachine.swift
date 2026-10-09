@@ -160,7 +160,9 @@ final class IslandStateMachine {
     /// Command session ended (silence timeout, cancel phrase, or user dismiss).
     func voiceFinished() {
         guard state == .listening else { return }
-        transition(to: stateBeforeListening == .home ? .home : .petit)
+        let target: State = stateBeforeListening == .home ? .home : .petit
+        transition(to: target)
+        if target == .home, isHeldOpen?() != true { scheduleHomeCollapse() }
     }
 
     /// Greeting animation finished (called at T.end ≈ 4.60 s).

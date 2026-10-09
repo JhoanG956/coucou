@@ -98,6 +98,16 @@ enum VoiceIslandTests {
             precondition(extra == 0, "double voiceWoke → no extra transition")
         }
 
+        // voiceFinished from home-prev schedules the home-collapse timer
+        do {
+            let m = home()
+            m.homeToPetitDelay = 0.05   // 50 ms for a fast test
+            m.voiceWoke(); m.voiceFinished()
+            precondition(m.state == .home, "voiceFinished home-prev → home immediately")
+            try await Task.sleep(for: .milliseconds(200))
+            precondition(m.state == .petit, "home auto-collapsed after homeToPetitDelay")
+        }
+
         print("\nAll VoiceIslandTests passed.")
     }
 }

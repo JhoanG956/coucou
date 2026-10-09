@@ -220,7 +220,7 @@ final class VoiceEngine: ObservableObject {
             resetSilenceTimer()
             // Cancel only when the ENTIRE command is a cancel phrase (not a substring).
             let trimmed = command.trimmingCharacters(in: .whitespaces)
-            if Self.cancelPhrases.contains(trimmed) {
+            if Self.cancelPhrases.contains(WakePhrase.normalise(trimmed)) {
                 endCommand(postFinished: true)
             }
         }
