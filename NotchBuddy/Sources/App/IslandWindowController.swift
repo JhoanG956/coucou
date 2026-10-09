@@ -1283,30 +1283,36 @@ struct GhostBotView: View {
 #if !APPSTORE
 extension IslandWindowController {
 
-    /// Run the intent derived from `transcript`, show VoiceResultView for 2 s, then collapse.
+    /// Run the intent derived from `transcript`, show VoiceResultView for 2 s (6 s for questions), then collapse.
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
-        let pills = PillCatalog.available
+        let pills  = PillCatalog.available
         let intent = IntentParser.parse(transcript, pills: pills)
-        let result = await VoiceActionRunner.shared.run(intent, availablePills: pills)
+        let result = await VoiceActionRunner.shared.run(intent, availablePills: pills, rawTranscript: transcript)
 
         // Mochi reaction
-        if result.outcome == .success {
+        switch result.outcome {
+        case .success:
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        case .failure:
+            NotificationCenter.default.post(name: .botDizzy, object: nil)
+        case .question:
+            break
         }
 
-        // Switch to result view (island stays expanded)
+        // Switch to result view
         AppState.shared.voiceResult = result
         expand(to: .voiceResult)
 
-        // Auto-dismiss after 2 s
         voiceResultWork?.cancel()
+        let dismissDelay: TimeInterval
+        if case .question = result.outcome { dismissDelay = 6.0 } else { dismissDelay = 2.0 }
         let item = DispatchWorkItem { [weak self] in
             AppState.shared.voiceResult = nil
             self?.fsm.voiceFinished()
         }
         voiceResultWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + dismissDelay, execute: item)
     }
 }
 #endif

@@ -318,6 +318,12 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Pill IDs for which the user has gone through hook installation.
+    @Published var installedHookPills: Set<String> = {
+        let stored = UserDefaults.standard.array(forKey: "coucou.installedHookPills") as? [String] ?? []
+        return Set(stored)
+    }()
+
     // Active integration pills (main workspace pill excluded). Max 4.
     @Published var activeIntegrations: Set<String> = ["integration_resend", "integration_n8n", "integration_vercel", "integration_github"] {
         didSet {

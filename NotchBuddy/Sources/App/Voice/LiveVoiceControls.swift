@@ -3,8 +3,6 @@ import AppKit
 
 // MARK: - LiveMusicControl
 
-/// Routes to MusicController (Apple Music) or SpotifyController depending on what's running.
-/// Prefers Apple Music; falls back to Spotify if only Spotify is running.
 final class LiveMusicControl: MusicControlling, @unchecked Sendable {
     var isMusicRunning: Bool {
         NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").count > 0
@@ -13,9 +11,13 @@ final class LiveMusicControl: MusicControlling, @unchecked Sendable {
         NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").count > 0
     }
 
-    @MainActor func playPause() {
-        if isMusicRunning   { MusicController.shared.playPause() }
-        else                { SpotifyController.shared.playPause() }
+    @MainActor func play() {
+        if isMusicRunning   { MusicController.shared.play() }
+        else                { SpotifyController.shared.play() }
+    }
+    @MainActor func pause() {
+        if isMusicRunning   { MusicController.shared.pause() }
+        else                { SpotifyController.shared.pause() }
     }
     @MainActor func nextTrack() {
         if isMusicRunning   { MusicController.shared.nextTrack() }
@@ -33,12 +35,25 @@ final class LiveMusicControl: MusicControlling, @unchecked Sendable {
         if isMusicRunning   { MusicController.shared.adjustVolume(by: -25) }
         else                { SpotifyController.shared.adjustVolume(by: -25) }
     }
-    @MainActor func playArtist(_ name: String) {
-        // Apple Music supports artist search via AppleScript; Spotify has no search API.
-        if isMusicRunning   { MusicController.shared.playArtist(name) }
+    @MainActor func setVolume(_ pct: Int) {
+        if isMusicRunning   { MusicController.shared.setVolume(pct) }
+        else                { SpotifyController.shared.setVolume(pct) }
     }
-    @MainActor func playPlaylist(_ name: String) {
-        if isMusicRunning   { MusicController.shared.playPlaylist(name) }
+    @MainActor func playArtist(_ name: String) async -> Bool {
+        guard isMusicRunning else { return false }
+        return await MusicController.shared.playArtist(name)
+    }
+    @MainActor func playPlaylist(_ name: String) async -> Bool {
+        guard isMusicRunning else { return false }
+        return await MusicController.shared.playPlaylist(name)
+    }
+    @MainActor func launchAndPlay() async {
+        if !isMusicRunning {
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Music.app"))
+            // Give Music ~1.5 s to launch before sending play
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+        }
+        if isMusicRunning { MusicController.shared.play() }
     }
 }
 
@@ -51,12 +66,18 @@ final class LivePillControl: PillControlling {
     func activeCount() -> Int        { AppState.shared.activeIntegrations.count }
     func toggleIntegration(_ id: String) { AppState.shared.toggleIntegration(id) }
     func setMainPill(_ id: String)       { AppState.shared.setMainPill(id) }
+    func hooksInstalled(for id: String) -> Bool {
+        // Hooks are irrelevant for workspace pills (they auto-detect via process name)
+        // For service/agent pills, check if the user has gone through hook setup
+        guard let def = PillCatalog.definition(for: id) else { return true }
+        if def.source == .claudeCode || def.category == .workspace { return true }
+        return AppState.shared.installedHookPills.contains(id)
+    }
 }
 
 // MARK: - Configuration
 
 extension VoiceActionRunner {
-    /// Wire up live implementations. Call once at app startup.
     func configureLive() {
         music = LiveMusicControl()
         pills = LivePillControl()

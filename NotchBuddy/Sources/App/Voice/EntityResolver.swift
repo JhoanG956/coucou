@@ -4,9 +4,49 @@ import Foundation
 // MARK: - EntityResolver
 
 /// Fuzzy-matches a voice entity name against a pill list.
-/// Uses Levenshtein distance ≤ 2 (≤ 1 for short queries).
-/// No AppKit — uses PillDefinition/PillCategory from CoucouKit.
+/// Resolution order: aliases → exact match → word-match → Levenshtein ≤ 2.
+/// No AppKit.
 enum EntityResolver {
+
+    // MARK: - Aliases
+
+    /// Fixed aliases for names that don't appear in pill names verbatim.
+    /// Key: normalised alias. Value: pill id.
+    static let aliases: [String: String] = [
+        // VS Code pill is the Claude Code integration
+        "claude":               "integration_claude",
+        "claude code":          "integration_claude",
+        // Agents
+        "gemini":               "agent_gemini",
+        "copilot":              "agent_copilot",
+        "muse":                 "agent_muse",
+        "hermes":               "agent_hermes",
+        "amp":                  "agent_amp",
+        "opencode":             "agent_opencode",
+        "antigravity":          "agent_antigravity",
+        "codex":                "agent_codex",
+        "claude desktop":       "agent_claude-desktop",
+        // AI
+        "google":               "ai_google",
+        "openai":               "ai_openai",
+        "open ai":              "ai_openai",
+        "ollama":               "ai_ollama",
+        "lmstudio":             "ai_lmstudio",
+        "anthropic":            "ai_anthropic",
+        // Services
+        "github":               "integration_github",
+        "vercel":               "integration_vercel",
+        "notion":               "integration_notion",
+        "stripe":               "integration_stripe",
+        "resend":               "integration_resend",
+        "n8n":                  "integration_n8n",
+        "calcom":               "integration_calcom",
+        "cal":                  "integration_calcom",
+        "spotify":              "integration_spotify",
+        "apple music":          "integration_music",
+        "music":                "integration_music",
+        "musique":              "integration_music",
+    ]
 
     // MARK: - Public API
 
@@ -23,11 +63,26 @@ enum EntityResolver {
         if let cat = category { pool = pool.filter { $0.category == cat } }
         guard !pool.isEmpty, !q.isEmpty else { return nil }
 
-        // Exact match wins immediately (no tolerance needed)
+        // 1. Alias table (handles "claude", "gemini", "google", etc.)
+        if let aliasId = aliases[q] {
+            if pool.contains(where: { $0.id == aliasId }) { return aliasId }
+        }
+
+        // 2. Exact name match (case-insensitive + diacritic-insensitive)
         if let exact = pool.first(where: { IntentParser.normalise($0.name) == q }) {
             return exact.id
         }
 
+        // 3. Word-match: q is a complete word inside the pill's normalised name
+        //    e.g. "gemini" matches "gemini cli", "copilot" matches "copilot cli"
+        let wordMatches = pool.filter { def in
+            let nameWords = IntentParser.normalise(def.name).split(separator: " ").map(String.init)
+            return nameWords.contains(q)
+        }
+        if wordMatches.count == 1 { return wordMatches[0].id }
+        if wordMatches.count > 1  { return nil }   // ambiguous
+
+        // 4. Levenshtein ≤ 2 (≤ 1 for short queries)
         var best:       (id: String, dist: Int)?
         var secondBest: (id: String, dist: Int)?
 
@@ -44,11 +99,8 @@ enum EntityResolver {
 
         guard let winner = best else { return nil }
 
-        // Tolerance: 1 edit for short queries (≤ 4 chars), 2 for longer
         let tolerance = q.count <= 4 ? 1 : 2
         guard winner.dist <= tolerance else { return nil }
-
-        // Ambiguity: reject if runner-up is also within tolerance
         if let runner = secondBest, runner.dist <= tolerance { return nil }
 
         return winner.id
