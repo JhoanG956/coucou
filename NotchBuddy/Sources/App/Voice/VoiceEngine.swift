@@ -31,7 +31,9 @@ final class VoiceEngine: ObservableObject {
     @Published private(set) var commandTranscript: String = ""
     @Published private(set) var recognizerUnavailable: Bool = false
     @Published private(set) var audioError: String? = nil
-    @Published private(set) var micLevel: Double = 0
+    /// Read by Mochi's canvas every frame; not published, so ~20 updates/s while I talk
+    /// don't re-render Settings or the island views.
+    private(set) var micLevel: Double = 0
 
     // MARK: - Pause reasons
 
@@ -354,7 +356,8 @@ final class VoiceEngine: ObservableObject {
         stopAudioStallTask()
         stallTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 500_000_000)
+                // Tolerance lets macOS batch this wakeup with others (stall seen in 2–3 s).
+                try? await Task.sleep(for: .milliseconds(500), tolerance: .milliseconds(400))
                 guard let self, let audio = self.audio else { return }
                 // Grace period: don't fire within stallTimeout of pipeline start.
                 let sinceStart = Date().timeIntervalSince(self.pipelineStartTime)
@@ -465,6 +468,9 @@ final class VoiceEngine: ObservableObject {
         // A short noise (cough, click) legitimately gives no text: only count windows
         // where speech went on for a while.
         guard elapsed >= 3 else { return }
+        // Music without words gives no text either: not a stuck recognizer. Rebuilding
+        // for it cost a restart and half a second of deafness each time.
+        if AppState.shared.musicPlaying || SpotifyController.shared.isPlaying { return }
         deafWindows += 1
         if deafWindows >= 2 {
             deafWindows = 0
@@ -603,6 +609,8 @@ final class VoiceEngine: ObservableObject {
     private func commandUpdate(_ command: String) {
         // Semi-duplex: ignore updates while Coucou is speaking.
         guard !VoiceSpeaker.shared.isBusy else { return }
+        // The recognizer often repeats the same partial: no update, no re-render.
+        guard command != commandTranscript else { return }
         commandTranscript = command
         let wc = command.split(separator: " ").count
         if wc > lastWordCount {

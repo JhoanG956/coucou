@@ -1,5 +1,6 @@
 #if !APPSTORE
 import AVFoundation
+import Accelerate
 
 // MARK: - VoiceAudio
 //
@@ -39,7 +40,10 @@ final class VoiceAudio: @unchecked Sendable {
     // Read on main (via `drainPreroll()`), written on audio tap thread.
     private let prerollLock    = NSLock()
     private var prerollBuffers: [AVAudioPCMBuffer] = []
-    private static let prerollCapacity = 22   // ~500 ms at 43 Hz
+    /// ~500 ms of buffers, whatever their length (set from the first buffer).
+    private var prerollCapacity = 22
+    /// Frame length the VAD and preroll are tuned for (audio tap thread).
+    private var tunedFrameLength: AVAudioFrameCount = 0
 
     /// Last time a buffer was processed in the tap (audio tap thread).
     /// Read on main for stall detection — nonisolated for cross-thread access.
@@ -133,6 +137,15 @@ final class VoiceAudio: @unchecked Sendable {
     private func processTap(_ buf: AVAudioPCMBuffer, time: AVAudioTime) {
         lastBufferTime = Date()
 
+        // Tune durations to the real buffer length (often 100 ms on macOS, not 1024 frames).
+        if buf.frameLength > 0, buf.frameLength != tunedFrameLength {
+            tunedFrameLength = buf.frameLength
+            let fps = buf.format.sampleRate / Double(buf.frameLength)
+            vad.setFrameRate(fps)
+            prerollLock.withLock { prerollCapacity = max(2, Int((0.5 * fps).rounded(.up))) }
+            appendAppLog("nb.log", "[Voice] tap buffers: \(buf.frameLength) frames (\(Int(fps.rounded()))/s)")
+        }
+
         if pendingVADReset {
             pendingVADReset = false
             vad.reset()
@@ -144,7 +157,7 @@ final class VoiceAudio: @unchecked Sendable {
         let deliverBuf = convertToMono16k(buf) ?? buf
 
         prerollLock.withLock {
-            if prerollBuffers.count >= Self.prerollCapacity { prerollBuffers.removeFirst() }
+            while prerollBuffers.count >= prerollCapacity { prerollBuffers.removeFirst() }
             prerollBuffers.append(deliverBuf)
         }
 
@@ -201,14 +214,22 @@ final class VoiceAudio: @unchecked Sendable {
 private extension AVAudioPCMBuffer {
     var meanSquarePower: Double {
         guard let data = floatChannelData, frameLength > 0 else { return 0 }
-        let frames = Int(frameLength)
+        let frames = vDSP_Length(frameLength)
         let chans  = Int(format.channelCount)
+        guard chans > 0 else { return 0 }
+        // Vectorised mean of squares: one run over interleaved samples, else per channel.
+        if format.isInterleaved {
+            var ms: Float = 0
+            vDSP_measqv(data[0], 1, &ms, frames * vDSP_Length(chans))
+            return Double(ms)
+        }
         var sum: Double = 0
         for ch in 0..<chans {
-            let p = data[ch]
-            for i in 0..<frames { let s = Double(p[i]); sum += s * s }
+            var ms: Float = 0
+            vDSP_measqv(data[ch], 1, &ms, frames)
+            sum += Double(ms)
         }
-        return sum / Double(frames * max(1, chans))
+        return sum / Double(chans)
     }
 }
 #endif

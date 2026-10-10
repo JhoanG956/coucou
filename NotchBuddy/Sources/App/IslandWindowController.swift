@@ -168,6 +168,7 @@ final class IslandWindowController: NSWindowController {
         panel.contentView = container
 
         startPolling()
+        observeScreenForPolling()
         startKeyMonitor()
         startLocalKeyMonitor()
         startHotKeys()
@@ -380,22 +381,32 @@ final class IslandWindowController: NSWindowController {
     private static let idlePoll: TimeInterval = 1.0 / 8.0
     private var pollInterval: TimeInterval = 0
 
+    /// Screen asleep or locked: nothing to hover, the poll stops entirely.
+    private var screenOff = false
+
     private func startPolling(interval: TimeInterval = IslandWindowController.fastPoll) {
         frameTimer?.invalidate()
+        frameTimer = nil
         pollInterval = interval
+        guard !screenOff else { return }
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             // Scheduled on the main run loop: already on the main actor, no Task per tick.
             MainActor.assumeIsolated { self?.pollFrame() }
         }
-        timer.tolerance = interval == Self.idlePoll ? 0.04 : 0
+        // A few ms of slack lets macOS group our wakeups with others; hover is unaffected.
+        timer.tolerance = interval == Self.idlePoll ? 0.04 : 0.004
         RunLoop.main.add(timer, forMode: .common)
         frameTimer = timer
     }
 
     /// Picks the polling rate for the next ticks (see startPolling).
-    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect) {
-        let nearIsland = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
-        let busy = state.mode != .hidden || state.mochiOnDesktop || inAttachDrag || attachDragStart != nil
+    /// "Near" is measured from the island itself, not from the big transparent panel
+    /// (720×560): with the panel, most of the top of the screen counted as near and a
+    /// hidden island polled at 60 Hz nearly all the time. Desktop Mochi has its own poll.
+    private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect, islandRect: NSRect) {
+        let island = islandRect.offsetBy(dx: panelFrame.minX, dy: panelFrame.minY)
+        let nearIsland = island.insetBy(dx: -200, dy: -160).contains(mouse)
+        let busy = state.mode != .hidden || inAttachDrag || attachDragStart != nil
             || fsm.state != .hidden || nearIsland
         let wanted = busy ? Self.fastPoll : Self.idlePoll
         if wanted != pollInterval { startPolling(interval: wanted) }
@@ -476,10 +487,42 @@ final class IslandWindowController: NSWindowController {
             updateWindowHighlight()
         }
 
-        adjustPollRate(mouse: mouse, panelFrame: pf)
+        adjustPollRate(mouse: mouse, panelFrame: pf, islandRect: islandRect)
+    }
+
+    /// Screen asleep or locked: stop polling; back at the idle rate when it wakes.
+    private func observeScreenForPolling() {
+        let ws = NSWorkspace.shared.notificationCenter
+        let dc = DistributedNotificationCenter.default()
+        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.pausePollingForScreenOff() }
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.resumePollingAfterScreenOff() }
+        }
+        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.pausePollingForScreenOff() }
+        }
+        dc.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.resumePollingAfterScreenOff() }
+        }
+    }
+
+    private func pausePollingForScreenOff() {
+        screenOff = true
+        frameTimer?.invalidate()
+        frameTimer = nil
+    }
+
+    private func resumePollingAfterScreenOff() {
+        guard screenOff else { return }
+        screenOff = false
+        startPolling(interval: Self.idlePoll)
     }
 
     private var lastMouse: CGPoint = .zero
+    private var lastHighlightMouse: CGPoint = .zero
+    private var lastHighlightScan: CFTimeInterval = 0
 
     // MARK: - Bot-head hover (love emote — mirrors prototype botHover())
 
@@ -782,14 +825,14 @@ final class IslandWindowController: NSWindowController {
 
     private func startKeyMonitor() {
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Every key typed anywhere lands here: only Escape goes further (no Task per key).
+            guard event.keyCode == 53 else { return }
             Task { @MainActor in
                 guard let self = self else { return }
-                if event.keyCode == 53 { // Escape
-                    // Escape typed in another app (Claude Code's own interrupt, an editor…)
-                    // never folds a pending approval away: only Escape in the notch does.
-                    if self.state.mode == .expanded && !self.state.isPinned {
-                        self.collapse()
-                    }
+                // Escape typed in another app (Claude Code's own interrupt, an editor…)
+                // never folds a pending approval away: only Escape in the notch does.
+                if self.state.mode == .expanded && !self.state.isPinned {
+                    self.collapse()
                 }
             }
         }
@@ -1046,6 +1089,13 @@ final class IslandWindowController: NSWindowController {
 
     private func updateWindowHighlight() {
         let mouse = NSEvent.mouseLocation
+        // Listing every window is costly: skip while the pointer stays put (a window
+        // moving under a still pointer is caught within a quarter second).
+        let now = CACurrentMediaTime()
+        if hypot(mouse.x - lastHighlightMouse.x, mouse.y - lastHighlightMouse.y) < 2,
+           now - lastHighlightScan < 0.25 { return }
+        lastHighlightMouse = mouse
+        lastHighlightScan = now
         guard let (appKitBounds, pid) = windowBoundsAtScreenPoint(mouse) else {
             // Fade out + close if no window under cursor
             if let old = highlightPanel {
