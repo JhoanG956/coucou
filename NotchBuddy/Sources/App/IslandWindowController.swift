@@ -290,7 +290,6 @@ final class IslandWindowController: NSWindowController {
                 #if !APPSTORE
                 let screen = IslandWindowController.islandScreen()
                 VoiceCaptionManager.shared.show(on: screen, notchHeight: AppState.shared.notchHeight)
-                VoiceBrain.shared.prewarmSession()
                 #endif
             }
         }
@@ -312,7 +311,11 @@ final class IslandWindowController: NSWindowController {
             let isDirect = (note.object as? String) == "direct"
             Task { @MainActor [weak self] in
                 // Genuine wake phrase (not programmatic re-listen) → clear any pending question
-                if !isDirect { VoiceActionRunner.shared.pendingQuestion = nil }
+                if !isDirect {
+                    VoiceActionRunner.shared.pendingQuestion = nil
+                    // The island stays compact now: the tick says "I heard OK Coucou".
+                    if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
+                }
                 self?.fsm.voiceWoke()
             }
         }

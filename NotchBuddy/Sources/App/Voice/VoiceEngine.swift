@@ -87,6 +87,7 @@ final class VoiceEngine: ObservableObject {
 
     /// Initial silence timeout for the current direct-listen session.
     private var directInitialTimeout: TimeInterval = 3.0
+    private static let wakeFirstWordTimeout: TimeInterval = 5.0
     private static let silenceTimeout:           TimeInterval = 1.5
     private static let commandMaxTime:           TimeInterval = 20.0
 
@@ -513,6 +514,9 @@ final class VoiceEngine: ObservableObject {
         isListeningForCommand = true
         commandTranscript     = ""
         lastWordCount         = 0
+        // After "OK Coucou", leave time to start the sentence (the island no longer
+        // opens, the caption shows "Je t'écoute…" instead). 3 s was too short.
+        directInitialTimeout  = Self.wakeFirstWordTimeout
         audio?.bypassVAD      = true
         duckMusic()
         appendAppLog("nb.log", "[Voice] wake")
@@ -531,6 +535,9 @@ final class VoiceEngine: ObservableObject {
         commandTranscript = command
         let wc = command.split(separator: " ").count
         if wc > lastWordCount {
+            // Load the on-device model once the sentence has started, not at the wake
+            // word: loading it at the same moment slowed speech recognition down.
+            if lastWordCount == 0 { VoiceBrain.shared.prewarmSession() }
             lastWordCount = wc
             resetSilenceTimer()
             let trimmed = command.trimmingCharacters(in: .whitespaces)
