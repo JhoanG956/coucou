@@ -237,21 +237,29 @@ enum IntentParser {
     /// `.pillAddMultiple`).
     static func parseMultiAction(_ raw: String, pills: [PillDefinition] = []) -> [VoiceIntent]? {
         let conjunctions: Set<String> = ["et", "puis", "ensuite", "and", "then"]
-        let normWords = normalise(raw).split(separator: " ").map(String.init)
 
-        // Split normalised word array on conjunctions.
-        var normParts: [[String]] = []
-        var cur: [String] = []
-        for w in normWords {
-            if conjunctions.contains(w) {
-                if !cur.isEmpty { normParts.append(cur); cur = [] }
-            } else { cur.append(w) }
+        // Pre-split on commas (before normalise which strips punctuation).
+        let commaParts = raw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        let segments: [String]
+        if commaParts.count >= 2 {
+            segments = commaParts
+        } else {
+            // Split normalised word array on conjunctions / action-verb boundaries.
+            let normWords = normalise(raw).split(separator: " ").map(String.init)
+            var normParts: [[String]] = []
+            var cur: [String] = []
+            for w in normWords {
+                if conjunctions.contains(w) {
+                    if !cur.isEmpty { normParts.append(cur); cur = [] }
+                } else { cur.append(w) }
+            }
+            if !cur.isEmpty { normParts.append(cur) }
+            segments = normParts.map { $0.joined(separator: " ") }
         }
-        if !cur.isEmpty { normParts.append(cur) }
-        guard normParts.count >= 2 else { return nil }
+        guard segments.count >= 2 else { return nil }
 
-        // Each part must produce a non-.unknown intent.
-        let intents = normParts.map { parse($0.joined(separator: " "), pills: pills) }
+        // Each segment must produce a non-.unknown intent.
+        let intents = segments.map { parse($0, pills: pills) }
         let allValid = intents.allSatisfy { if case .unknown = $0 { return false }; return true }
         return allValid ? intents : nil
     }
@@ -289,7 +297,8 @@ enum IntentParser {
         // "truc", "chose", "machin", "bidule" = placeholder words used before an entity name
         // e.g. "mets le truc Gemini" → "mets Gemini"
         let fillers:  Set<String>    = ["un", "peu", "s", "il", "te", "plait", "moi",
-                                        "truc", "chose", "machin", "bidule"]
+                                        "truc", "chose", "machin", "bidule",
+                                        "pile", "piles", "aussi", "stp"]
         let synonyms: [String: String] = ["ma": "la", "mon": "le", "mes": "les"]
         var fw: [String] = []
         var fr: [String] = []
@@ -351,7 +360,7 @@ enum IntentParser {
     private static func stripArticles(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
                                       "some", "the", "a", "an", "pilule", "pill",
-                                      "ma", "mon", "mes"]
+                                      "pile", "piles", "ma", "mon", "mes"]
         var ws = name.split(separator: " ").map(String.init)
         while let first = ws.first, articles.contains(first) { ws.removeFirst() }
         return ws.joined(separator: " ")
@@ -361,7 +370,7 @@ enum IntentParser {
     private static func stripArticlesRaw(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
                                       "some", "the", "a", "an", "pilule", "pill",
-                                      "ma", "mon", "mes"]
+                                      "pile", "piles", "ma", "mon", "mes"]
         var ws = name.split(separator: " ").map(String.init)
         while let first = ws.first, articles.contains(first.lowercased()) { ws.removeFirst() }
         return ws.joined(separator: " ")
@@ -551,11 +560,13 @@ enum IntentParser {
     private static let pillAddOnlyTriggers: [[String]] = [
         ["active"], ["affiche"], ["montre"], ["rajoute"], ["ajoute"],
         ["add"], ["enable"], ["show"], ["activate"],
+        ["je", "veux"], ["me", "faut"],
     ]
 
     private static let pillRemoveTriggers: [[String]] = [
         ["enleve"], ["supprime"], ["desactive"], ["cache"], ["retire"], ["efface"],
         ["remove"], ["disable"], ["hide"], ["delete"],
+        ["vire"], ["degage"], ["enleve", "moi"], ["plus", "besoin", "de"],
     ]
 
     // Bare music verbs (single word → musicPlay)

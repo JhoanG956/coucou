@@ -27,6 +27,8 @@ final class IslandWindowController: NSWindowController {
     private var voiceResultWork: DispatchWorkItem?
     private var isInConversation = false
     private var conversationContext = ConversationContext()
+    private var consecutiveFailures = 0
+    private var hasSpokenPasCompris = false
     #endif
 
     // Suppress peek sound on next reveal (e.g. musicReveal)
@@ -1344,6 +1346,22 @@ extension IslandWindowController {
             return
         }
 
+        // ── Short noise / spurious activation guard (conversation mode only) ────────
+        // A transcript shorter than 2 words that isn't a pill name or known command
+        // is almost certainly a false activation. Silently re-listen without feedback.
+        if isInConversation {
+            let normWords = normTranscript.split(separator: " ").map(String.init)
+            if normWords.count < 2 {
+                let isPillName = pills.contains { IntentParser.normalise($0.name) == normTranscript }
+                let isKnown    = IntentParser.parse(normTranscript, pills: pills) != .unknown
+                if !isPillName && !isKnown {
+                    appendAppLog("nb.log", "[Voice] ignoring short spurious transcript: '\(normTranscript)'")
+                    scheduleConversationContinue(delay: 0.2)
+                    return
+                }
+            }
+        }
+
         // ── Follow-up answer to a pending question ─────────────────────────────────
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
@@ -1403,16 +1421,20 @@ extension IslandWindowController {
 
         // ── Relative context resolution ────────────────────────────────────────────
         let intent: VoiceIntent
+        let transcriptOrigin: TranscriptOrigin
         if isInConversation,
            let resolved = conversationContext.resolveRelative(transcript, pills: pills) {
             intent = resolved
+            transcriptOrigin = .context
         } else {
             intent = IntentParser.parse(transcript, pills: pills)
+            transcriptOrigin = .parser
         }
 
         // ── Single command ─────────────────────────────────────────────────────────
         var result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
         var effectiveIntent = intent
+        VoiceTranscriptHistory.shared.record(transcript: transcript, intent: intent, origin: transcriptOrigin)
 
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence).
         if case .unknown = intent,
@@ -1432,7 +1454,10 @@ extension IslandWindowController {
                     parts.append(r.message)
                     if case .failure  = r.outcome { anyFailure = true }
                     if case .question = r.outcome { anyFailure = true }
-                    if case .success  = r.outcome { effectiveIntent = bi }
+                    if case .success  = r.outcome {
+                        effectiveIntent = bi
+                        VoiceTranscriptHistory.shared.record(transcript: transcript, intent: bi, origin: .brain)
+                    }
                 }
                 result = VoiceActionResult(
                     outcome: anyFailure ? .failure : .success,
@@ -1443,15 +1468,24 @@ extension IslandWindowController {
             }
         }
 
-        // Mochi reaction
+        // Mochi reaction + consecutive failure tracking
         switch result.outcome {
         case .success:
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             conversationContext.update(effectiveIntent)
+            consecutiveFailures = 0
         case .failure:
             NotificationCenter.default.post(name: .botDizzy, object: nil)
+            if isInConversation { consecutiveFailures += 1 }
         case .question:
             break   // Mochi will show listening after re-open
+        }
+
+        // After 2 consecutive failures in conversation mode: end without speaking
+        if isInConversation && consecutiveFailures >= 2 {
+            consecutiveFailures = 0
+            endConversation(speaking: false)
+            return
         }
 
         // Show result view
@@ -1498,11 +1532,22 @@ extension IslandWindowController {
     /// Speak the result message (if enabled) then start next conversation turn.
     @MainActor
     private func speakAndContinueConversation(_ result: VoiceActionResult) {
-        if !isInConversation { VoiceBrain.shared.beginConversation() }
+        if !isInConversation {
+            VoiceBrain.shared.beginConversation()
+            consecutiveFailures = 0
+            hasSpokenPasCompris = false
+        }
         isInConversation = true
 
         let speaker = VoiceSpeaker.shared
-        if VoiceSettings.speakEnabled {
+        let shouldSpeak: Bool
+        if result.outcome == .failure && hasSpokenPasCompris {
+            shouldSpeak = false   // max 1 "pas compris" per conversation
+        } else {
+            shouldSpeak = VoiceSettings.speakEnabled
+        }
+        if result.outcome == .failure { hasSpokenPasCompris = true }
+        if shouldSpeak {
             let locale = VoiceEngine.shared.speechLocale
             speaker.speak(result.message, locale: locale)
             speaker.onDidFinish = { [weak self] in
@@ -1523,6 +1568,9 @@ extension IslandWindowController {
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 guard let self, self.isInConversation else { return }
+                // Tick sound + listening emote signal that Mochi is ready to hear the next command.
+                SoundEngine.shared.play("tick")
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.listening)
                 VoiceEngine.shared.startConversationTurn()
             }
         }
@@ -1535,6 +1583,8 @@ extension IslandWindowController {
     private func endConversation(speaking: Bool) {
         isInConversation = false
         conversationContext.reset()
+        consecutiveFailures = 0
+        hasSpokenPasCompris = false
         voiceResultWork?.cancel()
         voiceResultWork = nil
         VoiceEngine.shared.endConversation()
