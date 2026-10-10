@@ -35,6 +35,15 @@ enum EntityResolver {
         "anthropic":            "ai_anthropic",
         // Services
         "github":               "integration_github",
+        // GitHub phonetic variants (speech recognition mishears)
+        "gt":                   "integration_github",
+        "g t":                  "integration_github",
+        "git hub":              "integration_github",
+        "jit hub":              "integration_github",
+        "guitare hub":          "integration_github",
+        "guitar hub":           "integration_github",
+        "gitub":                "integration_github",
+        "guit hub":             "integration_github",
         "vercel":               "integration_vercel",
         "notion":               "integration_notion",
         "stripe":               "integration_stripe",

@@ -18,6 +18,7 @@ protocol MusicControlling: Sendable {
     @MainActor func playPlaylist(_ name: String) async -> Bool
     @MainActor func launchAndPlay() async
     @MainActor func launchSpotify() async
+    @MainActor func openSearch(_ name: String)
 }
 
 /// Abstraction over AppState pill management.
@@ -46,6 +47,7 @@ private final class NullMusic: MusicControlling, @unchecked Sendable {
     @MainActor func playPlaylist(_ n: String) async -> Bool { false }
     @MainActor func launchAndPlay() async            {}
     @MainActor func launchSpotify() async            {}
+    @MainActor func openSearch(_ name: String)       {}
 }
 
 @MainActor
@@ -157,8 +159,10 @@ final class VoiceActionRunner {
             }
             let found = await music.playSearch(name)
             if found { return ok("voice.music-playing") }
-            let fmt = Self.localizedString("voice.music-artist-err", locale: commandLocale)
-            return .init(outcome: .failure,
+            // Not in library — open Apple Music search
+            music.openSearch(name)
+            let fmt = Self.localizedString("voice.music-search-opened", locale: commandLocale)
+            return .init(outcome: .success,
                          message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
         case .musicPlayPlaylist(let name):
