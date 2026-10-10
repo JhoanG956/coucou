@@ -24978,61 +24978,61 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لغة الصوت"
+            "value": "Coucou يجيب بـ"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "কণ্ঠের ভাষা"
+            "value": "Coucou উত্তর দেয়"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voice language"
+            "value": "Coucou answers in"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Idioma de la voz"
+            "value": "Coucou responde en"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Langue de la voix"
+            "value": "Coucou répond en"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "आवाज़ की भाषा"
+            "value": "Coucou जवाब देता है"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bahasa suara"
+            "value": "Coucou menjawab dalam"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Idioma da voz"
+            "value": "Coucou responde em"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Язык голоса"
+            "value": "Coucou отвечает на"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "语音语言"
+            "value": "Coucou 回答语言"
           }
         }
       }
@@ -25553,6 +25553,136 @@
           "stringUnit": {
             "state": "translated",
             "value": "试听声音"
+          }
+        }
+      }
+    },
+    "voice.listen-language": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنت تتحدث"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "তুমি বলো"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You speak"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú hablas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu parles"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आप बोलते हैं"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamu berbicara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você fala"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ты говоришь"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你说的语言"
+          }
+        }
+      }
+    },
+    "voice.listen-auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي (لغة الإملاء في الماك)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয় (Mac-এর ডিক্টেশনের ভাষা)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic (your Mac’s dictation language)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático (idioma de dictado del Mac)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatique (langue de dictée du Mac)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्वचालित (Mac की डिक्टेशन भाषा)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatis (bahasa dikte Mac)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático (idioma de ditado do Mac)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически (язык диктовки Mac)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动（Mac 听写语言）"
           }
         }
       }

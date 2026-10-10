@@ -664,11 +664,14 @@ final class VoiceEngine: ObservableObject {
     // MARK: - Helpers
 
     private func suitableLocale() -> Locale? {
-        // The language chosen in Settings → Voice first (English by default), then the
-        // dictation languages, then the usual fallbacks.
-        var candidates: [Locale] = VoiceSettings.language == "fr"
-            ? [Locale(identifier: "fr-FR"), Locale(identifier: "fr-CA")]
-            : [Locale(identifier: "en-US"), Locale(identifier: "en-GB"), Locale(identifier: "en-AU")]
+        // The language I speak (Settings → Voice → "You speak"): automatic = the Mac's
+        // dictation languages first. The answer language is separate (VoiceSettings.language).
+        var candidates: [Locale]
+        switch VoiceSettings.listenLanguage {
+        case "fr": candidates = [Locale(identifier: "fr-FR"), Locale(identifier: "fr-CA")]
+        case "en": candidates = [Locale(identifier: "en-US"), Locale(identifier: "en-GB"), Locale(identifier: "en-AU")]
+        default:   candidates = []
+        }
         candidates += MacDictation.automaticLocales()
         candidates += [Locale(identifier: "en-US"), Locale(identifier: "fr-FR")]
         for locale in candidates {
