@@ -317,6 +317,11 @@ enum IntentParserTests {
         checkNilMultiAction("mets Gemini et blahblah",
                             parseMulti("mets Gemini et blahblah"))
 
+        // ── Music: lecture / stop la musique (feat/voice-jarvis) ─────────────
+        check("lecture",                     parse("lecture"),                 .musicPlay(target: nil))
+        check("stop la musique",             parse("stop la musique"),         .musicPause)
+        check("stop la chanson",             parse("stop la chanson"),         .musicPause)
+
         // Summary
         let total = pass + fail
         if fail == 0 { print("\n\(total)/\(total) passed.") }

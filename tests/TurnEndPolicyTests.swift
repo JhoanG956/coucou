@@ -32,9 +32,9 @@ enum TurnEndPolicyTests {
             "complete command → baseSilence")
 
         // Constants
-        precondition(TurnEndPolicy.baseSilence == 1.5,    "baseSilence == 1.5")
-        precondition(TurnEndPolicy.extendedSilence == 3.0, "extendedSilence == 3.0")
-        precondition(TurnEndPolicy.maxTurnTime == 20.0,    "maxTurnTime == 20.0")
+        precondition(TurnEndPolicy.baseSilence == 0.8,    "baseSilence == 0.8")
+        precondition(TurnEndPolicy.extendedSilence == 1.6, "extendedSilence == 1.6")
+        precondition(TurnEndPolicy.maxTurnTime == 15.0,    "maxTurnTime == 15.0")
 
         print("TurnEndPolicyTests: all cases passed")
     }

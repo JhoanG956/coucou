@@ -623,6 +623,7 @@ enum IntentParser {
 
     private static let pausePrefixes: [[String]] = [
         ["pause"], ["stop"], ["stoppe"], ["coupe"],
+        ["stop", "la", "musique"], ["stop", "la", "chanson"],
         ["mets", "en", "pause"], ["met", "en", "pause"],
         ["arrete", "la", "musique"], ["arrete", "la", "chanson"],
         ["arrete", "la", "lecture"],
@@ -691,7 +692,7 @@ enum IntentParser {
 
     // Bare music verbs (single word → musicPlay)
     private static let bareMusicVerbs: Set<String> = [
-        "joue", "lance", "play", "start", "demarre", "balance",
+        "joue", "lance", "lecture", "play", "start", "demarre", "balance",
         "reprends", "resume",
     ]
 
