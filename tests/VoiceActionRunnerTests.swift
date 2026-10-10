@@ -125,10 +125,10 @@ enum VoiceActionRunnerTests {
         check("search → search:Daft Punk", music.calls.last, "search:Daft Punk")
         music.calls = []
 
-        // Search not found → failure
+        // Search not found → Apple Music search opened → success
         music.searchResult = false
         let searchFail = await runner.run(.musicPlaySearch(name: "XYZ"), availablePills: pills)
-        check("search not found → failure", searchFail.outcome, .failure)
+        check("search not found → failure", searchFail.outcome, .success)
         music.searchResult = true
         music.calls = []
 

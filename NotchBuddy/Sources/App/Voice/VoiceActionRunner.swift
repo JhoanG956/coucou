@@ -162,7 +162,7 @@ final class VoiceActionRunner {
             // Not in library — open Apple Music search
             music.openSearch(name)
             let fmt = Self.localizedString("voice.music-search-opened", locale: commandLocale)
-            return .init(outcome: .failure,
+            return .init(outcome: .success,
                          message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
         case .musicPlayPlaylist(let name):

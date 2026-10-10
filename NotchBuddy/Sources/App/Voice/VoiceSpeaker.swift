@@ -14,6 +14,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
 
     private let synth = AVSpeechSynthesizer()
     private(set) var isSpeaking = false
+    private var currentUtterance: AVSpeechUtterance? = nil
 
     /// Called ~300 ms after the utterance finishes. VoiceEngine uses this to resume listening.
     var onDidFinish: (() -> Void)?
@@ -34,6 +35,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
             let lang = loc.language.languageCode?.identifier ?? ""
             if !lang.isEmpty { utt.voice = AVSpeechSynthesisVoice(language: lang) }
         }
+        currentUtterance = utt
         isSpeaking = true
         synth.speak(utt)
     }
@@ -48,8 +50,11 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                         didFinish utterance: AVSpeechUtterance) {
+        let id = ObjectIdentifier(utterance)
         Task { @MainActor in
+            guard let curr = self.currentUtterance, ObjectIdentifier(curr) == id else { return }
             self.isSpeaking = false
+            self.currentUtterance = nil
             try? await Task.sleep(nanoseconds: 300_000_000)  // 300 ms gap
             self.onDidFinish?()
         }
@@ -57,7 +62,12 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                         didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.isSpeaking = false }
+        let id = ObjectIdentifier(utterance)
+        Task { @MainActor in
+            guard let curr = self.currentUtterance, ObjectIdentifier(curr) == id else { return }
+            self.isSpeaking = false
+            self.currentUtterance = nil
+        }
     }
 }
 #endif

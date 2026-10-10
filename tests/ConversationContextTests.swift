@@ -48,9 +48,9 @@ enum ConversationContextTests {
     static func testReverse_pillAdd() {
         var ctx = ConversationContext()
         ctx.update(.pillAdd(id: "integration_github"))
-        let r = ctx.resolveRelative("annule", pills: pills)
+        let r = ctx.resolveRelative("annule ca", pills: pills)
         precondition(r == .pillRemove(id: "integration_github"),
-            "annule after pillAdd → pillRemove")
+            "annule ca after pillAdd → pillRemove")
     }
 
     static func testReverse_musicPause() {

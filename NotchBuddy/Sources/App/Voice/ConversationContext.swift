@@ -79,10 +79,11 @@ struct ConversationContext {
 
     // MARK: - Reverse / undo
 
-    // Triggers: "remets la", "remets le", "annule ca", "annule", "undo", "defait",
+    // Triggers: "remets la", "remets le", "annule ca", "undo", "defait",
     //           "cancel that", "undo this"
+    // Note: bare "annule" removed — it is a conversation-end phrase (TurnEndPolicy).
     private func resolveReverse(norm: String) -> VoiceIntent? {
-        let triggers = ["remets la", "remets le", "annule ca", "annule", "undo", "defait",
+        let triggers = ["remets la", "remets le", "annule ca", "undo", "defait",
                         "cancel that", "undo this"]
         let isReverse = triggers.contains { norm == $0 || norm.hasPrefix($0 + " ") }
         guard isReverse, let last = lastIntent else { return nil }

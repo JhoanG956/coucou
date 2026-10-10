@@ -1258,6 +1258,7 @@ struct SettingsView: View {
     #if !APPSTORE
     @State private var voicePermissionsGranted: Bool = false
     @ObservedObject private var voiceEngine = VoiceEngine.shared
+    @AppStorage("voiceSpeakEnabled") private var speakEnabled: Bool = true
 
     @ViewBuilder private var voiceSection: some View {
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
@@ -1265,10 +1266,7 @@ struct SettingsView: View {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
-                Toggle(String(localized: "voice.setting-speak"), isOn: Binding(
-                    get: { VoiceSettings.speakEnabled },
-                    set: { VoiceSettings.speakEnabled = $0 }
-                ))
+                Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
 
                 Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
                     .font(.system(size: 11))
@@ -1364,7 +1362,6 @@ struct SettingsView: View {
         case .available:            return String(localized: "voice.model-available")
         case .notMacOS26:           return String(localized: "voice.model-not-macos26")
         case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
-        case .languageUnsupported:  return String(localized: "voice.model-lang")
         }
     }
     #endif

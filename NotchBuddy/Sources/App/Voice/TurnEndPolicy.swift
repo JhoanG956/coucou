@@ -20,6 +20,13 @@ enum TurnEndPolicy {
         return extendingWords.contains(lastWord) ? extendedSilence : baseSilence
     }
 
+    /// Phrases that end the conversation window.
+    /// Single source of truth — used by VoiceEngine and IslandWindowController.
+    static let conversationEndPhrases: Set<String> = [
+        "merci", "c est bon", "c'est bon", "that s all", "that's all", "stop",
+        "laisse tomber", "annule", "annuler", "cancel", "never mind", "bye", "au revoir",
+    ]
+
     // Words that suggest the utterance is mid-thought and should get extra silence.
     static let extendingWords: Set<String> = [
         // FR conjunctions / linkers

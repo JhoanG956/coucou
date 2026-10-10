@@ -100,10 +100,6 @@ final class VoiceEngine: ObservableObject {
     private static let maxRebuildsPerMinute                   = 5
 
     private static let cancelPhrases = ["annule", "annuler", "cancel", "laisse tomber", "never mind"]
-    private static let conversationEndPhrases: Set<String> = [
-        "merci", "c est bon", "c'est bon", "that s all", "that's all", "stop",
-        "laisse tomber", "annule", "annuler", "cancel", "never mind", "bye", "au revoir",
-    ]
 
     // MARK: - Init
 
@@ -112,13 +108,6 @@ final class VoiceEngine: ObservableObject {
         let buildHash = Bundle.main.object(forInfoDictionaryKey: "CoucouGitHash") as? String ?? "unknown"
         appendAppLog("nb.log", "[Voice] build \(buildHash)")
         observeSystemEvents()
-        VoiceSpeaker.shared.onDidFinish = { [weak self] in
-            Task { @MainActor in
-                guard let self, self.isListeningForCommand else { return }
-                self.audio?.resetVAD()
-                appendAppLog("nb.log", "[Voice] speaker finished, VAD recalibrated")
-            }
-        }
         if isEnabled && !isPaused { startAudioPipeline() }
     }
 
@@ -140,6 +129,7 @@ final class VoiceEngine: ObservableObject {
     /// Called by IslandWindowController after showing a command result.
     func startConversationTurn() {
         isInConversation = true
+        audio?.resetVAD()
         startListeningDirectly(firstWordTimeout: 8.0)
     }
 
@@ -527,7 +517,7 @@ final class VoiceEngine: ObservableObject {
             let normTrimmed = WakePhrase.normalise(trimmed)
             if Self.cancelPhrases.contains(normTrimmed) {
                 endCommand(postFinished: true)
-            } else if isInConversation && Self.conversationEndPhrases.contains(normTrimmed) {
+            } else if isInConversation && TurnEndPolicy.conversationEndPhrases.contains(normTrimmed) {
                 // Post voiceFinished with the end phrase so IslandWindowController can handle cleanup
                 endCommand(postFinished: true)
             }

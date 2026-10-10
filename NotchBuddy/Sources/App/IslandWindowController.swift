@@ -27,10 +27,6 @@ final class IslandWindowController: NSWindowController {
     private var voiceResultWork: DispatchWorkItem?
     private var isInConversation = false
     private var conversationContext = ConversationContext()
-    private let conversationEndPhrases: Set<String> = [
-        "merci", "c est bon", "c'est bon", "that s all", "that's all",
-        "laisse tomber", "annule", "annuler", "cancel", "never mind", "bye", "au revoir",
-    ]
     #endif
 
     // Suppress peek sound on next reveal (e.g. musicReveal)
@@ -335,6 +331,7 @@ final class IslandWindowController: NSWindowController {
                         self.voiceResultWork?.cancel()
                         self.voiceResultWork = nil
                         VoiceEngine.shared.endConversation()
+                        VoiceBrain.shared.endConversation()
                         self.scheduleVoiceDismiss(delay: 0.3)
                     } else {
                         self.fsm.voiceFinished()
@@ -537,6 +534,7 @@ final class IslandWindowController: NSWindowController {
             voiceResultWork?.cancel()
             voiceResultWork = nil
             VoiceEngine.shared.endConversation()
+            VoiceBrain.shared.endConversation()
         }
         #endif
         // Keep the FSM in step with what is on screen (home/coucou → petit now).
@@ -1341,7 +1339,7 @@ extension IslandWindowController {
 
         // ── Conversation end phrase ────────────────────────────────────────────────
         let normTranscript = WakePhrase.normalise(transcript)
-        if isInConversation && conversationEndPhrases.contains(normTranscript) {
+        if isInConversation && TurnEndPolicy.conversationEndPhrases.contains(normTranscript) {
             endConversation(speaking: true)
             return
         }
@@ -1349,8 +1347,14 @@ extension IslandWindowController {
         // ── Follow-up answer to a pending question ─────────────────────────────────
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
-            showVoiceResult(result, emote: result.outcome == .success ? BotEmote.happy : nil)
-            // Questions don't continue conversation (already re-listening if needed)
+            if result.outcome == .success {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            } else {
+                NotificationCenter.default.post(name: .botDizzy, object: nil)
+            }
+            AppState.shared.voiceResult = result
+            expand(to: .voiceResult)
+            speakAndContinueConversation(result)
             return
         }
 
@@ -1407,13 +1411,25 @@ extension IslandWindowController {
         }
 
         // ── Single command ─────────────────────────────────────────────────────────
-        let result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+        var result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+        var effectiveIntent = intent
+
+        // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence).
+        if case .unknown = intent,
+           let brain = await VoiceBrain.shared.resolve(transcript, pills: pills) {
+            if let firstIntent = brain.intents.first {
+                result = await runner.run(firstIntent, availablePills: pills, rawTranscript: transcript)
+                effectiveIntent = firstIntent
+            } else if !brain.text.isEmpty {
+                result = VoiceActionResult(outcome: .success, message: brain.text)
+            }
+        }
 
         // Mochi reaction
         switch result.outcome {
         case .success:
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
-            conversationContext.update(intent)
+            conversationContext.update(effectiveIntent)
         case .failure:
             NotificationCenter.default.post(name: .botDizzy, object: nil)
         case .question:
@@ -1425,13 +1441,24 @@ extension IslandWindowController {
         expand(to: .voiceResult)
 
         if case .question = result.outcome {
-            // Re-open listening in command phase (skip wake gate) so the answer goes straight
-            // to the command pipeline. Give 5 s initial silence — user needs to read the question.
-            voiceResultWork?.cancel()
-            voiceResultWork = nil
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-                guard self != nil else { return }
-                VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+            // Speak the question aloud, then re-listen once speech finishes.
+            // Give 5 s initial silence so the user has time to read/hear the question.
+            let speaker = VoiceSpeaker.shared
+            if VoiceSettings.speakEnabled {
+                speaker.speak(result.message, locale: VoiceEngine.shared.speechLocale)
+                speaker.onDidFinish = { [weak self] in
+                    Task { @MainActor in
+                        guard self != nil else { return }
+                        VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                    }
+                }
+            } else {
+                voiceResultWork?.cancel()
+                voiceResultWork = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                    guard self != nil else { return }
+                    VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                }
             }
         } else {
             speakAndContinueConversation(result)
@@ -1453,6 +1480,7 @@ extension IslandWindowController {
     /// Speak the result message (if enabled) then start next conversation turn.
     @MainActor
     private func speakAndContinueConversation(_ result: VoiceActionResult) {
+        if !isInConversation { VoiceBrain.shared.beginConversation() }
         isInConversation = true
 
         let speaker = VoiceSpeaker.shared
@@ -1492,6 +1520,7 @@ extension IslandWindowController {
         voiceResultWork?.cancel()
         voiceResultWork = nil
         VoiceEngine.shared.endConversation()
+        VoiceBrain.shared.endConversation()
         if speaking {
             // Brief farewell emote
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
