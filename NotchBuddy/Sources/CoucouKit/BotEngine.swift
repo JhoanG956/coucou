@@ -628,6 +628,34 @@ final class BotEngine: ObservableObject {
         nextBlink = CACurrentMediaTime() + 2.5 + Double.random(in: 0...1.0)
     }
 
+    // MARK: - Voice in the compact island
+
+    private var voicePrevPermanentEmote: BotEmote? = nil
+    private(set) var isInVoiceCompact = false
+
+    /// Voice session while the island stays compact (wake → answer spoken).
+    /// One calm attentive pose for the whole exchange: wide eyes eased in, a slight
+    /// tilt, no jump, no hands, no mic-driven motion — in the notch every extra
+    /// movement reads as jitter.
+    func enterVoiceCompact() {
+        guard !isInVoiceCompact else { return }
+        isInVoiceCompact = true
+        voicePrevPermanentEmote = permanentEmote
+        setPermanentEmote(.listening)
+        anim("es",   keys: [TweenKey(target: 1.06, duration: 260, ease: Ease.inOut)])
+        anim("tilt", keys: [TweenKey(target: -0.06, duration: 260, ease: Ease.inOut)])
+    }
+
+    /// End of the voice exchange: back to the previous look, eased.
+    func exitVoiceCompact() {
+        guard isInVoiceCompact else { return }
+        isInVoiceCompact = false
+        setPermanentEmote(voicePrevPermanentEmote)
+        voicePrevPermanentEmote = nil
+        anim("es",   keys: [TweenKey(target: 1, duration: 260, ease: Ease.inOut)])
+        anim("tilt", keys: [TweenKey(target: 0, duration: 260, ease: Ease.inOut)])
+    }
+
     /// Call when the island leaves listening state.
     /// `hadCommand` = commandTranscript was non-empty when the session ended.
     func exitListening(hadCommand: Bool) {
