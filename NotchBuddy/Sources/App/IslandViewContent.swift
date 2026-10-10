@@ -1145,25 +1145,50 @@ struct MailView: View {
                         guard !isSending else { return }
                         sendMail()
                     }
-                    SecondaryButton("Cancel") { state.view = .choose }
+                    SecondaryButton("Cancel") {
+                        if state.voiceMailDraft != nil {
+                            // Prepared by voice: nothing to go back to, close the card.
+                            state.voiceMailDraft = nil
+                            state.droppedFile = nil
+                            NotificationCenter.default.post(name: .islandCollapse, object: nil)
+                        } else {
+                            state.view = .choose
+                        }
+                    }
                 }
             }
             .padding(.leading, 92)
             .padding(.trailing, 18)
             .padding(.vertical, 8)
         }
-        .onAppear { subject = state.droppedFile?.name ?? "" }
+        .onAppear { fillFromVoiceDraft() }
+        .onChange(of: state.voiceMailDraft) { _, _ in fillFromVoiceDraft() }
+    }
+
+    /// A mail prepared by voice arrives filled in; otherwise the dropped file's name.
+    private func fillFromVoiceDraft() {
+        if let d = state.voiceMailDraft {
+            to = d.to
+            subject = d.subject.isEmpty ? (state.droppedFile?.name ?? "") : d.subject
+            bodyText = d.body
+            statusMsg = ""
+        } else if subject.isEmpty {
+            subject = state.droppedFile?.name ?? ""
+        }
     }
 
     private func sendMail() {
         guard !to.isEmpty else { statusMsg = String(localized: "Missing recipient."); return }
         let subj = subject.isEmpty ? (state.droppedFile?.name ?? "File") : subject
 
-        // Prefer Resend if API key + sender address are configured
+        // Prefer Resend if API key + sender address are configured — except for a mail
+        // prepared by voice, which goes through the user's own Apple Mail account.
         let apiKey  = KeychainStore.shared.get("resend-api-key")
         let fromAddr = KeychainStore.shared.get("resend-from")
 
-        if let apiKey, let fromAddr {
+        if state.voiceMailDraft != nil {
+            sendViaAppleMail(to: to, subject: subj)
+        } else if let apiKey, let fromAddr {
             isSending = true
             statusMsg = ""
             let recipient = to
@@ -1272,6 +1297,7 @@ struct MailView: View {
     }
 
     private func onSuccess(recipient: String) {
+        state.voiceMailDraft = nil
         SoundEngine.shared.play("send")
         NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.wink)
         state.noteMessage = "Email sent to \(recipient)."

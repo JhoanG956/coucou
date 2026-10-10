@@ -261,6 +261,9 @@ final class AppState: ObservableObject {
 
     // Dropped file (set during upload flow)
     @Published var droppedFile: DroppedFile? = nil
+    /// A mail prepared by voice: fills the mail card; sent through Apple Mail on the
+    /// user's click. nil for the drop-a-file flow.
+    @Published var voiceMailDraft: VoiceMailDraft? = nil
 
     // Short note message (shown in NoteView)
     @Published var noteMessage: String? = nil
@@ -777,6 +780,12 @@ final class AppState: ObservableObject {
 enum PromptContext {
     case window(appName: String, title: String, url: String?)
     case file(name: String, fileURL: URL?)
+}
+
+struct VoiceMailDraft: Equatable {
+    var to: String
+    var subject: String
+    var body: String
 }
 
 struct DroppedFile {

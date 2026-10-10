@@ -168,6 +168,14 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor in
                 self?.cancelAbandon()
                 self?.dragOrigin = nil
+                #if !APPSTORE
+                // During the voice email (above all after "any attachment?"), a file
+                // dropped on the notch goes into that email.
+                if VoiceActionRunner.shared.isMailInProgress, let url = urls.first {
+                    await self?.attachVoiceMailFile(url)
+                    return
+                }
+                #endif
                 await FileDropHandler.handle(urls: urls, state: AppState.shared)
             }
         }
@@ -334,7 +342,8 @@ final class IslandWindowController: NSWindowController {
             self?.fsm.greetComplete()
         }
 
-        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil }
+        // An approval, or an email prepared by voice, stays open until I click.
+        fsm.isHeldOpen = { AppState.shared.pendingApproval != nil || AppState.shared.voiceMailDraft != nil }
 
         // Voice: wake phrase detected → open listening island
         #if !APPSTORE
@@ -362,7 +371,15 @@ final class IslandWindowController: NSWindowController {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if transcript.isEmpty {
-                    if VoiceActionRunner.shared.pendingQuestion != nil {
+                    if VoiceActionRunner.shared.isMailInProgress {
+                        // Silence during the voice email: "no attachment" → the card opens,
+                        // or the mail is cancelled. Say it, like any other answer.
+                        let result = await VoiceActionRunner.shared.handleAnswer(
+                            "", availablePills: PillCatalog.available)
+                        VoiceCaptionManager.shared.appendResponse(result.message)
+                        AppState.shared.voiceResult = result
+                        self.speakAndContinueConversation(result)
+                    } else if VoiceActionRunner.shared.pendingQuestion != nil {
                         // Re-listen timed out with no answer → show cancellation message
                         let result = await VoiceActionRunner.shared.handleAnswer(
                             "", availablePills: PillCatalog.available)
@@ -888,6 +905,13 @@ final class IslandWindowController: NSWindowController {
             self.silentNextReveal = true
             self.fsm.reveal()
             self.silentNextReveal = false
+        }
+
+        // Email prepared by voice: open the mail card, filled in, for me to check and send.
+        NotificationCenter.default.addObserver(forName: .voiceShowMailCard, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.fsm.openedExternally()
+            self.expand(to: .mail)
         }
 
         // Collapse requests from views (OK button, etc.)
@@ -1456,7 +1480,9 @@ extension IslandWindowController {
         // ── Short noise / spurious activation guard (conversation mode only) ────────
         // A transcript shorter than 2 words that isn't a pill name or known command
         // is almost certainly a false activation. Silently re-listen without feedback.
-        if isInConversation {
+        // A one-word reply to Coucou's own question ("Tana", "non", "yes" after "want the
+        // details?") is expected, not noise.
+        if isInConversation && runner.pendingQuestion == nil && !runner.hasWebThread {
             let normWords = normTranscript.split(separator: " ").map(String.init)
             if normWords.count < 2 {
                 let isPillName = pills.contains { IntentParser.normalise($0.name) == normTranscript }
@@ -1532,7 +1558,7 @@ extension IslandWindowController {
         }
 
         // ── Relative context resolution ────────────────────────────────────────────
-        let intent: VoiceIntent
+        var intent: VoiceIntent
         let transcriptOrigin: TranscriptOrigin
         if conversationContext.lastIntent != nil,
            let resolved = conversationContext.resolveRelative(transcript, pills: pills) {
@@ -1541,6 +1567,20 @@ extension IslandWindowController {
         } else {
             intent = IntentParser.parse(transcript, pills: pills)
             transcriptOrigin = .parser
+        }
+
+        // Web search on (Settings → Voice): a question no pill or service answers goes to
+        // Claude with web search, and so does the reply to its own follow-up question.
+        if case .unknown = intent, runner.info.webSearchEnabled, runner.info.hasWebKey,
+           VoiceQuery.looksLikeQuestion(transcript) || (isInConversation && runner.hasWebThread) {
+            intent = .webSearch(query: transcript)
+        }
+        if case .webSearch(let q) = intent, !q.isEmpty,
+           runner.info.webSearchEnabled, runner.info.hasWebKey, VoiceSettings.speakEnabled {
+            // A web search takes a few seconds: say so instead of going quiet.
+            VoiceSpeaker.shared.onDidFinish = nil
+            let wait = VoiceSettings.language == "fr" ? "Je regarde." : "Let me check."
+            VoiceSpeaker.shared.speak(wait, locale: VoiceSettings.answerLocale)
         }
 
         // ── Single command ─────────────────────────────────────────────────────────
@@ -1696,7 +1736,7 @@ extension IslandWindowController {
                 speaker.onDidFinish = { [weak self] in
                     Task { @MainActor in
                         guard self != nil else { return }
-                        VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                        VoiceEngine.shared.startListeningDirectly(firstWordTimeout: Self.answerWait(5.0))
                     }
                 }
             } else {
@@ -1704,7 +1744,7 @@ extension IslandWindowController {
                 voiceResultWork = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                     guard self != nil else { return }
-                    VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                    VoiceEngine.shared.startListeningDirectly(firstWordTimeout: Self.answerWait(5.0))
                 }
             }
         } else {
@@ -1798,10 +1838,34 @@ extension IslandWindowController {
             isInConversation = true
             VoiceBrain.shared.beginConversation()
             if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
-            VoiceEngine.shared.startConversationTurn()
+            VoiceEngine.shared.startConversationTurn(firstWordTimeout: Self.answerWait(8.0))
         } else {
             closeVoiceTurn()
         }
+    }
+
+    /// Seconds to wait for the first word of a reply: longer while Coucou waits for a
+    /// file, since finding it in Finder and dragging it takes a moment.
+    @MainActor
+    static func answerWait(_ normal: TimeInterval) -> TimeInterval {
+        VoiceActionRunner.shared.isWaitingForAttachment ? 20.0 : normal
+    }
+
+    /// A file dropped on the notch while Coucou asked for an attachment: stop listening,
+    /// a little gulp, then the filled-in mail card and Coucou says so.
+    @MainActor
+    func attachVoiceMailFile(_ url: URL) async {
+        VoiceEngine.shared.cancelListening()
+        let state = AppState.shared
+        state.fileDragOver = false
+        NotificationCenter.default.post(name: .botGulp, object: nil)
+        NotificationCenter.default.post(name: .botMorphTo, object: CGFloat(0))
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        if state.soundEnabled { SoundEngine.shared.play("approve") }
+        let result = await VoiceActionRunner.shared.attachDroppedFile(url)
+        VoiceCaptionManager.shared.appendResponse(result.message)
+        state.voiceResult = result
+        speakAndContinueConversation(result)
     }
 
     /// Stop listening and let the island settle. The context (last action, model session)
@@ -1818,6 +1882,7 @@ extension IslandWindowController {
         let expiry = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 self?.conversationContext.reset()
+                VoiceActionRunner.shared.resetWebThread()
                 VoiceBrain.shared.endConversation()
             }
         }
@@ -1839,6 +1904,12 @@ extension IslandWindowController {
             guard let self else { return }
             AppState.shared.voiceResult = nil
             AppState.shared.voiceActive = false
+            if AppState.shared.voiceMailDraft != nil {
+                // The voice email card stays open until I click Send or Cancel.
+                self.fsm.openedExternally()
+                self.expand(to: .mail)
+                return
+            }
             // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
             AppState.shared.view = self.defaultView()
             self.fsm.voiceFinished()
@@ -1862,6 +1933,7 @@ extension Notification.Name {
     static let botMorphTo       = Notification.Name("notchBuddy.botMorphTo")
     static let islandAction     = Notification.Name("notchBuddy.islandAction")
     static let islandCollapse      = Notification.Name("notchBuddy.islandCollapse")
+    static let voiceShowMailCard   = Notification.Name("notchBuddy.voiceShowMailCard")
     static let islandSendMessage   = Notification.Name("notchBuddy.islandSendMessage")
     static let islandNewConversation = Notification.Name("notchBuddy.islandNewConversation")
     static let islandToggleDiff           = Notification.Name("notchBuddy.islandToggleDiff")
