@@ -23,6 +23,9 @@ enum IntentParser {
 
         // ── 0. Strip a trailing location: "… dans les pilules", "… dans le notch" ──
         (fwords, frawWords) = stripTrailingLocation(fwords, rawWords: frawWords)
+        // …and a trailing "à la place" / "instead" with nothing after it:
+        // "enlève GitHub et mets Stripe à la place" → "mets Stripe".
+        (fwords, frawWords) = stripTrailingInstead(fwords, rawWords: frawWords)
         guard !fwords.isEmpty else { return .unknown }
 
         // ── 0. Strip spoken interjections from the start ─────────────────────
@@ -326,6 +329,18 @@ enum IntentParser {
             while let f = p.first, joins.contains(normalise(f)) { p.removeFirst() }
             return p.isEmpty ? nil : p.joined(separator: " ")
         }
+    }
+
+    /// Drops a trailing "à la place" / "à sa place" / "instead" (normalised: "a la place").
+    private static func stripTrailingInstead(
+        _ words: [String], rawWords: [String]
+    ) -> ([String], [String]) {
+        let tails: [[String]] = [["a", "la", "place"], ["a", "sa", "place"], ["instead"]]
+        for t in tails where words.count > t.count && Array(words.suffix(t.count)) == t {
+            let n = words.count - t.count
+            return (Array(words.prefix(n)), Array(rawWords.prefix(min(n, rawWords.count))))
+        }
+        return (words, rawWords)
     }
 
     /// Drops a trailing "dans les pilules" / "dans le notch" / "dans la barre" (after defilter,

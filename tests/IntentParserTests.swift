@@ -302,6 +302,13 @@ enum IntentParserTests {
         check("bon alors ajoute Notion",
               parse("bon alors ajoute Notion", pills: pills), .pillAdd(id: "integration_notion"))
         check("On s'en fout c'est", parse("On s'en fout c'est", pills: pills), .unknown)
+        checkMultiAction("Enlève la pilule GT et mets Stripe à la place",
+                         parseMulti("Enlève la pilule GT et mets Stripe à la place"),
+                         [.pillRemove(id: "integration_github"), .pillAdd(id: "integration_stripe")])
+        check("mets Stripe à la place",
+              parse("mets Stripe à la place", pills: pills), .pillAdd(id: "integration_stripe"))
+        check("add Stripe instead",
+              parse("add Stripe instead", pills: pills), .pillAdd(id: "integration_stripe"))
 
         // Single pill with conjunction → NOT multi-action (fallback to single-intent)
         checkNilMultiAction("mets Gemini et Cursor",
