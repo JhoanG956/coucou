@@ -3,21 +3,33 @@ import AVFoundation
 
 // MARK: - VoiceSpeaker
 //
-// Gives Mochi a voice: wraps AVSpeechSynthesizer with a sentence queue.
-// Sentence queue: enqueue(text:locale:) adds to queue, playback starts automatically
-// and continues through the queue. onDidFinish fires when the queue drains.
-//
-// All methods: @MainActor.
+// Gives Coucou a voice, sentence by sentence:
+//   • macOS voices (AVSpeechSynthesizer), best installed voice for the language;
+//   • ElevenLabs (Settings → Voice, the user's own API key), female or male.
+//     Each queued sentence starts downloading right away, so the next one is usually
+//     ready when the previous one ends. Any ElevenLabs failure falls back to the Mac
+//     voice for that sentence: Coucou never goes silent.
+// onDidFinish fires ~150 ms after the queue drains. All methods: @MainActor.
 @MainActor
-final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
+final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate, @unchecked Sendable {
     static let shared = VoiceSpeaker()
 
     private let synth = AVSpeechSynthesizer()
+    private var player: AVAudioPlayer?
     private(set) var isSpeaking = false
     private var currentUtterance: AVSpeechUtterance? = nil
-    private var queue: [(text: String, locale: Locale?)] = []
+    private var waitingForAudio = false
 
-    /// Called ~150 ms after the last queued utterance finishes.
+    private struct Item {
+        let text: String
+        let locale: Locale?
+        let audio: Task<Data?, Never>?   // ElevenLabs download, started at enqueue time
+    }
+    private var queue: [Item] = []
+    /// Bumped by stop()/speak(): late callbacks from an older utterance are ignored.
+    private var generation = 0
+
+    /// Called ~150 ms after the last queued sentence finishes.
     var onDidFinish: (() -> Void)?
 
     override init() {
@@ -27,55 +39,93 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
 
     // MARK: - Public API
 
-    /// Clears the queue, stops current speech, and speaks text immediately.
+    /// Clears the queue, stops current speech, and speaks text now.
     func speak(_ text: String, locale: Locale?) {
         guard VoiceSettings.speakEnabled else { return }
-        queue.removeAll()
-        synth.stopSpeaking(at: .immediate)
-        isSpeaking = false
-        currentUtterance = nil
-        _enqueueAndPlay(text: text, locale: locale)
+        stopPlayback()
+        enqueue(text, locale: locale)
     }
 
-    /// Adds text to the end of the playback queue. Starts playing if not already.
+    /// Adds a sentence to the queue. Starts playing if nothing is playing.
     func enqueue(_ text: String, locale: Locale?) {
         guard VoiceSettings.speakEnabled else { return }
-        if isSpeaking {
-            queue.append((text, locale))
-        } else {
-            _enqueueAndPlay(text: text, locale: locale)
+        let audio: Task<Data?, Never>? = ElevenLabsTTS.isActive
+            ? Task { await ElevenLabsTTS.shared.audio(for: text) }
+            : nil
+        queue.append(Item(text: text, locale: locale, audio: audio))
+        if !isSpeaking { playNext() }
+    }
+
+    func stop() { stopPlayback() }
+
+    /// What the mic gate uses: what is actually playing or about to play, never a flag
+    /// alone, so a missed callback cannot leave Coucou deaf.
+    var isBusy: Bool {
+        synth.isSpeaking || (player?.isPlaying ?? false) || waitingForAudio || !queue.isEmpty
+    }
+
+    // MARK: - Playback
+
+    private func stopPlayback() {
+        generation += 1
+        for item in queue { item.audio?.cancel() }
+        queue.removeAll()
+        currentUtterance = nil
+        waitingForAudio = false
+        isSpeaking = false
+        player?.stop()
+        player = nil
+        synth.stopSpeaking(at: .immediate)
+    }
+
+    private func playNext() {
+        guard !queue.isEmpty else { finished(); return }
+        let item = queue.removeFirst()
+        isSpeaking = true
+        guard let audio = item.audio else { speakSystem(item.text, locale: item.locale); return }
+        let gen = generation
+        waitingForAudio = true
+        Task { @MainActor in
+            let data = await audio.value
+            guard gen == self.generation else { return }
+            self.waitingForAudio = false
+            if let data, let p = try? AVAudioPlayer(data: data) {
+                p.delegate = self
+                self.player = p
+                if p.play() { return }
+                self.player = nil
+            }
+            self.speakSystem(item.text, locale: item.locale)   // fallback: Mac voice
         }
     }
 
-    func stop() {
-        queue.removeAll()
-        // Reset now: if the synthesizer never reports the cancel (stopped before the
-        // utterance really started), isSpeaking would stay true and the mic would
-        // ignore everything until relaunch.
-        currentUtterance = nil
-        isSpeaking = false
-        synth.stopSpeaking(at: .immediate)
-    }
-
-    /// What the mic gate should use: the synthesizer's own state (or sentences still
-    /// queued), never our flag alone, so a missed delegate callback cannot leave
-    /// Coucou deaf.
-    var isBusy: Bool { synth.isSpeaking || !queue.isEmpty }
-
-    // MARK: - Private
-
-    private func _enqueueAndPlay(text: String, locale: Locale?) {
+    private func speakSystem(_ text: String, locale: Locale?) {
         let utt = AVSpeechUtterance(string: text)
         utt.pitchMultiplier = 1.15
         utt.rate = AVSpeechUtteranceDefaultSpeechRate * 1.1
         utt.voice = _bestVoice(for: locale)
         currentUtterance = utt
-        isSpeaking = true
         synth.speak(utt)
     }
 
+    private func itemDone() {
+        currentUtterance = nil
+        player = nil
+        playNext()
+    }
+
+    private func finished() {
+        isSpeaking = false
+        let gen = generation
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)  // 150 ms gap
+            guard gen == self.generation, !self.isSpeaking else { return }
+            self.onDidFinish?()
+        }
+    }
+
     /// Picks the best installed voice for the spoken locale: same region first
-    /// (fr-FR before fr-CA), then quality (.premium > .enhanced > default).
+    /// (en-US before en-GB), then quality (.premium > .enhanced > default).
     /// Novelty voices and the user's Personal Voice are never used.
     private func _bestVoice(for locale: Locale?) -> AVSpeechSynthesisVoice? {
         guard let loc = locale else { return nil }
@@ -104,26 +154,30 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         let id = ObjectIdentifier(utterance)
         Task { @MainActor in
             guard let curr = self.currentUtterance, ObjectIdentifier(curr) == id else { return }
-            self.currentUtterance = nil
-            if self.queue.isEmpty {
-                self.isSpeaking = false
-                try? await Task.sleep(nanoseconds: 150_000_000)  // 150 ms gap
-                self.onDidFinish?()
-            } else {
-                let next = self.queue.removeFirst()
-                self._enqueueAndPlay(text: next.text, locale: next.locale)
-            }
+            self.itemDone()
         }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                         didCancel utterance: AVSpeechUtterance) {
-        let id = ObjectIdentifier(utterance)
+        // stopPlayback() already reset everything; nothing to do for older utterances.
+    }
+
+    // MARK: - AVAudioPlayerDelegate
+
+    nonisolated func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully flag: Bool) {
+        let id = ObjectIdentifier(p)
         Task { @MainActor in
-            guard let curr = self.currentUtterance, ObjectIdentifier(curr) == id else { return }
-            self.isSpeaking = false
-            self.currentUtterance = nil
-            self.queue.removeAll()
+            guard let curr = self.player, ObjectIdentifier(curr) == id else { return }
+            self.itemDone()
+        }
+    }
+
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ p: AVAudioPlayer, error: Error?) {
+        let id = ObjectIdentifier(p)
+        Task { @MainActor in
+            guard let curr = self.player, ObjectIdentifier(curr) == id else { return }
+            self.itemDone()
         }
     }
 }

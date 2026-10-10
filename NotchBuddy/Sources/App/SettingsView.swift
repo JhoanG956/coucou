@@ -1288,6 +1288,11 @@ struct SettingsView: View {
     @AppStorage("voiceCaptionEnabled") private var captionEnabled: Bool = true
     @AppStorage("voiceWeatherEnabled") private var weatherEnabled: Bool = false
     @AppStorage("voiceWeatherCity")    private var weatherCity: String = ""
+    @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
+    @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
+    @State private var elevenKeyDraft: String = ""
+    @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
 
     @ViewBuilder private var voiceSection: some View {
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
@@ -1295,7 +1300,54 @@ struct SettingsView: View {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
+                Picker(String(localized: "voice.language"), selection: $voiceLanguage) {
+                    Text(verbatim: "English").tag("en")
+                    Text(verbatim: "Français").tag("fr")
+                }
+                .frame(maxWidth: 260)
+                .onChange(of: voiceLanguage) { _, _ in VoiceEngine.shared.reloadLanguage() }
+
                 Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
+
+                if speakEnabled {
+                    Picker(String(localized: "voice.tts-engine"), selection: $ttsEngine) {
+                        Text(String(localized: "voice.tts-system")).tag("system")
+                        Text(verbatim: "ElevenLabs").tag("elevenlabs")
+                    }
+                    .frame(maxWidth: 260)
+
+                    if ttsEngine == "elevenlabs" {
+                        HStack(spacing: 6) {
+                            SecureField(elevenKeySaved ? String(localized: "voice.tts-key-saved")
+                                                       : String(localized: "voice.tts-key"),
+                                        text: $elevenKeyDraft)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 220)
+                            Button(String(localized: "Save")) {
+                                let k = elevenKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if k.isEmpty { KeychainStore.shared.remove(ElevenLabsTTS.keyName) }
+                                else { KeychainStore.shared.set(ElevenLabsTTS.keyName, value: k) }
+                                elevenKeyDraft = ""
+                                elevenKeySaved = !k.isEmpty
+                                ElevenLabsTTS.shared.reset()
+                            }
+                        }
+                        Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
+                            Text(String(localized: "voice.tts-female")).tag("female")
+                            Text(String(localized: "voice.tts-male")).tag("male")
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 220)
+                        .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+                    }
+
+                    Button(String(localized: "voice.tts-test")) {
+                        let en = voiceLanguage != "fr"
+                        VoiceSpeaker.shared.speak(en ? "Hi, I'm Coucou. Say OK Coucou whenever you need me."
+                                                     : "Salut, c'est Coucou. Dis OK Coucou quand tu as besoin de moi.",
+                                                  locale: Locale(identifier: en ? "en-US" : "fr-FR"))
+                    }
+                }
 
                 Toggle(String(localized: "voice.setting-captions"), isOn: $captionEnabled)
 

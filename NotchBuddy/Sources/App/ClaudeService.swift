@@ -74,6 +74,7 @@ final class KeychainStore: @unchecked Sendable {
         // Google Calendar: the user's own Desktop OAuth client, and the refresh
         // token Google returns once they have consented.
         "gcal-client-id", "gcal-client-secret", "gcal-refresh-token",
+        "elevenlabs-api-key",
     ]
 
     private init() {

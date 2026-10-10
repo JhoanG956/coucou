@@ -24972,6 +24972,655 @@
         }
       }
     },
+    "voice.language": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لغة الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠের ভাষা"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice language"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue de la voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ की भाषा"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma da voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Язык голоса"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语音语言"
+          }
+        }
+      }
+    },
+    "voice.tts-engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Голос"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音"
+          }
+        }
+      }
+    },
+    "voice.tts-system": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صوت الماك"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac-এর কণ্ঠ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz del Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix du Mac"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac की आवाज़"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suara Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz do Mac"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Голос Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac 语音"
+          }
+        }
+      }
+    },
+    "voice.tts-key": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مفتاح ElevenLabs API"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API কী"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API key"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave API de ElevenLabs"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé API ElevenLabs"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API कुंजी"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunci API ElevenLabs"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave de API ElevenLabs"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-ключ ElevenLabs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ElevenLabs API 密钥"
+          }
+        }
+      }
+    },
+    "voice.tts-key-saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المفتاح محفوظ في سلسلة المفاتيح"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কী কিচেইনে সংরক্ষিত"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key saved in Keychain"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave guardada en el llavero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé enregistrée dans le Trousseau"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कुंजी कीचेन में सहेजी गई"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunci tersimpan di Keychain"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave salva nas Chaves"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ сохранён в Связке ключей"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已存入钥匙串"
+          }
+        }
+      }
+    },
+    "voice.tts-gender": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نوع الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠের ধরন"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice type"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type de voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ का प्रकार"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jenis suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тип голоса"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音类型"
+          }
+        }
+      }
+    },
+    "voice.tts-female": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امرأة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নারী"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Woman"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mujer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Femme"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "महिला"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wanita"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mulher"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Женский"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "女声"
+          }
+        }
+      }
+    },
+    "voice.tts-male": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رجل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুরুষ"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Man"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hombre"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homme"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पुरुष"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pria"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homem"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мужской"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "男声"
+          }
+        }
+      }
+    },
+    "voice.tts-test": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جرّب الصوت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কণ্ঠ পরীক্ষা"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test the voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probar la voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tester la voix"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आवाज़ आज़माएँ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coba suara"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testar a voz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверить голос"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试听声音"
+          }
+        }
+      }
+    },
+    "integrations.github.ci-hint.appstore": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
+          }
+        }
+      }
+    },
     "integrations.gcal.hint": {
       "localizations": {
         "ar": {
@@ -25100,70 +25749,6 @@
         }
       }
     },
-    "Default branch CI": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CI للفرع الافتراضي"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ডিফল্ট ব্রাঞ্চের CI"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Default branch CI"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CI de la rama principal"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CI de la branche par défaut"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "डिफ़ॉल्ट ब्रांच का CI"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CI branch default"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CI da branch padrão"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CI основной ветки"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "默认分支 CI"
-          }
-        }
-      }
-    },
     "Google account not connected": {
       "localizations": {
         "ar": {
@@ -25228,66 +25813,66 @@
         }
       }
     },
-    "integrations.github.ci-hint.appstore": {
+    "Default branch CI": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
+            "value": "CI للفرع الافتراضي"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
+            "value": "ডিফল্ট ব্রাঞ্চের CI"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
+            "value": "Default branch CI"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
+            "value": "CI de la rama principal"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
+            "value": "CI de la branche par défaut"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
+            "value": "डिफ़ॉल्ट ब्रांच का CI"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
+            "value": "CI branch default"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
+            "value": "CI da branch padrão"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
+            "value": "CI основной ветки"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
+            "value": "默认分支 CI"
           }
         }
       }

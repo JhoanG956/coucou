@@ -184,21 +184,35 @@ final class LiveVoiceInfo: VoiceInfoProviding {
             }
         }
 
-        if let fileURL, let service = NSSharingService(named: .composeEmail) {
+        // Body: dictated, or written by Coucou from what the mail should say.
+        var body = request.body
+        if body == nil, let what = request.instruction {
+            body = await VoiceBrain.draftMail(to: request.recipient, about: what) ?? what
+        }
+        let subject = request.subject ?? fileURL?.deletingPathExtension().lastPathComponent ?? ""
+
+        var items: [Any] = []
+        if let body { items.append(body) }
+        if let fileURL { items.append(fileURL) }
+        if !items.isEmpty, let service = NSSharingService(named: .composeEmail) {
             service.recipients = [address]
-            service.subject = fileURL.deletingPathExtension().lastPathComponent
-            service.perform(withItems: [fileURL])
-            return .init(outcome: .success,
-                         message: t("Mail prêt pour \(request.recipient) avec \(fileURL.lastPathComponent). Tu n'as plus qu'à cliquer sur Envoyer.",
-                                    "Email to \(request.recipient) with \(fileURL.lastPathComponent) is ready. Just click Send."))
+            service.subject = subject
+            service.perform(withItems: items)
+        } else {
+            var comps = URLComponents()
+            comps.scheme = "mailto"
+            comps.path = address
+            comps.queryItems = [URLQueryItem(name: "subject", value: subject),
+                                URLQueryItem(name: "body", value: body ?? "")]
+            guard let url = comps.url else {
+                return .init(outcome: .failure, message: t("Je n'arrive pas à ouvrir Mail.", "I can't open Mail."))
+            }
+            NSWorkspace.shared.open(url)
         }
-        guard let url = URL(string: "mailto:\(address)") else {
-            return .init(outcome: .failure, message: t("Je n'arrive pas à ouvrir Mail.", "I can't open Mail."))
-        }
-        NSWorkspace.shared.open(url)
+        let what = fileURL.map { t(" avec \($0.lastPathComponent)", " with \($0.lastPathComponent)") } ?? ""
         return .init(outcome: .success,
-                     message: t("Mail prêt pour \(request.recipient). Écris ton message et clique sur Envoyer.",
-                                "Email to \(request.recipient) is ready. Write it and click Send."))
+                     message: t("Le mail pour \(request.recipient)\(what) est prêt dans Mail. Relis-le et clique sur Envoyer.",
+                                "The email to \(request.recipient)\(what) is ready in Mail. Check it and click Send."))
     }
 
     // MARK: Apps
@@ -341,7 +355,8 @@ enum FileLookup {
         case .downloads: dirs = [.downloadsDirectory]
         case .desktop:   dirs = [.desktopDirectory]
         case .documents: dirs = [.documentDirectory]
-        case nil:        dirs = [.downloadsDirectory, .desktopDirectory, .documentDirectory]
+        case .pictures:  dirs = [.picturesDirectory]
+        case nil:        dirs = [.downloadsDirectory, .desktopDirectory, .documentDirectory, .picturesDirectory]
         }
         let wanted = IntentParser.normalise(query).split(separator: " ").map(String.init)
         guard !wanted.isEmpty else { return nil }
@@ -353,7 +368,8 @@ enum FileLookup {
             for case let url as URL in e {
                 if e.level > 2 { e.skipDescendants(); continue }
                 guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
-                let name = IntentParser.normalise(url.deletingPathExtension().lastPathComponent)
+                // "Goku.png" normalises to "gokupng": compare with the full file name too.
+                let name = IntentParser.normalise(url.lastPathComponent)
                 let ext  = url.pathExtension.lowercased()
                 let ok = wanted.allSatisfy { w in name.contains(w) || ext == w }
                 guard ok else { continue }
