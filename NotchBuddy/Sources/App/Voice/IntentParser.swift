@@ -23,7 +23,17 @@ enum IntentParser {
 
         // ── 0. Strip a trailing location: "… dans les pilules", "… dans le notch" ──
         (fwords, frawWords) = stripTrailingLocation(fwords, rawWords: frawWords)
+        // …and a trailing "à la place" / "instead" with nothing after it:
+        // "enlève GitHub et mets Stripe à la place" → "mets Stripe".
+        (fwords, frawWords) = stripTrailingInstead(fwords, rawWords: frawWords)
         guard !fwords.isEmpty else { return .unknown }
+
+        // ── 0. Strip spoken interjections from the start ─────────────────────
+        //    "merci tu peux…", "ouais mets…", "bon alors ajoute…"
+        while let first = fwords.first, interjections.contains(first), fwords.count > 1 {
+            fwords.removeFirst()
+            if !frawWords.isEmpty { frawWords.removeFirst() }
+        }
 
         // ── 0a. Strip politeness prefixes from the start ─────────────────────
         //    "tu peux", "est-ce que tu peux", "peux-tu", "can you", etc.
@@ -39,6 +49,12 @@ enum IntentParser {
         // ── 0b. Map infinitives → imperative forms ────────────────────────────
         //    "mettre" → "mets", "lancer" → "lance", "ajouter" → "ajoute", …
         fwords = fwords.map { infinitiveMap[$0] ?? $0 }
+
+        // ── 0c. "mets GitHub à la place de Notion" → replace Notion by GitHub ─
+        //    Before the music rules, or "mets X …" becomes a song search.
+        if let (old, new) = extractInsteadOf(fwords, pills: pills) {
+            return .pillReplace(old: old, new: new)
+        }
 
         // ── 1. Explicit music-only patterns ──────────────────────────────────
         if matchesAny(fwords, in: pausePrefixes)   { return .musicPause }
@@ -315,6 +331,18 @@ enum IntentParser {
         }
     }
 
+    /// Drops a trailing "à la place" / "à sa place" / "instead" (normalised: "a la place").
+    private static func stripTrailingInstead(
+        _ words: [String], rawWords: [String]
+    ) -> ([String], [String]) {
+        let tails: [[String]] = [["a", "la", "place"], ["a", "sa", "place"], ["instead"]]
+        for t in tails where words.count > t.count && Array(words.suffix(t.count)) == t {
+            let n = words.count - t.count
+            return (Array(words.prefix(n)), Array(rawWords.prefix(min(n, rawWords.count))))
+        }
+        return (words, rawWords)
+    }
+
     /// Drops a trailing "dans les pilules" / "dans le notch" / "dans la barre" (after defilter,
     /// so "piles" is already gone and "mes" is already "les").
     private static func stripTrailingLocation(
@@ -507,6 +535,26 @@ enum IntentParser {
         return nil
     }
 
+    /// "mets (la pilule) X à la place de Y" / "X au lieu de Y" / "X instead of Y" → (Y, X).
+    private static func extractInsteadOf(_ words: [String], pills: [PillDefinition]) -> (String, String)? {
+        let markers: [[String]] = [["a", "la", "place", "de"], ["a", "la", "place", "du"],
+                                   ["au", "lieu", "de"], ["au", "lieu", "du"], ["instead", "of"]]
+        let leadVerbs: Set<String> = ["mets", "met", "remets", "ajoute", "rajoute", "active",
+                                      "affiche", "put", "add", "use", "utilise", "prends"]
+        let noise: Set<String> = ["la", "le", "les", "l", "pilule", "pilules", "the", "pill", "me", "moi"]
+        for m in markers {
+            guard let i = indexOfSequence(m, in: words), i > 0, i + m.count < words.count else { continue }
+            let left  = words[..<i].filter { !leadVerbs.contains($0) && !noise.contains($0) }
+            let right = words[(i + m.count)...].filter { !noise.contains($0) }
+            guard !left.isEmpty, !right.isEmpty,
+                  let new = EntityResolver.resolve(left.joined(separator: " "), from: pills),
+                  let old = EntityResolver.resolve(right.joined(separator: " "), from: pills),
+                  new != old else { continue }
+            return (old, new)
+        }
+        return nil
+    }
+
     // MARK: - pillOnly extraction
 
     private static func extractOnly(_ words: [String], pills: [PillDefinition]) -> [String]? {
@@ -547,6 +595,12 @@ enum IntentParser {
         ["please"],
     ]
 
+    /// Spoken interjections dropped from the start of a phrase (normalised).
+    private static let interjections: Set<String> = [
+        "merci", "ouais", "oui", "ok", "okay", "bon", "alors", "euh", "bah", "ben", "hein",
+        "voila", "donc", "hey", "yeah", "yes", "so", "well", "um", "uh", "thanks",
+    ]
+
     /// Maps normalised infinitive forms → imperative/trigger forms.
     private static let infinitiveMap: [String: String] = [
         "mettre":      "mets",
@@ -569,6 +623,7 @@ enum IntentParser {
 
     private static let pausePrefixes: [[String]] = [
         ["pause"], ["stop"], ["stoppe"], ["coupe"],
+        ["stop", "la", "musique"], ["stop", "la", "chanson"],
         ["mets", "en", "pause"], ["met", "en", "pause"],
         ["arrete", "la", "musique"], ["arrete", "la", "chanson"],
         ["arrete", "la", "lecture"],
@@ -637,7 +692,7 @@ enum IntentParser {
 
     // Bare music verbs (single word → musicPlay)
     private static let bareMusicVerbs: Set<String> = [
-        "joue", "lance", "play", "start", "demarre", "balance",
+        "joue", "lance", "lecture", "play", "start", "demarre", "balance",
         "reprends", "resume",
     ]
 

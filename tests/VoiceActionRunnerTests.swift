@@ -173,6 +173,26 @@ enum VoiceActionRunnerTests {
         check("question answer → cursor added",   pills_.calls.contains("toggle:agent_cursor"), true)
         check("pending question cleared after answer", runner.pendingQuestion == nil, true)
 
+        // Answer given as a sentence (real transcript from a test on the Mac)
+        pills_.active = Set(["integration_github","integration_vercel","integration_stripe","integration_resend"])
+        _ = await runner.run(.pillAdd(id: "agent_gemini"), availablePills: pills)
+        pills_.calls = []
+        let sentence = await runner.handleAnswer("Je retire la pilule Stripe", availablePills: pills)
+        check("sentence answer → success", sentence.outcome, .success)
+        check("sentence answer → stripe removed", pills_.calls.contains("toggle:integration_stripe"), true)
+        check("sentence answer → gemini added",   pills_.calls.contains("toggle:agent_gemini"), true)
+
+        // Unclear answer → asked once more, then given up
+        pills_.active = Set(["integration_github","integration_vercel","integration_stripe","integration_resend"])
+        _ = await runner.run(.pillAdd(id: "agent_gemini"), availablePills: pills)
+        let unclear1 = await runner.handleAnswer("on s en fout c est", availablePills: pills)
+        if case .question = unclear1.outcome { print("✓  unclear answer → asked again"); pass += 1 }
+        else { print("✗  unclear answer — got \(unclear1.outcome)"); fail += 1 }
+        check("unclear answer keeps the question", runner.pendingQuestion != nil, true)
+        let unclear2 = await runner.handleAnswer("bof", availablePills: pills)
+        check("second unclear answer → failure", unclear2.outcome, .failure)
+        check("question dropped after second miss", runner.pendingQuestion == nil, true)
+
         // ── Pills: add multiple ───────────────────────────────────────────────
         pills_.active = ["integration_github"]
         pills_.calls  = []

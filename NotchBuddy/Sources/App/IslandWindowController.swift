@@ -315,7 +315,12 @@ final class IslandWindowController: NSWindowController {
                 self.expand(to: .greeting)
 
             case .listening:
-                self.expand(to: .listening)
+                // Island stays compact; caption panel handles display.
+                #if !APPSTORE
+                let screen = IslandWindowController.islandScreen()
+                VoiceCaptionManager.shared.show(on: screen, notchHeight: AppState.shared.notchHeight)
+                VoiceBrain.shared.prewarmSession()
+                #endif
             }
         }
 
@@ -1425,6 +1430,7 @@ extension IslandWindowController {
     /// Run the intent derived from `transcript`, show VoiceResultView, then continue conversation or collapse.
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
+        let t0     = Date()
         let pills  = PillCatalog.available
         let runner = VoiceActionRunner.shared
 
@@ -1466,8 +1472,9 @@ extension IslandWindowController {
             } else {
                 NotificationCenter.default.post(name: .botDizzy, object: nil)
             }
+            VoiceCaptionManager.shared.setUserLine(transcript)
+            VoiceCaptionManager.shared.appendResponse(result.message)
             AppState.shared.voiceResult = result
-            expand(to: .voiceResult)
             speakAndContinueConversation(result)
             return
         }
@@ -1513,8 +1520,9 @@ extension IslandWindowController {
             } else {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             }
+            VoiceCaptionManager.shared.setUserLine(transcript)
+            VoiceCaptionManager.shared.appendResponse(combined.message)
             AppState.shared.voiceResult = combined
-            expand(to: .voiceResult)
             speakAndContinueConversation(combined)
             return
         }
@@ -1532,40 +1540,111 @@ extension IslandWindowController {
         }
 
         // ── Single command ─────────────────────────────────────────────────────────
+        let locale = VoiceEngine.shared.speechLocale
+        let tParseEnd = Date()
+        let parseMs   = Int(tParseEnd.timeIntervalSince(t0) * 1000)
+
+        // Update caption user line immediately
+        VoiceCaptionManager.shared.setUserLine(transcript)
+
         var result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
         var effectiveIntent = intent
         VoiceTranscriptHistory.shared.record(transcript: transcript, intent: intent, origin: transcriptOrigin)
 
-        // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence).
-        if case .unknown = intent,
-           let brain = await VoiceBrain.shared.resolve(transcript, pills: pills) {
-            if !brain.intents.isEmpty {
-                // Run all brain intents: removals before additions (same rule as parseMultiAction).
-                var sorted = brain.intents
-                sorted.sort { a, b in
-                    let ra: Bool = { switch a { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
-                    let rb: Bool = { switch b { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
-                    return ra && !rb
-                }
-                var parts: [String] = []
-                var anyFailure = false
-                for bi in sorted {
-                    let r = await runner.run(bi, availablePills: pills, rawTranscript: transcript)
-                    parts.append(r.message)
-                    if case .failure  = r.outcome { anyFailure = true }
-                    if case .question = r.outcome { anyFailure = true }
-                    if case .success  = r.outcome {
-                        effectiveIntent = bi
-                        VoiceTranscriptHistory.shared.record(transcript: transcript, intent: bi, origin: .brain)
-                    }
-                }
-                result = VoiceActionResult(
-                    outcome: anyFailure ? .failure : .success,
-                    message: parts.joined(separator: " · ")
-                )
-            } else if !brain.text.isEmpty {
-                result = VoiceActionResult(outcome: .success, message: brain.text)
+        let tActionEnd = Date()
+        let actionMs   = Int(tActionEnd.timeIntervalSince(tParseEnd) * 1000)
+
+        // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence) with streaming TTS.
+        if case .unknown = intent {
+            let tBrain0  = Date()
+            let brainWarm = VoiceBrain.shared.isSessionReady
+            var brainUsed = false
+
+            // A stale "finished speaking" handler from the previous turn would re-open
+            // the mic between two streamed sentences: drop it before streaming.
+            VoiceSpeaker.shared.onDidFinish = nil
+
+            let brain = await VoiceBrain.shared.resolveWithStreaming(
+                transcript, pills: pills
+            ) { sentence, hasActions in
+                // When the model is acting (tool call), its text is not spoken: the real
+                // outcome comes from VoiceActionRunner below ("C'est fait" must not be
+                // said before the action ran, or when it failed / needs a question).
+                if !hasActions { VoiceSpeaker.shared.enqueue(sentence, locale: locale) }
+                VoiceCaptionManager.shared.appendResponse(sentence)
             }
+
+            let brainMs = Int(Date().timeIntervalSince(tBrain0) * 1000)
+            appendAppLog("nb.log",
+                "[Voice] turn: parse=\(parseMs)ms action=\(actionMs)ms brain=\(brainMs)ms (\(brainWarm ? "warm" : "cold"))")
+
+            if let brain {
+                if !brain.intents.isEmpty {
+                    // Run the actions the model asked for: removals before additions.
+                    var sorted = brain.intents
+                    sorted.sort { a, b in
+                        let ra: Bool = { switch a { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
+                        let rb: Bool = { switch b { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
+                        return ra && !rb
+                    }
+                    effectiveIntent = sorted[0]
+                    var parts: [String] = []
+                    var anyFailure = false
+                    var questionResult: VoiceActionResult? = nil
+                    for bi in sorted {
+                        let r = await runner.run(bi, availablePills: pills, rawTranscript: transcript)
+                        parts.append(r.message)
+                        switch r.outcome {
+                        case .success:
+                            effectiveIntent = bi
+                            VoiceTranscriptHistory.shared.record(transcript: transcript, intent: bi, origin: .brain)
+                        case .failure:
+                            anyFailure = true
+                        case .question:
+                            questionResult = r
+                        }
+                    }
+                    // Same path as a parser command below: short spoken confirmation,
+                    // or the question ("laquelle j'enlève ?") with its re-listen.
+                    VoiceCaptionManager.shared.clearResponse()
+                    result = questionResult ?? VoiceActionResult(
+                        outcome: anyFailure ? .failure : .success,
+                        message: parts.joined(separator: " · "))
+                } else if !brain.text.isEmpty {
+                    result = VoiceActionResult(outcome: .success, message: brain.text)
+                    brainUsed = true
+                }
+            }
+
+            if brainUsed {
+                // TTS sentences already enqueued via streaming. Enter conversation and
+                // continue once the speaker queue drains.
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+                conversationContext.update(effectiveIntent)
+                consecutiveFailures = 0
+                AppState.shared.voiceResult = result
+                _enterConversationAfterStreamedSpeech()
+                return
+            }
+
+            appendAppLog("nb.log", "[Voice] turn: parse=\(parseMs)ms action=\(actionMs)ms brain=\(brainMs)ms (\(brainWarm ? "warm" : "cold")) — no result")
+        } else {
+            appendAppLog("nb.log", "[Voice] turn: parse=\(parseMs)ms action=\(actionMs)ms (parser)")
+        }
+
+        // Mid-conversation, a phrase with no command in it (talking to someone else,
+        // "on s'en fout c'est"…) is dropped silently: no dizzy Mochi, no "pas compris".
+        // Two in a row end the conversation.
+        if isInConversation, case .unknown = effectiveIntent, result.outcome == .failure {
+            consecutiveFailures += 1
+            appendAppLog("nb.log", "[Voice] conversation: no command in phrase, ignored")
+            if consecutiveFailures >= 2 {
+                consecutiveFailures = 0
+                endConversation(speaking: false)
+            } else {
+                scheduleConversationContinue(delay: 0.2)
+            }
+            return
         }
 
         // Mochi reaction + consecutive failure tracking
@@ -1588,16 +1667,16 @@ extension IslandWindowController {
             return
         }
 
-        // Show result view
+        // Update caption with result; island stays compact (no expand).
+        VoiceCaptionManager.shared.appendResponse(result.message)
         AppState.shared.voiceResult = result
-        expand(to: .voiceResult)
 
         if case .question = result.outcome {
             // Speak the question aloud, then re-listen once speech finishes.
             // Give 5 s initial silence so the user has time to read/hear the question.
             let speaker = VoiceSpeaker.shared
             if VoiceSettings.speakEnabled {
-                speaker.speak(result.message, locale: VoiceEngine.shared.speechLocale)
+                speaker.speak(result.message, locale: locale)
                 speaker.onDidFinish = { [weak self] in
                     Task { @MainActor in
                         guard self != nil else { return }
@@ -1652,12 +1731,33 @@ extension IslandWindowController {
             speaker.speak(result.message, locale: locale)
             speaker.onDidFinish = { [weak self] in
                 Task { @MainActor in
-                    self?.scheduleConversationContinue(delay: 0.3)
+                    self?.scheduleConversationContinue(delay: 0.15)
                 }
             }
         } else {
-            // No speech: continue after showing result for 1.5 s
+            // No speech: continue after 1.5 s
             scheduleConversationContinue(delay: 1.5)
+        }
+    }
+
+    /// Enter/stay in conversation mode after brain streaming TTS queues drain.
+    @MainActor
+    private func _enterConversationAfterStreamedSpeech() {
+        if !isInConversation {
+            VoiceBrain.shared.beginConversation()
+            consecutiveFailures = 0
+            hasSpokenPasCompris = false
+        }
+        isInConversation = true
+        let speaker = VoiceSpeaker.shared
+        if speaker.isSpeaking {
+            speaker.onDidFinish = { [weak self] in
+                Task { @MainActor in
+                    self?.scheduleConversationContinue(delay: 0.15)
+                }
+            }
+        } else {
+            scheduleConversationContinue(delay: 0.15)
         }
     }
 
@@ -1689,6 +1789,7 @@ extension IslandWindowController {
         voiceResultWork = nil
         VoiceEngine.shared.endConversation()
         VoiceBrain.shared.endConversation()
+        VoiceCaptionManager.shared.endConversation()
         if speaking {
             // Brief farewell emote
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
@@ -1699,6 +1800,7 @@ extension IslandWindowController {
     @MainActor
     private func scheduleVoiceDismiss(delay: TimeInterval) {
         voiceResultWork?.cancel()
+        VoiceCaptionManager.shared.hide(after: delay)
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
             AppState.shared.voiceResult = nil

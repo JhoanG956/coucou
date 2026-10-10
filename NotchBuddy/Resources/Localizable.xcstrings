@@ -24387,130 +24387,131 @@
         }
       }
     },
-    "integrations.github.ci-hint.appstore": {
+    "voice.setting-captions": {
+      "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
+            "value": "ترجمة نصية أسفل النوتش"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
+            "value": "নচের নিচে সাবটাইটেল"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
+            "value": "Subtitles under the notch"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
+            "value": "Subtítulos bajo el notch"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
+            "value": "Sous-titres sous le notch"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
+            "value": "नॉच के नीचे सबटाइटल"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
+            "value": "Subtitel di bawah notch"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
+            "value": "Legendas abaixo do notch"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
+            "value": "Субтитры под вырезом"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
+            "value": "刘海下方显示字幕"
           }
         }
       }
     },
-    "Default branch CI": {
+    "integrations.github.ci-hint": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI للفرع الافتراضي"
+            "value": "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ডিফল্ট ব্রাঞ্চের CI"
+            "value": "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Default branch CI"
+            "value": "The CI row follows the branch of your last Claude Code session."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI de la rama principal"
+            "value": "La fila de CI sigue la rama de tu última sesión de Claude Code."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI de la branche par défaut"
+            "value": "La ligne CI suit la branche de ta dernière session Claude Code."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "डिफ़ॉल्ट ब्रांच का CI"
+            "value": "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI branch default"
+            "value": "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI da branch padrão"
+            "value": "A linha de CI segue a branch da sua última sessão do Claude Code."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI основной ветки"
+            "value": "Строка CI следует за веткой вашей последней сессии Claude Code."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "默认分支 CI"
+            "value": "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
           }
         }
       }
@@ -24579,6 +24580,70 @@
         }
       }
     },
+    "Default branch CI": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI للفرع الافتراضي"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিফল্ট ব্রাঞ্চের CI"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default branch CI"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI de la rama principal"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI de la branche par défaut"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "डिफ़ॉल्ट ब्रांच का CI"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI branch default"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI da branch padrão"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI основной ветки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认分支 CI"
+          }
+        }
+      }
+    },
     "integrations.gcal.hint": {
       "localizations": {
         "ar": {
@@ -24643,66 +24708,66 @@
         }
       }
     },
-    "integrations.github.ci-hint": {
+    "integrations.github.ci-hint.appstore": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
+            "value": "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
+            "value": "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The CI row follows the branch of your last Claude Code session."
+            "value": "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La fila de CI sigue la rama de tu última sesión de Claude Code."
+            "value": "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La ligne CI suit la branche de ta dernière session Claude Code."
+            "value": "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
+            "value": "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
+            "value": "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A linha de CI segue a branch da sua última sessão do Claude Code."
+            "value": "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Строка CI следует за веткой вашей последней сессии Claude Code."
+            "value": "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
+            "value": "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
           }
         }
       }

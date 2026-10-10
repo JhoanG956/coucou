@@ -6,8 +6,9 @@ import Speech
 
 /// Persisted voice feature settings and permission helpers.
 enum VoiceSettings {
-    static let enabledKey     = "voiceEnabled"
+    static let enabledKey      = "voiceEnabled"
     static let speakEnabledKey = "voiceSpeakEnabled"
+    static let captionEnabledKey = "voiceCaptionEnabled"
 
     static var isEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: enabledKey) }
@@ -22,6 +23,16 @@ enum VoiceSettings {
             return d.bool(forKey: speakEnabledKey)
         }
         set { UserDefaults.standard.set(newValue, forKey: speakEnabledKey) }
+    }
+
+    /// Show caption capsule below notch during voice. Default: on.
+    static var captionEnabled: Bool {
+        get {
+            let d = UserDefaults.standard
+            if d.object(forKey: captionEnabledKey) == nil { return true }  // default on
+            return d.bool(forKey: captionEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: captionEnabledKey) }
     }
 
     // MARK: - Permissions
