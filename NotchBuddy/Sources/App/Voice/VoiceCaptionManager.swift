@@ -174,7 +174,10 @@ struct VoiceCaptionView: View {
     @ObservedObject var state: VoiceCaptionState
 
     /// While the mic is open: what I am saying, live. Afterwards: what I said + the answer.
-    private var heard: String { state.isListening ? state.liveLine : state.userLine }
+    private var heard: String {
+        guard state.isListening else { return state.userLine }
+        return state.liveLine.isEmpty ? String(localized: "voice.caption-listening") : state.liveLine
+    }
     private var answer: String { state.isListening ? "" : state.responseLine }
 
     var body: some View {
