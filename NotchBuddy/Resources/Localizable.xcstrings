@@ -24777,66 +24777,197 @@
         }
       }
     },
-    "Google account not connected": {
+    "voice.setting-weather": {
+      "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "حساب Google غير متصل"
+            "value": "الطقس بالصوت"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google অ্যাকাউন্ট সংযুক্ত নয়"
+            "value": "কণ্ঠে আবহাওয়া"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google account not connected"
+            "value": "Weather by voice"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuenta de Google no conectada"
+            "value": "El tiempo por voz"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compte Google non connecté"
+            "value": "Météo à la voix"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google खाता कनेक्ट नहीं है"
+            "value": "आवाज़ से मौसम"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Akun Google belum terhubung"
+            "value": "Cuaca lewat suara"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conta do Google não conectada"
+            "value": "Clima por voz"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Аккаунт Google не подключён"
+            "value": "Погода голосом"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未连接 Google 账号"
+            "value": "语音天气"
+          }
+        }
+      }
+    },
+    "voice.setting-weather-city": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المدينة"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শহর"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "City"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciudad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ville"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "शहर"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kota"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cidade"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Город"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "城市"
+          }
+        }
+      }
+    },
+    "voice.setting-weather-desc": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من Open-Meteo لهذه المدينة، فقط عندما تسأل."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই শহরের জন্য Open-Meteo থেকে, শুধু জিজ্ঞেস করলে।"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From Open-Meteo for this city, only when you ask."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De Open-Meteo para esta ciudad, solo cuando preguntas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open-Meteo pour cette ville, seulement quand tu demandes."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस शहर के लिए Open-Meteo से, सिर्फ़ पूछने पर।"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dari Open-Meteo untuk kota ini, hanya saat kamu bertanya."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do Open-Meteo para esta cidade, só quando você pergunta."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Из Open-Meteo для этого города, только когда спрашиваешь."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅在你询问时，从 Open-Meteo 获取该城市的天气。"
           }
         }
       }
@@ -25029,6 +25160,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认分支 CI"
+          }
+        }
+      }
+    },
+    "Google account not connected": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حساب Google غير متصل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google অ্যাকাউন্ট সংযুক্ত নয়"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google account not connected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta de Google no conectada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compte Google non connecté"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google खाता कनेक्ट नहीं है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akun Google belum terhubung"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conta do Google não conectada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аккаунт Google не подключён"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未连接 Google 账号"
           }
         }
       }

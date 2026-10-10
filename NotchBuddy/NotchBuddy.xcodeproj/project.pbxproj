@@ -72,6 +72,7 @@
 		2F36E3C6C073E968A682AFA4 /* NotionPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */; };
 		326971DDA23F331116E5A628 /* VoiceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C563E55884A7750B40EC9A01 /* VoiceBrain.swift */; };
 		3451DB0668FAEEF09503D808 /* WakePhrase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12EC8F605BBC37F8223D7AA /* WakePhrase.swift */; };
+		352CD4E146AE486013366EC9 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AF6918593586EFF1989C6 /* VoiceQuery.swift */; };
 		36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */; };
 		3756B7E1A55D9CEC8C4D34A4 /* IslandStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8212018F09EA1E96FBD63CD /* IslandStateMachine.swift */; };
 		38EEB2D3A6EC538958D92575 /* GitHubPulse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D3AD61802A32C4833F3EDA /* GitHubPulse.swift */; };
@@ -219,6 +220,7 @@
 		ADB4EF797FBD6CC90F8D25D3 /* MochiActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323F242B14A61A7C071EC115 /* MochiActivityAttributes.swift */; };
 		ADBB9C15DDA4044625B325BE /* MochiOutfitDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84E5D91129352E8A1D32AA4 /* MochiOutfitDrawing.swift */; };
 		AEFD43F6ECAAF9E8CDD8A6F4 /* IntegrationNews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E016B4D59A5BFA0B5A6D57AA /* IntegrationNews.swift */; };
+		AFCA04C905C4E92BC480E4A2 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AF6918593586EFF1989C6 /* VoiceQuery.swift */; };
 		B09E884B33A35FA34543C64B /* IntentParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39753CFF90B494D449CCD95 /* IntentParser.swift */; };
 		B0CE5AC8B579866A14BD61D0 /* DemoEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF5BD66B00BB64BB80AF38C /* DemoEngine.swift */; };
 		B2584220B877056366C8DCAE /* MochiWardrobe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */; };
@@ -255,6 +257,7 @@
 		C5737FE7AE6B2BA92B9A8F72 /* ServiceDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F64746B2740D5FE26B7E5A /* ServiceDetail.swift */; };
 		C61DDE2EC5FDDB39E4AA3B34 /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710BD7834228045869D0184 /* IslandWindowController.swift */; };
 		C67B690DFC0A294C0E65FCBB /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9466FDE02C9B3FB4EF01DFF8 /* IslandScreenGeometry.swift */; };
+		C6EB0156909305CEF8B84A8D /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F289B4DB7C57BC593C2E7B7F /* VoiceDataSources.swift */; };
 		C808B654C84D9F71DBF8493A /* GithubPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB8B6E5E9DA6164F979E88F /* GithubPoller.swift */; };
 		C93BA975D35B8CD7473CF995 /* DesktopMochiLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = C086E1932F86B9C2B559BE03 /* DesktopMochiLogic.swift */; };
 		C940B651C6CA952D99388E04 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192844E7299DEED5C2372067 /* AppDelegate.swift */; };
@@ -300,6 +303,7 @@
 		ED5D9A334DE08C0EB81DE322 /* AskQuestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB84A66045EB20CAC93A8A6 /* AskQuestion.swift */; };
 		ED62D1B9E6A35B1F85074A2A /* SharedSessions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1064AD8471C51AFF4F12258 /* SharedSessions.swift */; };
 		EE3AB10544113500486A9684 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACB4350729C6513824D1ADF /* ColorHex.swift */; };
+		EF5562030A7BA718EFA63278 /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F289B4DB7C57BC593C2E7B7F /* VoiceDataSources.swift */; };
 		EF9E6418C3F39F6FE88FD812 /* CoucouPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D9CEB5655FCA197D6B10A91 /* CoucouPhoneApp.swift */; };
 		EFAA9936D5C9DE635CFBA2AB /* SharedSessions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1064AD8471C51AFF4F12258 /* SharedSessions.swift */; };
 		F06EE0A97CB77096A337AA8B /* sounds in Resources */ = {isa = PBXBuildFile; fileRef = C066E2B991AA4F56B2724263 /* sounds */; };
@@ -407,6 +411,7 @@
 		61B5FDDE03F5F711146937E2 /* ResendPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResendPoller.swift; sourceTree = "<group>"; };
 		62CF42AE7611EF212CA0458F /* ShortcutsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsSettingsView.swift; sourceTree = "<group>"; };
 		6544ED02D945CF9F00647AD1 /* MacDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDictation.swift; sourceTree = "<group>"; };
+		654AF6918593586EFF1989C6 /* VoiceQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceQuery.swift; sourceTree = "<group>"; };
 		65F64746B2740D5FE26B7E5A /* ServiceDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceDetail.swift; sourceTree = "<group>"; };
 		66E6F5FC81429871B6F766A8 /* BotEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotEngine.swift; sourceTree = "<group>"; };
 		6762C38A8952A90F394EDFE4 /* LinkTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkTestView.swift; sourceTree = "<group>"; };
@@ -500,6 +505,7 @@
 		F0E2C3ACD815230A0ECAB014 /* EnergyVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyVAD.swift; sourceTree = "<group>"; };
 		F1064AD8471C51AFF4F12258 /* SharedSessions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSessions.swift; sourceTree = "<group>"; };
 		F1BD8F3CAA60CF37640759E1 /* NotchBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchBuddyApp.swift; sourceTree = "<group>"; };
+		F289B4DB7C57BC593C2E7B7F /* VoiceDataSources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDataSources.swift; sourceTree = "<group>"; };
 		F39753CFF90B494D449CCD95 /* IntentParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentParser.swift; sourceTree = "<group>"; };
 		F4263B550838CC5614569D13 /* ClaudePlanCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudePlanCardView.swift; sourceTree = "<group>"; };
 		F4A13AEE6E06F46CEC9D908C /* UserIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserIdentity.swift; sourceTree = "<group>"; };
@@ -747,9 +753,11 @@
 				A87F39805C78722F614295B4 /* VoiceAudio.swift */,
 				C563E55884A7750B40EC9A01 /* VoiceBrain.swift */,
 				3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */,
+				F289B4DB7C57BC593C2E7B7F /* VoiceDataSources.swift */,
 				B328028D18F590D6680B8A2B /* VoiceEngine.swift */,
 				D1A7C62058BB0C9D0DF58DCB /* VoiceIntent.swift */,
 				22E03C8E267399FA25C75877 /* VoiceIslandView.swift */,
+				654AF6918593586EFF1989C6 /* VoiceQuery.swift */,
 				7C432FE1286945E42D3E11D7 /* VoiceResultView.swift */,
 				D4543CB771E0B723783F529E /* VoiceSettings.swift */,
 				CD11C7925B0A7831BFC2199C /* VoiceSpeaker.swift */,
@@ -1062,9 +1070,11 @@
 				88A8F2E4E754FAFABF6B1960 /* VoiceAudio.swift in Sources */,
 				326971DDA23F331116E5A628 /* VoiceBrain.swift in Sources */,
 				525FB188F09F68D26A9D587D /* VoiceCaptionManager.swift in Sources */,
+				EF5562030A7BA718EFA63278 /* VoiceDataSources.swift in Sources */,
 				BDEFF4223DA949E2B8AB85A7 /* VoiceEngine.swift in Sources */,
 				9C11C226915DBC97B5CD7953 /* VoiceIntent.swift in Sources */,
 				9088C7BADF166685E471D248 /* VoiceIslandView.swift in Sources */,
+				352CD4E146AE486013366EC9 /* VoiceQuery.swift in Sources */,
 				CE5ACDD856C76B717ABA295F /* VoiceResultView.swift in Sources */,
 				502F2B0D607C511DD3B836B3 /* VoiceSettings.swift in Sources */,
 				718410ED630AE3AC5DF59A95 /* VoiceSpeaker.swift in Sources */,
@@ -1253,9 +1263,11 @@
 				64FE8055CCAD30B44FE398E7 /* VoiceAudio.swift in Sources */,
 				273B404F55739D661D9489D8 /* VoiceBrain.swift in Sources */,
 				36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */,
+				C6EB0156909305CEF8B84A8D /* VoiceDataSources.swift in Sources */,
 				80B0B3C777A9DC8C82952FD2 /* VoiceEngine.swift in Sources */,
 				15D69752806E1D1D589B20A7 /* VoiceIntent.swift in Sources */,
 				C3BA3FA2A4025194FC088C5A /* VoiceIslandView.swift in Sources */,
+				AFCA04C905C4E92BC480E4A2 /* VoiceQuery.swift in Sources */,
 				F9685A58729FE64B23FCCFC5 /* VoiceResultView.swift in Sources */,
 				035F9A85BF71B21F9AA5E004 /* VoiceSettings.swift in Sources */,
 				F7162101509D8CAE59711602 /* VoiceSpeaker.swift in Sources */,
