@@ -3,9 +3,9 @@ import AVFoundation
 
 // MARK: - VoiceSpeaker
 //
-// Gives Mochi a voice: wraps AVSpeechSynthesizer with a Mochi-like pitch.
-// Semi-duplex: VoiceEngine pauses recognition while this is speaking.
-// Setting: VoiceSettings.speakEnabled (default on).
+// Gives Mochi a voice: wraps AVSpeechSynthesizer with a sentence queue.
+// Sentence queue: enqueue(text:locale:) adds to queue, playback starts automatically
+// and continues through the queue. onDidFinish fires when the queue drains.
 //
 // All methods: @MainActor.
 @MainActor
@@ -15,8 +15,9 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
     private let synth = AVSpeechSynthesizer()
     private(set) var isSpeaking = false
     private var currentUtterance: AVSpeechUtterance? = nil
+    private var queue: [(text: String, locale: Locale?)] = []
 
-    /// Called ~300 ms after the utterance finishes. VoiceEngine uses this to resume listening.
+    /// Called ~150 ms after the last queued utterance finishes.
     var onDidFinish: (() -> Void)?
 
     override init() {
@@ -24,26 +25,67 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         synth.delegate = self
     }
 
+    // MARK: - Public API
+
+    /// Clears the queue, stops current speech, and speaks text immediately.
     func speak(_ text: String, locale: Locale?) {
         guard VoiceSettings.speakEnabled else { return }
+        queue.removeAll()
         synth.stopSpeaking(at: .immediate)
         isSpeaking = false
-        let utt        = AVSpeechUtterance(string: text)
-        utt.pitchMultiplier = 1.25
-        utt.rate            = AVSpeechUtteranceDefaultSpeechRate * 1.05
-        if let loc = locale {
-            let lang = loc.language.languageCode?.identifier ?? ""
-            if !lang.isEmpty { utt.voice = AVSpeechSynthesisVoice(language: lang) }
+        currentUtterance = nil
+        _enqueueAndPlay(text: text, locale: locale)
+    }
+
+    /// Adds text to the end of the playback queue. Starts playing if not already.
+    func enqueue(_ text: String, locale: Locale?) {
+        guard VoiceSettings.speakEnabled else { return }
+        if isSpeaking {
+            queue.append((text, locale))
+        } else {
+            _enqueueAndPlay(text: text, locale: locale)
         }
+    }
+
+    func stop() {
+        queue.removeAll()
+        guard isSpeaking else { return }
+        synth.stopSpeaking(at: .immediate)
+    }
+
+    // MARK: - Private
+
+    private func _enqueueAndPlay(text: String, locale: Locale?) {
+        let utt = AVSpeechUtterance(string: text)
+        utt.pitchMultiplier = 1.15
+        utt.rate = AVSpeechUtteranceDefaultSpeechRate * 1.1
+        utt.voice = _bestVoice(for: locale)
         currentUtterance = utt
         isSpeaking = true
         synth.speak(utt)
     }
 
-    func stop() {
-        guard isSpeaking else { return }
-        synth.stopSpeaking(at: .immediate)
-        // isSpeaking set to false in didCancel/didFinish delegate callbacks
+    /// Picks the best installed voice for the spoken locale: same region first
+    /// (fr-FR before fr-CA), then quality (.premium > .enhanced > default).
+    /// Novelty voices and the user's Personal Voice are never used.
+    private func _bestVoice(for locale: Locale?) -> AVSpeechSynthesisVoice? {
+        guard let loc = locale else { return nil }
+        let lang = loc.language.languageCode?.identifier ?? ""
+        guard !lang.isEmpty else { return nil }
+        let region = loc.region?.identifier
+        let exact  = region.map { "\(lang)-\($0)" }
+
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { v in
+            (v.language == lang || v.language.hasPrefix(lang + "-"))
+                && !v.voiceTraits.contains(.isNoveltyVoice)
+                && !v.voiceTraits.contains(.isPersonalVoice)
+        }
+        guard !voices.isEmpty else { return AVSpeechSynthesisVoice(language: exact ?? lang) }
+
+        func rank(_ v: AVSpeechSynthesisVoice) -> (Int, Int) {
+            (v.language == exact ? 1 : 0, v.quality.rawValue)
+        }
+        return voices.max { rank($0) < rank($1) }
     }
 
     // MARK: - AVSpeechSynthesizerDelegate
@@ -53,10 +95,15 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         let id = ObjectIdentifier(utterance)
         Task { @MainActor in
             guard let curr = self.currentUtterance, ObjectIdentifier(curr) == id else { return }
-            self.isSpeaking = false
             self.currentUtterance = nil
-            try? await Task.sleep(nanoseconds: 300_000_000)  // 300 ms gap
-            self.onDidFinish?()
+            if self.queue.isEmpty {
+                self.isSpeaking = false
+                try? await Task.sleep(nanoseconds: 150_000_000)  // 150 ms gap
+                self.onDidFinish?()
+            } else {
+                let next = self.queue.removeFirst()
+                self._enqueueAndPlay(text: next.text, locale: next.locale)
+            }
         }
     }
 
@@ -67,6 +114,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
             guard let curr = self.currentUtterance, ObjectIdentifier(curr) == id else { return }
             self.isSpeaking = false
             self.currentUtterance = nil
+            self.queue.removeAll()
         }
     }
 }

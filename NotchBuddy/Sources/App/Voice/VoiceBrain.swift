@@ -42,23 +42,47 @@ final class VoiceBrain {
 
     // MARK: - Conversation lifecycle
 
+    /// Keeps the session created (and prewarmed) at wake time, so the first turn's
+    /// context and the warm model carry into the conversation.
     func beginConversation() {
-        sessionBox = VoiceBrain._makeSession()
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
     }
 
     func endConversation() {
         sessionBox = nil
     }
 
+    /// Ensures a session exists and is warmed up. Call on wake detection.
+    func prewarmSession() {
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
+        // prewarm already fired in _makeSession via Task.detached
+    }
+
+    /// True when a session is already created (warm), false on first call (cold).
+    var isSessionReady: Bool { sessionBox != nil }
+
     // MARK: - Intent resolution
 
-    /// Try to resolve `transcript` using the language model.
+    /// Try to resolve `transcript` using the language model (non-streaming).
     /// Returns nil if the model is unavailable or if the model cannot map to any intent.
     func resolve(_ transcript: String, pills: [PillDefinition]) async -> BrainResult? {
         // Lazily create session on first call so the model is available
         // even for the very first turn (before speakAndContinueConversation fires).
         if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
         return await VoiceBrain._resolve(transcript, pills: pills, sessionBox: sessionBox)
+    }
+
+    /// Streaming variant: calls onSentence for each complete sentence as it arrives.
+    /// Returns the full BrainResult when the stream ends. 8s total timeout.
+    func resolveWithStreaming(
+        _ transcript: String,
+        pills: [PillDefinition],
+        onSentence: @escaping @MainActor (_ sentence: String, _ hasActions: Bool) -> Void
+    ) async -> BrainResult? {
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
+        return await VoiceBrain._resolveWithStreaming(
+            transcript, pills: pills, sessionBox: sessionBox, onSentence: onSentence
+        )
     }
 
     // MARK: - Static impl helpers
@@ -96,12 +120,17 @@ final class VoiceBrain {
                 instructions: """
                 Tu es Coucou, un assistant dans le notch du MacBook.
                 Réponds toujours dans la langue de l'utilisateur.
-                Réponds avec une phrase courte et directe.
+                Réponds avec 1 à 2 phrases maximum. Sois direct et concis.
                 Utilise les outils disponibles pour exécuter des commandes sur les pills et la musique.
                 Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
                 """
             )
-            return SessionContainer(session: session, collector: collector)
+            let container = SessionContainer(session: session, collector: collector)
+            // Prewarm in background — warms the attention cache without blocking the caller.
+            Task.detached {
+                session.prewarm()
+            }
+            return container
         }
         #endif
         return nil
@@ -133,6 +162,73 @@ final class VoiceBrain {
                     return response.content
                 }
                 return BrainResult(intents: collector.intents, text: text)
+            } catch {
+                return nil
+            }
+        }
+        #endif
+        return nil
+    }
+
+    static func _resolveWithStreaming(
+        _ transcript: String,
+        pills: [PillDefinition],
+        sessionBox: AnyObject?,
+        onSentence: @escaping @MainActor (_ sentence: String, _ hasActions: Bool) -> Void
+    ) async -> BrainResult? {
+        #if canImport(FoundationModels)
+        if #available(macOS 26, *) {
+            guard SystemLanguageModel.default.availability == .available else { return nil }
+            guard let container = sessionBox as? SessionContainer else { return nil }
+            let collector = container.collector
+            collector.reset()
+
+            let pillNames = pills.map { $0.name }.joined(separator: ", ")
+            let prompt = """
+                User said: "\(transcript)"
+                Available pill names: \(pillNames)
+                Use a tool if this is a command. Otherwise answer naturally in the user's language.
+                """
+
+            do {
+                let fullText = try await withBrainTimeout(seconds: 8) { () -> String in
+                    let stream = container.session.streamResponse(to: prompt)
+                    var sentUpTo = 0
+                    var accumulated = ""
+
+                    for try await snapshot in stream {
+                        accumulated = snapshot.content
+                        guard sentUpTo < accumulated.count else { continue }
+
+                        let startIdx = accumulated.index(accumulated.startIndex, offsetBy: sentUpTo)
+                        let slice = accumulated[startIdx...]
+                        let sentenceEnders: Set<Character> = [".", "!", "?", "\n"]
+
+                        if let boundary = slice.lastIndex(where: { sentenceEnders.contains($0) }) {
+                            let afterBoundary = accumulated.index(after: boundary)
+                            let sentence = String(accumulated[startIdx..<afterBoundary])
+                                .trimmingCharacters(in: .whitespaces)
+                            if !sentence.isEmpty {
+                                let acts = !collector.intents.isEmpty
+                                await MainActor.run { onSentence(sentence, acts) }
+                            }
+                            sentUpTo = accumulated.distance(from: accumulated.startIndex, to: afterBoundary)
+                        }
+                    }
+
+                    // Flush any trailing text without sentence terminator
+                    if sentUpTo < accumulated.count {
+                        let startIdx = accumulated.index(accumulated.startIndex, offsetBy: sentUpTo)
+                        let remaining = String(accumulated[startIdx...]).trimmingCharacters(in: .whitespaces)
+                        if !remaining.isEmpty {
+                            let acts = !collector.intents.isEmpty
+                            await MainActor.run { onSentence(remaining, acts) }
+                        }
+                    }
+
+                    return accumulated
+                }
+                return BrainResult(intents: collector.intents, text: fullText)
             } catch {
                 return nil
             }
