@@ -1289,6 +1289,7 @@ struct SettingsView: View {
     @AppStorage("voiceWeatherEnabled") private var weatherEnabled: Bool = false
     @AppStorage("voiceWeatherCity")    private var weatherCity: String = ""
     @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceListenLanguage") private var listenLanguage: String = "auto"
     @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
     @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
     @State private var elevenKeyDraft: String = ""
@@ -1300,12 +1301,20 @@ struct SettingsView: View {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
+                Picker(String(localized: "voice.listen-language"), selection: $listenLanguage) {
+                    Text(String(localized: "voice.listen-auto")).tag("auto")
+                    Text(verbatim: "English").tag("en")
+                    Text(verbatim: "Français").tag("fr")
+                }
+                .frame(maxWidth: 320)
+                .onChange(of: listenLanguage) { _, _ in VoiceEngine.shared.reloadLanguage() }
+
                 Picker(String(localized: "voice.language"), selection: $voiceLanguage) {
                     Text(verbatim: "English").tag("en")
                     Text(verbatim: "Français").tag("fr")
                 }
-                .frame(maxWidth: 260)
-                .onChange(of: voiceLanguage) { _, _ in VoiceEngine.shared.reloadLanguage() }
+                .frame(maxWidth: 320)
+                .onChange(of: voiceLanguage) { _, _ in VoiceBrain.shared.endConversation() }
 
                 Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
 
@@ -1332,13 +1341,31 @@ struct SettingsView: View {
                                 ElevenLabsTTS.shared.reset()
                             }
                         }
-                        Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
-                            Text(String(localized: "voice.tts-female")).tag("female")
-                            Text(String(localized: "voice.tts-male")).tag("male")
+                    }
+
+                    Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
+                        Text(String(localized: "voice.tts-female")).tag("female")
+                        Text(String(localized: "voice.tts-male")).tag("male")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 220)
+                    .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+
+                    if ttsEngine == "system" {
+                        let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
+                                                                gender: elevenGender)
+                        Text(String(format: String(localized: "voice.mac-voice-current %@"), current))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(String(localized: "voice.mac-voices-help"))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(String(localized: "voice.mac-voices-open")) {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") {
+                                NSWorkspace.shared.open(url)
+                            }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 220)
-                        .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
                     }
 
                     Button(String(localized: "voice.tts-test")) {

@@ -1442,7 +1442,8 @@ extension IslandWindowController {
         let runner = VoiceActionRunner.shared
 
         // Propagate recognition locale so responses are in the spoken language.
-        runner.commandLocale = VoiceEngine.shared.speechLocale
+        // Answers in the answer language, whatever language I spoke.
+        runner.commandLocale = VoiceSettings.answerLocale
 
         // ── Conversation end phrase ────────────────────────────────────────────────
         let normTranscript = WakePhrase.normalise(transcript)
@@ -1543,7 +1544,7 @@ extension IslandWindowController {
         }
 
         // ── Single command ─────────────────────────────────────────────────────────
-        let locale = VoiceEngine.shared.speechLocale
+        let locale = VoiceSettings.answerLocale
         let tParseEnd = Date()
         let parseMs   = Int(tParseEnd.timeIntervalSince(t0) * 1000)
 
@@ -1731,7 +1732,7 @@ extension IslandWindowController {
         let asks = Self.isQuestion(result)
         let speaker = VoiceSpeaker.shared
         if VoiceSettings.speakEnabled {
-            speaker.speak(result.message, locale: VoiceEngine.shared.speechLocale)
+            speaker.speak(result.message, locale: VoiceSettings.answerLocale)
             speaker.onDidFinish = { [weak self] in
                 Task { @MainActor in self?.finishVoiceTurn(expectAnswer: asks) }
             }
@@ -1771,6 +1772,26 @@ extension IslandWindowController {
     /// Listen once for the reply to Coucou's question, or close the turn.
     @MainActor
     private func finishVoiceTurn(expectAnswer: Bool) {
+        // First time I speak one language and Coucou answers in another: offer once to
+        // answer in mine ("You're speaking French. Want me to answer in French?").
+        if !expectAnswer, !VoiceSettings.languageOfferDone,
+           let spoken = VoiceEngine.shared.speechLocale?.language.languageCode?.identifier,
+           ["fr", "en"].contains(spoken), spoken != VoiceSettings.language,
+           VoiceEngine.shared.isEnabled {
+            VoiceSettings.languageOfferDone = true
+            let offer = VoiceActionRunner.shared.offerLanguageSwitch(to: spoken)
+            VoiceCaptionManager.shared.appendResponse(offer)
+            let speaker = VoiceSpeaker.shared
+            if VoiceSettings.speakEnabled {
+                speaker.speak(offer, locale: VoiceSettings.answerLocale)
+                speaker.onDidFinish = {
+                    Task { @MainActor in VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0) }
+                }
+            } else {
+                VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+            }
+            return
+        }
         // One follow-up only: the reply to a question closes the turn after it is handled
         // (unless that reply leads to another question, e.g. "which one do I remove?").
         if expectAnswer && VoiceEngine.shared.isEnabled {

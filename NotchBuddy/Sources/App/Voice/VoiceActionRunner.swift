@@ -98,6 +98,9 @@ final class VoiceActionRunner {
     /// run() or handleAnswer(). Used to produce responses in the spoken language rather than the UI language.
     var commandLocale: Locale? = nil
 
+    /// Called with "fr" / "en" when I accept to be answered in the language I speak.
+    var onLanguageSwitch: ((String) -> Void)?
+
     init() {}
 
     func run(_ intent: VoiceIntent,
@@ -306,6 +309,28 @@ final class VoiceActionRunner {
             return ok("voice.question-cancelled")
         }
 
+        // "Want me to answer in French?" — yes / no, in either language.
+        if case .switchLanguage(let lang) = pending.kind {
+            if Self.isYes(transcript) {
+                onLanguageSwitch?(lang)
+                commandLocale = Locale(identifier: lang == "fr" ? "fr-FR" : "en-US")
+                return .init(outcome: .success, message: lang == "fr"
+                    ? "D'accord, je te réponds en français maintenant."
+                    : "Sure, I'll answer in English from now on.")
+            }
+            if Self.isNo(transcript) {
+                let current = commandLocale?.language.languageCode?.identifier ?? "en"
+                return .init(outcome: .success, message: current == "fr"
+                    ? "OK, je continue en français."
+                    : "Okay, I'll keep answering in English.")
+            }
+            if !pending.askedAgain {
+                var again = pending; again.askedAgain = true; pendingQuestion = again
+                return .init(outcome: .question(text: pending.text), message: pending.text)
+            }
+            return fail("voice.unknown")
+        }
+
         // A playlist name is free text, not a pill.
         if case .whichPlaylist = pending.kind {
             var name = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -331,7 +356,7 @@ final class VoiceActionRunner {
         }
 
         switch pending.kind {
-        case .whichPlaylist:
+        case .whichPlaylist, .switchLanguage:
             return fail("voice.unknown")   // handled above
         case .whichPill(let add):
             return await run(add ? .pillAdd(id: entity) : .pillRemove(id: entity),
@@ -350,6 +375,35 @@ final class VoiceActionRunner {
                                          : "\(removedName) → \(addedName)"
             return .init(outcome: .success, message: msg)
         }
+    }
+
+    /// Asked once, in the current answer language, when I speak another one.
+    func offerLanguageSwitch(to lang: String) -> String {
+        let current = commandLocale?.language.languageCode?.identifier ?? "en"
+        let text: String
+        if lang == "fr" {
+            text = current == "fr" ? "Tu veux que je te réponde en français ?"
+                                   : "By the way, you're speaking French. Want me to answer in French?"
+        } else {
+            text = current == "fr" ? "Au fait, tu me parles en anglais. Tu veux que je te réponde en anglais ?"
+                                   : "Want me to answer in English?"
+        }
+        pendingQuestion = PendingVoiceQuestion(kind: .switchLanguage(to: lang), text: text)
+        return text
+    }
+
+    static func isYes(_ s: String) -> Bool {
+        let t = " " + IntentParser.normalise(s) + " "
+        if isNo(s) { return false }
+        return ["oui", "ouais", "ouai", "yes", "yeah", "yep", "sure", "ok", "okay", "d accord", "vas y",
+                "volontiers", "carrement", "please", "absolument", "bien sur", "go", "of course", "why not",
+                "pourquoi pas", "allez"].contains { t.contains(" " + $0 + " ") }
+    }
+
+    static func isNo(_ s: String) -> Bool {
+        let t = " " + IntentParser.normalise(s) + " "
+        return ["non", "no", "nope", "nah", "pas besoin", "garde", "keep", "laisse", "c est bon comme ca",
+                "stay", "reste", "don t", "dont"].contains { t.contains(" " + $0 + " ") }
     }
 
     /// "Je veux que tu ajoutes" (no pill named) → asks which pill, and listens for it.
