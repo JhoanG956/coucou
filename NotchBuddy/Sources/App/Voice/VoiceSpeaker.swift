@@ -101,9 +101,11 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
 
     private func speakSystem(_ text: String, locale: Locale?) {
         let utt = AVSpeechUtterance(string: text)
-        utt.pitchMultiplier = 1.15
+        let gender = VoiceSettings.elevenGender
+        // Pitch per voice type (Settings → Voice): the male voice a bit higher sounds younger.
+        utt.pitchMultiplier = Float(VoiceSettings.pitch(for: gender))
         utt.rate = AVSpeechUtteranceDefaultSpeechRate * 1.1
-        utt.voice = Self.bestVoice(for: locale, gender: VoiceSettings.elevenGender)
+        utt.voice = Self.bestVoice(for: locale, gender: gender)
         currentUtterance = utt
         synth.speak(utt)
     }
@@ -128,6 +130,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
     /// quality first (.premium > .enhanced > default — Ava Premium beats a compact US voice),
     /// then same region. Novelty voices and the user's Personal Voice are never used.
     /// Falls back to any gender when none of the chosen one is installed.
+    /// Premium and Siri voices often report no gender: their name tells it instead.
     static func bestVoice(for locale: Locale?, gender: String) -> AVSpeechSynthesisVoice? {
         guard let loc = locale else { return nil }
         let lang = loc.language.languageCode?.identifier ?? ""
@@ -141,12 +144,24 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         }
         guard !voices.isEmpty else { return AVSpeechSynthesisVoice(language: exact ?? lang) }
         let wanted: AVSpeechSynthesisVoiceGender = gender == "male" ? .male : .female
-        let pool = voices.contains { $0.gender == wanted } ? voices.filter { $0.gender == wanted } : voices
+        let ofGender = voices.filter { Self.gender(of: $0) == wanted }
+        let pool = ofGender.isEmpty ? voices : ofGender
 
         func rank(_ v: AVSpeechSynthesisVoice) -> (Int, Int) {
             (v.quality.rawValue, v.language == exact ? 1 : 0)
         }
         return pool.max { rank($0) < rank($1) }
+    }
+
+    /// The voice's gender, from the system when it says, else from its identifier
+    /// ("siri_female_…") or its first name (Ava, Zoe… / Jamie, Evan…).
+    static func gender(of v: AVSpeechSynthesisVoice) -> AVSpeechSynthesisVoiceGender {
+        if v.gender != .unspecified { return v.gender }
+        switch VoiceGenderNames.gender(name: v.name, identifier: v.identifier) {
+        case "female": return .female
+        case "male":   return .male
+        default:       return .unspecified
+        }
     }
 
     /// "Ava (Premium)" — shown in Settings so it is clear which voice Coucou uses.
