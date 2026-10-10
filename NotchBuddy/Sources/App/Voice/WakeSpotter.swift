@@ -56,6 +56,7 @@ final class WakeSpotter: @unchecked Sendable {
     // MARK: - Public API
 
     var isInCommandPhase: Bool { lock.withLock { phase == .command } }
+    var isActive: Bool { lock.withLock { active } }
 
     /// Open a recognition window.
     /// - `startInCommandPhase`: when `true`, skip the wake-phrase gate and start
@@ -81,7 +82,7 @@ final class WakeSpotter: @unchecked Sendable {
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults  = true
             req.requiresOnDeviceRecognition = true
-            let extra = additionalContextualStrings
+            let extra = startInCommandPhase ? additionalContextualStrings : [String]()
             req.contextualStrings = ["Coucou", "OK Coucou", "okay Coucou", "hey Coucou"] + extra
             preroll.forEach { req.append($0) }
 
