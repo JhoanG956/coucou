@@ -265,7 +265,7 @@ final class VoiceEngine: ObservableObject {
 
         a.onVoiceStart = { [weak self] in
             guard let self else { return }
-            guard !VoiceSpeaker.shared.isSpeaking else {
+            guard !VoiceSpeaker.shared.isBusy else {
                 appendAppLog("nb.log", "[Voice] vad start ignored (speaker active)")
                 return
             }
@@ -531,7 +531,7 @@ final class VoiceEngine: ObservableObject {
 
     private func commandUpdate(_ command: String) {
         // Semi-duplex: ignore updates while Coucou is speaking.
-        guard !VoiceSpeaker.shared.isSpeaking else { return }
+        guard !VoiceSpeaker.shared.isBusy else { return }
         commandTranscript = command
         let wc = command.split(separator: " ").count
         if wc > lastWordCount {
