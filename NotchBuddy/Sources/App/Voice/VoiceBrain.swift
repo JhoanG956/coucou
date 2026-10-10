@@ -108,6 +108,54 @@ final class VoiceBrain {
         return .notMacOS26
     }
 
+    /// Instructions in the language Coucou speaks (Settings → Voice, English by default).
+    static func instructions() -> String {
+        if VoiceSettings.language == "fr" {
+            return """
+            Tu es Coucou, un assistant dans le notch du MacBook. Réponds toujours en français.
+            Réponds avec 1 à 2 phrases maximum. Sois direct et concis.
+            Ne pose une question que si tu as vraiment besoin d'une précision pour agir : une seule, courte, qui finit par « ? ». Sinon, ne finis jamais par une question.
+            Utilise les outils pour les pilules et la musique.
+            Pour toute question sur Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, les agents (Claude Code, Codex…), le plan Claude ou Codex, la musique ou la météo, appelle d'abord l'outil service et réponds avec ses données, sans rien inventer.
+            Pour un mail, appelle l'outil mail : il prépare le mail dans Mail, c'est l'utilisateur qui clique sur Envoyer. Si on te demande de l'écrire, rédige toi-même le texte.
+            Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
+            """
+        }
+        return """
+        You are Coucou, an assistant living in the MacBook notch. Always answer in English.
+        Answer in one or two short sentences. Be direct.
+        Only ask a question when you truly need a detail to act: one short question ending with "?". Otherwise never end with a question.
+        Use the tools for pills and music.
+        For any question about Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agents (Claude Code, Codex…), the Claude or Codex plan, music or the weather, call the service tool first and answer from its data, never invent.
+        For an email, call the mail tool: it prepares the email in Mail and the user clicks Send. When asked to write it, write the text yourself.
+        For pill names, use the exact name the user said.
+        """
+    }
+
+    /// A short email body written by the on-device model from an instruction
+    /// ("thanking her for yesterday"). nil when the model is unavailable.
+    static func draftMail(to recipient: String, about instruction: String) async -> String? {
+        #if canImport(FoundationModels)
+        if #available(macOS 26, *) {
+            guard SystemLanguageModel.default.availability == .available else { return nil }
+            let fr = VoiceSettings.language == "fr"
+            let session = LanguageModelSession(instructions: fr
+                ? "Tu écris des mails courts et naturels, sans objet ni signature, 2 à 4 phrases."
+                : "You write short, natural emails without a subject line or signature, 2 to 4 sentences.")
+            let prompt = fr ? "Écris le mail à \(recipient) : \(instruction)"
+                            : "Write the email to \(recipient): \(instruction)"
+            // Boxed like the conversation session: the timeout closure must be Sendable.
+            let box = SessionContainer(session: session, collector: IntentCollector())
+            do {
+                return try await withBrainTimeout(seconds: 8) {
+                    try await box.session.respond(to: prompt).content
+                }
+            } catch { return nil }
+        }
+        #endif
+        return nil
+    }
+
     static func _makeSession() -> AnyObject? {
         #if canImport(FoundationModels)
         if #available(macOS 26, *) {
@@ -117,16 +165,9 @@ final class VoiceBrain {
                 tools: [PillTool(collector: collector),
                         MusicTool(collector: collector),
                         StatusTool(collector: collector),
-                        ServiceTool()],
-                instructions: """
-                Tu es Coucou, un assistant dans le notch du MacBook.
-                Réponds toujours dans la langue de l'utilisateur.
-                Réponds avec 1 à 2 phrases maximum. Sois direct et concis.
-                Ne pose une question que si tu as vraiment besoin d'une précision pour agir : une seule, courte, qui finit par « ? ». Sinon, ne finis jamais par une question.
-                Utilise les outils disponibles pour exécuter des commandes sur les pills et la musique.
-                Pour toute question sur Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, les agents (Claude Code, Codex…), le plan Claude ou Codex, la musique ou la météo, appelle d'abord l'outil service et réponds avec ses données, sans rien inventer.
-                Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
-                """
+                        ServiceTool(),
+                        MailTool(collector: collector)],
+                instructions: VoiceBrain.instructions()
             )
             let container = SessionContainer(session: session, collector: collector)
             // Prewarm in background — warms the attention cache without blocking the caller.
@@ -367,6 +408,34 @@ struct MusicTool: Tool, @unchecked Sendable {
 // MARK: StatusTool
 
 @available(macOS 26, *)
+struct MailTool: Tool, @unchecked Sendable {
+    let name        = "mail"
+    let description = "Prepare an email in Apple Mail (the user clicks Send). Recipient is a contact name or an email address; file is an optional file name to attach (searched in Downloads, Desktop, Documents, Pictures)."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Contact name or email address")
+        var recipient: String
+        @Guide(description: "File name to attach, or empty")
+        var file: String
+        @Guide(description: "Subject line, or empty")
+        var subject: String
+        @Guide(description: "Full email body written for the user, or empty")
+        var body: String
+    }
+
+    let collector: IntentCollector
+
+    func call(arguments: Arguments) async throws -> String {
+        func opt(_ s: String) -> String? { s.trimmingCharacters(in: .whitespaces).isEmpty ? nil : s }
+        let recipient = VoiceQuery.spokenEmail(arguments.recipient) ?? arguments.recipient
+        collector.append(.mail(VoiceQuery.MailRequest(recipient: recipient, file: opt(arguments.file), folder: nil,
+                                                      subject: opt(arguments.subject), body: opt(arguments.body))))
+        return "mail prepared for \(recipient)"
+    }
+}
+
+@available(macOS 26, *)
 struct ServiceTool: Tool, @unchecked Sendable {
     let name        = "service"
     let description = "Real data from Coucou: Stripe sales and balance, GitHub stars/PRs/CI, Vercel deployments, Resend emails, n8n runs, Notion pages, Cal.com bookings, agent sessions (Claude Code…), Claude/Codex plan usage, music now playing, active pills, weather today or tomorrow."
@@ -381,7 +450,7 @@ struct ServiceTool: Tool, @unchecked Sendable {
         guard let topic = VoiceTopic(rawValue: arguments.topic) else {
             return "unknown topic: \(arguments.topic)"
         }
-        return await LiveVoiceInfo.shared.answer(topic, locale: nil)
+        return await LiveVoiceInfo.shared.answer(topic, locale: Locale(identifier: VoiceSettings.language == "fr" ? "fr-FR" : "en-US"))
     }
 }
 

@@ -71,6 +71,8 @@
 		326971DDA23F331116E5A628 /* VoiceBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C563E55884A7750B40EC9A01 /* VoiceBrain.swift */; };
 		3451DB0668FAEEF09503D808 /* WakePhrase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12EC8F605BBC37F8223D7AA /* WakePhrase.swift */; };
 		36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */; };
+		6D21DDD51A255B1E3061D81F /* ElevenLabsTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE24076E9F3476A814C87964 /* ElevenLabsTTS.swift */; };
+		34B22D329FA5D24C00A6EF91 /* ElevenLabsTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE24076E9F3476A814C87964 /* ElevenLabsTTS.swift */; };
 		D08B378612B4CB0C8811925B /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */; };
 		A51E53A7BF9F23535F3A8B15 /* VoiceDataSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */; };
 		968932802E8017E2C23FF473 /* VoiceQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */; };
@@ -387,6 +389,7 @@
 		38BEAB5F20A13E5806A42EC9 /* ApprovalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCard.swift; sourceTree = "<group>"; };
 		3A27178AA6007F7B56901750 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
 		3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCaptionManager.swift; sourceTree = "<group>"; };
+		DE24076E9F3476A814C87964 /* ElevenLabsTTS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsTTS.swift; sourceTree = "<group>"; };
 		F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDataSources.swift; sourceTree = "<group>"; };
 		62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceQuery.swift; sourceTree = "<group>"; };
 		3B238F6E7B20EFDED5CD3E8E /* ClaudeSettingsFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsFile.swift; sourceTree = "<group>"; };
@@ -737,6 +740,7 @@
 				A87F39805C78722F614295B4 /* VoiceAudio.swift */,
 				C563E55884A7750B40EC9A01 /* VoiceBrain.swift */,
 				3A8FB03801C49690C3789EFD /* VoiceCaptionManager.swift */,
+				DE24076E9F3476A814C87964 /* ElevenLabsTTS.swift */,
 				F2C300BDBDD5FB8403291892 /* VoiceDataSources.swift */,
 				62762B5BCD2B2209EAF89A7A /* VoiceQuery.swift */,
 				B328028D18F590D6680B8A2B /* VoiceEngine.swift */,
@@ -1050,6 +1054,7 @@
 				88A8F2E4E754FAFABF6B1960 /* VoiceAudio.swift in Sources */,
 				326971DDA23F331116E5A628 /* VoiceBrain.swift in Sources */,
 				525FB188F09F68D26A9D587D /* VoiceCaptionManager.swift in Sources */,
+				6D21DDD51A255B1E3061D81F /* ElevenLabsTTS.swift in Sources */,
 				D08B378612B4CB0C8811925B /* VoiceDataSources.swift in Sources */,
 				968932802E8017E2C23FF473 /* VoiceQuery.swift in Sources */,
 				BDEFF4223DA949E2B8AB85A7 /* VoiceEngine.swift in Sources */,
@@ -1239,6 +1244,7 @@
 				64FE8055CCAD30B44FE398E7 /* VoiceAudio.swift in Sources */,
 				273B404F55739D661D9489D8 /* VoiceBrain.swift in Sources */,
 				36EBFB9A047DEBAC43E5D0CC /* VoiceCaptionManager.swift in Sources */,
+				34B22D329FA5D24C00A6EF91 /* ElevenLabsTTS.swift in Sources */,
 				A51E53A7BF9F23535F3A8B15 /* VoiceDataSources.swift in Sources */,
 				EEDE0A39D216069D77F097C8 /* VoiceQuery.swift in Sources */,
 				80B0B3C777A9DC8C82952FD2 /* VoiceEngine.swift in Sources */,

@@ -59,6 +59,24 @@ struct VoiceQueryTests {
         check("send an email to", VoiceQuery.mail(of: "send an email to Tana"),
               VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil))
         check("not a mail", VoiceQuery.mail(of: "envoie la musique"), nil)
+        // Louis's example, as dictated
+        check("Goku mail", VoiceQuery.mail(of: "Il y a une image qui s'appelle Goku.png. J'aimerais que tu la prennes et que tu l'envoies par mail à tana@gmail.com. En objet, tu écris : Voilà votre image. En description, tu écris : Image en 1980 × 1080."),
+              VoiceQuery.MailRequest(recipient: "tana@gmail.com", file: "Goku.png", folder: nil,
+                                     subject: "Voilà votre image", body: "Image en 1980 × 1080"))
+        check("Goku mail EN", VoiceQuery.mail(of: "email the image called Goku.png to tana@gmail.com, subject Here is your image, body Image in 1980 by 1080"),
+              VoiceQuery.MailRequest(recipient: "tana@gmail.com", file: "Goku.png", folder: nil,
+                                     subject: "Here is your image", body: "Image in 1980 by 1080"))
+        check("spoken address", VoiceQuery.mail(of: "envoie un mail à tana arobase gmail point com"),
+              VoiceQuery.MailRequest(recipient: "tana@gmail.com", file: nil, folder: nil))
+        check("spoken address EN", VoiceQuery.spokenEmail("tana at gmail dot com"), "tana@gmail.com")
+        check("file point png", VoiceQuery.mail(of: "envoie l'image goku point png à Tana")?.file, "goku.png")
+        check("draft instruction", VoiceQuery.mail(of: "write an email to Tana thanking her for yesterday"),
+              VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil, instruction: "thanking her for yesterday"))
+        check("écris un mail = command", VoiceQuery.topic(of: "tu peux écrire un mail à Tana"), nil)
+        check("parse écris un mail", IntentParser.parse("tu peux écrire un mail à Tana", pills: pills),
+              .mail(VoiceQuery.MailRequest(recipient: "Tana", file: nil, folder: nil)))
+        check("resend stats still work", VoiceQuery.topic(of: "combien de mails j'ai envoyé ?"), .resend)
+        check("VS Code question", VoiceQuery.topic(of: "qu'est-ce qui se passe sur VS Code ?"), .agents)
         check("parse mail", IntentParser.parse("Envoie un mail à Intel", pills: pills),
               .mail(VoiceQuery.MailRequest(recipient: "Intel", file: nil, folder: nil)))
 
