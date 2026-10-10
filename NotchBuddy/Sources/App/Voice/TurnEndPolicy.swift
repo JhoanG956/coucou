@@ -6,8 +6,8 @@ import Foundation
 // Decides silence duration before ending a command turn.
 // Standalone compilable (used by test scripts via swiftc).
 enum TurnEndPolicy {
-    static let baseSilence:     TimeInterval = 0.8
-    static let extendedSilence: TimeInterval = 1.6
+    static let baseSilence:     TimeInterval = 1.2
+    static let extendedSilence: TimeInterval = 2.2
     static let maxTurnTime:     TimeInterval = 15.0
 
     /// Returns the silence timeout given the current *normalised* partial transcript.
