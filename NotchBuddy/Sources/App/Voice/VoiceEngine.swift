@@ -266,7 +266,10 @@ final class VoiceEngine: ObservableObject {
         a.onVoiceStart = { [weak self] in
             guard let self else { return }
             guard !VoiceSpeaker.shared.isBusy else {
-                appendAppLog("nb.log", "[Voice] vad start ignored (speaker active)")
+                // Coucou's own voice. But with music playing the sound never "ends", so
+                // this start would be the last one: open the window once Coucou is quiet.
+                appendAppLog("nb.log", "[Voice] vad start deferred (speaker active)")
+                self.openWindowWhenSpeakerQuiet(audio: a, spotter: s, locale: loc)
                 return
             }
             appendAppLog("nb.log", "[Voice] vad start")
@@ -323,6 +326,7 @@ final class VoiceEngine: ObservableObject {
         spotter?.onCommandUpdate   = nil
         spotter?.onCommandEnd      = nil
         spotter?.onWakeWindowEnded = nil
+        deferredStartWork?.cancel(); deferredStartWork = nil
         audio?.stop()
         audio              = nil
         spotter            = nil
@@ -403,6 +407,38 @@ final class VoiceEngine: ObservableObject {
         }
         wakeWindowWork = item
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.wakeWindowMax, execute: item)
+    }
+
+    // MARK: - Deferred voice start
+
+    private var deferredStartWork: DispatchWorkItem?
+
+    /// A voice start swallowed while Coucou was talking: with continuous sound (music on
+    /// the speakers) the VAD never ends and never starts again, so without this Coucou
+    /// stayed deaf until the music stopped. Checks every 0.3 s, then opens the window.
+    private func openWindowWhenSpeakerQuiet(audio: VoiceAudio, spotter: WakeSpotter, locale: Locale) {
+        guard deferredStartWork == nil else { return }
+        scheduleDeferredStartCheck(audio: audio, spotter: spotter, locale: locale)
+    }
+
+    private func scheduleDeferredStartCheck(audio: VoiceAudio, spotter: WakeSpotter, locale: Locale) {
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.deferredStartWork = nil
+            if VoiceSpeaker.shared.isBusy {
+                self.scheduleDeferredStartCheck(audio: audio, spotter: spotter, locale: locale)
+                return
+            }
+            guard self.audio === audio, !self.isListeningForCommand, !spotter.isActive else { return }
+            appendAppLog("nb.log", "[Voice] vad start (deferred)")
+            audio.resetVAD()
+            self.voiceSegmentActive = true
+            self.backoff.reset()
+            self.consecErrorStreak  = 0
+            self.openWakeWindow(audio: audio, spotter: spotter, locale: locale)
+        }
+        deferredStartWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: item)
     }
 
     // MARK: - Deaf recognizer detection
