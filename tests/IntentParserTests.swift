@@ -302,6 +302,16 @@ enum IntentParserTests {
         check("bon alors ajoute Notion",
               parse("bon alors ajoute Notion", pills: pills), .pillAdd(id: "integration_notion"))
         check("On s'en fout c'est", parse("On s'en fout c'est", pills: pills), .unknown)
+        check("Je veux que tu ajoutes la pilule Gemini",
+              parse("Je veux que tu ajoutes la pilule Gemini", pills: pills), .pillAdd(id: "agent_gemini"))
+        check("il faut que tu enlèves Stripe",
+              parse("il faut que tu enlèves Stripe", pills: pills), .pillRemove(id: "integration_stripe"))
+        checkSearch("OK tu peux démarrer Apple Music j'ai envie d'écouter du Drake",
+                    parse("OK tu peux démarrer Apple Music j'ai envie d'écouter du Drake", pills: pills), "drake")
+        check("j'ai envie d'écouter de la musique",
+              parse("j'ai envie d'écouter de la musique", pills: pills), .musicPlay(target: nil))
+        check("tu peux lancer ma playlist",
+              parse("tu peux lancer ma playlist", pills: pills), .musicPlayPlaylist(name: ""))
         checkMultiAction("Enlève la pilule GT et mets Stripe à la place",
                          parseMulti("Enlève la pilule GT et mets Stripe à la place"),
                          [.pillRemove(id: "integration_github"), .pillAdd(id: "integration_stripe")])

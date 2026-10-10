@@ -165,6 +165,9 @@ final class VoiceActionRunner {
             return .init(outcome: .success,
                          message: fmt.contains("%@") ? String(format: fmt, name) : name)
 
+        case .musicPlayPlaylist(let name) where name.trimmingCharacters(in: .whitespaces).isEmpty:
+            return ask(.whichPlaylist, "voice.ask-which-playlist")
+
         case .musicPlayPlaylist(let name):
             if !music.isMusicRunning && !music.isSpotifyRunning {
                 await music.launchAndPlay()
@@ -272,6 +275,18 @@ final class VoiceActionRunner {
             return ok("voice.question-cancelled")
         }
 
+        // A playlist name is free text, not a pill.
+        if case .whichPlaylist = pending.kind {
+            var name = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            if case .musicPlayPlaylist(let n) = IntentParser.parse(transcript, pills: availablePills),
+               !n.isEmpty { name = n }
+            for prefix in ["la playlist ", "ma playlist ", "playlist ", "the playlist "]
+            where name.lowercased().hasPrefix(prefix) {
+                name = String(name.dropFirst(prefix.count))
+            }
+            return await run(.musicPlayPlaylist(name: name), availablePills: availablePills)
+        }
+
         guard let entity = Self.answerEntity(transcript, active: pills.activeIds(),
                                              availablePills: availablePills) else {
             // Not understood: ask once more, then give up.
@@ -285,6 +300,11 @@ final class VoiceActionRunner {
         }
 
         switch pending.kind {
+        case .whichPlaylist:
+            return fail("voice.unknown")   // handled above
+        case .whichPill(let add):
+            return await run(add ? .pillAdd(id: entity) : .pillRemove(id: entity),
+                             availablePills: availablePills)
         case .removeWhich(let toAdd):
             if pills.activeIds().contains(entity) {
                 pills.toggleIntegration(entity)
@@ -299,6 +319,25 @@ final class VoiceActionRunner {
                                          : "\(removedName) → \(addedName)"
             return .init(outcome: .success, message: msg)
         }
+    }
+
+    /// "Je veux que tu ajoutes" (no pill named) → asks which pill, and listens for it.
+    /// Returns nil when the phrase has no add/remove verb either.
+    func askIfIncomplete(_ transcript: String) -> VoiceActionResult? {
+        let words = Set(IntentParser.normalise(transcript).split(separator: " ").map(String.init))
+        let addVerbs: Set<String> = ["ajoute", "ajoutes", "ajouter", "rajoute", "rajoutes", "rajouter",
+                                     "active", "actives", "activer", "add"]
+        let removeVerbs: Set<String> = ["enleve", "enleves", "enlever", "retire", "retires", "retirer",
+                                        "supprime", "supprimes", "supprimer", "vire", "virer", "remove"]
+        if !words.isDisjoint(with: removeVerbs) { return ask(.whichPill(add: false), "voice.ask-which-pill-remove") }
+        if !words.isDisjoint(with: addVerbs)    { return ask(.whichPill(add: true),  "voice.ask-which-pill-add") }
+        return nil
+    }
+
+    private func ask(_ kind: PendingVoiceQuestion.Kind, _ key: String) -> VoiceActionResult {
+        let text = Self.localizedString(key, locale: commandLocale)
+        pendingQuestion = PendingVoiceQuestion(kind: kind, text: text)
+        return .init(outcome: .question(text: text), message: text)
     }
 
     /// The pill named in an answer, whether it is a bare name ("Stripe") or a sentence

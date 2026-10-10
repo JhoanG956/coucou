@@ -49,9 +49,18 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
 
     func stop() {
         queue.removeAll()
-        guard isSpeaking else { return }
+        // Reset now: if the synthesizer never reports the cancel (stopped before the
+        // utterance really started), isSpeaking would stay true and the mic would
+        // ignore everything until relaunch.
+        currentUtterance = nil
+        isSpeaking = false
         synth.stopSpeaking(at: .immediate)
     }
+
+    /// What the mic gate should use: the synthesizer's own state (or sentences still
+    /// queued), never our flag alone, so a missed delegate callback cannot leave
+    /// Coucou deaf.
+    var isBusy: Bool { synth.isSpeaking || !queue.isEmpty }
 
     // MARK: - Private
 

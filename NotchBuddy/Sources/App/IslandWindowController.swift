@@ -1465,8 +1465,16 @@ extension IslandWindowController {
         let tActionEnd = Date()
         let actionMs   = Int(tActionEnd.timeIntervalSince(tParseEnd) * 1000)
 
+        // Incomplete phrase ("je veux que tu ajoutes…", nothing named): ask which pill
+        // and listen for it, instead of guessing or saying "pas compris".
+        var askedBack = false
+        if case .unknown = intent, let ask = runner.askIfIncomplete(transcript) {
+            result = ask
+            askedBack = true
+        }
+
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence) with streaming TTS.
-        if case .unknown = intent {
+        if case .unknown = intent, !askedBack {
             let tBrain0  = Date()
             let brainWarm = VoiceBrain.shared.isSessionReady
             var brainUsed = false
@@ -1545,9 +1553,21 @@ extension IslandWindowController {
         // Mid-conversation, a phrase with no command in it (talking to someone else,
         // "on s'en fout c'est"…) is dropped silently: no dizzy Mochi, no "pas compris".
         // Two in a row end the conversation.
-        if isInConversation, case .unknown = effectiveIntent, result.outcome == .failure {
-            appendAppLog("nb.log", "[Voice] answer had no command in it, ignored")
-            closeVoiceTurn()
+        if case .unknown = effectiveIntent, result.outcome == .failure {
+            if isInConversation {
+                // Second miss (or noise while waiting for an answer): stop there.
+                appendAppLog("nb.log", "[Voice] answer had no command in it, ignored")
+                closeVoiceTurn()
+                return
+            }
+            // First miss right after "OK Coucou": ask once, like a person would
+            // ("Pardon, tu peux répéter ?"), then listen for the repeat.
+            let again = VoiceActionResult(
+                outcome: .success,
+                message: VoiceActionRunner.localizedString("voice.ask-repeat", locale: runner.commandLocale))
+            VoiceCaptionManager.shared.appendResponse(again.message)
+            AppState.shared.voiceResult = again
+            speakAndContinueConversation(again)
             return
         }
 
