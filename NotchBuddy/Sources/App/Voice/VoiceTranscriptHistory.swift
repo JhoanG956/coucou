@@ -11,6 +11,10 @@ enum TranscriptOrigin: String {
     case parser  = "parser"   // IntentParser resolved the intent
     case context = "context"  // ConversationContext resolved a relative follow-up
     case brain   = "brain"    // VoiceBrain (FoundationModels) resolved the intent
+    case multi   = "multi"    // IntentParser.parseMultiAction split it into several actions
+    case answer  = "answer"   // answer to a question Coucou asked ("laquelle j'enlève ?")
+    case ignored = "ignored"  // short noise during a conversation, dropped silently
+    case end     = "end"      // conversation end phrase ("merci", "stop"…)
 }
 
 struct TranscriptEntry: Identifiable {
@@ -36,6 +40,14 @@ final class VoiceTranscriptHistory: ObservableObject {
             origin:     origin
         )
         entries.insert(entry, at: 0)
+        if entries.count > Self.maxEntries {
+            entries.removeLast(entries.count - Self.maxEntries)
+        }
+    }
+
+    /// For entries that are not a single VoiceIntent (several actions, an answer, noise).
+    func record(transcript: String, note: String, origin: TranscriptOrigin) {
+        entries.insert(TranscriptEntry(transcript: transcript, intent: note, origin: origin), at: 0)
         if entries.count > Self.maxEntries {
             entries.removeLast(entries.count - Self.maxEntries)
         }

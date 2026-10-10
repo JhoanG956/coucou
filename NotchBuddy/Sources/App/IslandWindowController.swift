@@ -1342,6 +1342,7 @@ extension IslandWindowController {
         // ── Conversation end phrase ────────────────────────────────────────────────
         let normTranscript = WakePhrase.normalise(transcript)
         if isInConversation && TurnEndPolicy.conversationEndPhrases.contains(normTranscript) {
+            VoiceTranscriptHistory.shared.record(transcript: transcript, note: "end", origin: .end)
             endConversation(speaking: true)
             return
         }
@@ -1355,7 +1356,9 @@ extension IslandWindowController {
                 let isPillName = pills.contains { IntentParser.normalise($0.name) == normTranscript }
                 let isKnown    = IntentParser.parse(normTranscript, pills: pills) != .unknown
                 if !isPillName && !isKnown {
-                    appendAppLog("nb.log", "[Voice] ignoring short spurious transcript: '\(normTranscript)'")
+                    // Never log the words themselves (VOICE.md: no transcript on disk).
+                    appendAppLog("nb.log", "[Voice] ignoring short spurious transcript")
+                    VoiceTranscriptHistory.shared.record(transcript: transcript, note: "—", origin: .ignored)
                     scheduleConversationContinue(delay: 0.2)
                     return
                 }
@@ -1365,6 +1368,7 @@ extension IslandWindowController {
         // ── Follow-up answer to a pending question ─────────────────────────────────
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
+            VoiceTranscriptHistory.shared.record(transcript: transcript, note: result.message, origin: .answer)
             if result.outcome == .success {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             } else {
@@ -1392,6 +1396,10 @@ extension IslandWindowController {
                 }
                 return isRemoveA && !isRemoveB
             }
+            VoiceTranscriptHistory.shared.record(
+                transcript: transcript,
+                note: intents.map { String(describing: $0) }.joined(separator: " + "),
+                origin: .multi)
             var parts: [String] = []
             var anyFailure = false
             var lastSuccess: VoiceIntent? = nil
