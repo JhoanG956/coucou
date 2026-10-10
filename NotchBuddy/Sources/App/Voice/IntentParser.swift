@@ -25,6 +25,13 @@ enum IntentParser {
         (fwords, frawWords) = stripTrailingLocation(fwords, rawWords: frawWords)
         guard !fwords.isEmpty else { return .unknown }
 
+        // ── 0. Strip spoken interjections from the start ─────────────────────
+        //    "merci tu peux…", "ouais mets…", "bon alors ajoute…"
+        while let first = fwords.first, interjections.contains(first), fwords.count > 1 {
+            fwords.removeFirst()
+            if !frawWords.isEmpty { frawWords.removeFirst() }
+        }
+
         // ── 0a. Strip politeness prefixes from the start ─────────────────────
         //    "tu peux", "est-ce que tu peux", "peux-tu", "can you", etc.
         for prefix in politenessPrefixes {
@@ -39,6 +46,12 @@ enum IntentParser {
         // ── 0b. Map infinitives → imperative forms ────────────────────────────
         //    "mettre" → "mets", "lancer" → "lance", "ajouter" → "ajoute", …
         fwords = fwords.map { infinitiveMap[$0] ?? $0 }
+
+        // ── 0c. "mets GitHub à la place de Notion" → replace Notion by GitHub ─
+        //    Before the music rules, or "mets X …" becomes a song search.
+        if let (old, new) = extractInsteadOf(fwords, pills: pills) {
+            return .pillReplace(old: old, new: new)
+        }
 
         // ── 1. Explicit music-only patterns ──────────────────────────────────
         if matchesAny(fwords, in: pausePrefixes)   { return .musicPause }
@@ -507,6 +520,26 @@ enum IntentParser {
         return nil
     }
 
+    /// "mets (la pilule) X à la place de Y" / "X au lieu de Y" / "X instead of Y" → (Y, X).
+    private static func extractInsteadOf(_ words: [String], pills: [PillDefinition]) -> (String, String)? {
+        let markers: [[String]] = [["a", "la", "place", "de"], ["a", "la", "place", "du"],
+                                   ["au", "lieu", "de"], ["au", "lieu", "du"], ["instead", "of"]]
+        let leadVerbs: Set<String> = ["mets", "met", "remets", "ajoute", "rajoute", "active",
+                                      "affiche", "put", "add", "use", "utilise", "prends"]
+        let noise: Set<String> = ["la", "le", "les", "l", "pilule", "pilules", "the", "pill", "me", "moi"]
+        for m in markers {
+            guard let i = indexOfSequence(m, in: words), i > 0, i + m.count < words.count else { continue }
+            let left  = words[..<i].filter { !leadVerbs.contains($0) && !noise.contains($0) }
+            let right = words[(i + m.count)...].filter { !noise.contains($0) }
+            guard !left.isEmpty, !right.isEmpty,
+                  let new = EntityResolver.resolve(left.joined(separator: " "), from: pills),
+                  let old = EntityResolver.resolve(right.joined(separator: " "), from: pills),
+                  new != old else { continue }
+            return (old, new)
+        }
+        return nil
+    }
+
     // MARK: - pillOnly extraction
 
     private static func extractOnly(_ words: [String], pills: [PillDefinition]) -> [String]? {
@@ -545,6 +578,12 @@ enum IntentParser {
         ["could", "you"],
         ["can", "you"],
         ["please"],
+    ]
+
+    /// Spoken interjections dropped from the start of a phrase (normalised).
+    private static let interjections: Set<String> = [
+        "merci", "ouais", "oui", "ok", "okay", "bon", "alors", "euh", "bah", "ben", "hein",
+        "voila", "donc", "hey", "yeah", "yes", "so", "well", "um", "uh", "thanks",
     ]
 
     /// Maps normalised infinitive forms → imperative/trigger forms.

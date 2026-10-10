@@ -1476,6 +1476,21 @@ extension IslandWindowController {
             }
         }
 
+        // Mid-conversation, a phrase with no command in it (talking to someone else,
+        // "on s'en fout c'est"…) is dropped silently: no dizzy Mochi, no "pas compris".
+        // Two in a row end the conversation.
+        if isInConversation, case .unknown = effectiveIntent, result.outcome == .failure {
+            consecutiveFailures += 1
+            appendAppLog("nb.log", "[Voice] conversation: no command in phrase, ignored")
+            if consecutiveFailures >= 2 {
+                consecutiveFailures = 0
+                endConversation(speaking: false)
+            } else {
+                scheduleConversationContinue(delay: 0.2)
+            }
+            return
+        }
+
         // Mochi reaction + consecutive failure tracking
         switch result.outcome {
         case .success:

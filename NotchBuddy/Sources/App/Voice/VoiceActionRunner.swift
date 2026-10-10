@@ -272,8 +272,15 @@ final class VoiceActionRunner {
             return ok("voice.question-cancelled")
         }
 
-        let norm = IntentParser.normalise(transcript)
-        guard let entity = EntityResolver.resolve(norm, from: availablePills) else {
+        guard let entity = Self.answerEntity(transcript, active: pills.activeIds(),
+                                             availablePills: availablePills) else {
+            // Not understood: ask once more, then give up.
+            if !pending.askedAgain {
+                var again = pending
+                again.askedAgain = true
+                pendingQuestion = again
+                return .init(outcome: .question(text: pending.text), message: pending.text)
+            }
             return fail("voice.unknown")
         }
 
@@ -292,6 +299,33 @@ final class VoiceActionRunner {
                                          : "\(removedName) → \(addedName)"
             return .init(outcome: .success, message: msg)
         }
+    }
+
+    /// The pill named in an answer, whether it is a bare name ("Stripe") or a sentence
+    /// ("je retire la pilule Stripe", "enlève GitHub", "plutôt Vercel").
+    /// Active pills win when several names could match.
+    static func answerEntity(_ transcript: String, active: Set<String>,
+                             availablePills: [PillDefinition]) -> String? {
+        switch IntentParser.parse(transcript, pills: availablePills) {
+        case .pillRemove(let id), .pillAdd(let id):        return id
+        case .pillRemoveMultiple(let ids) where !ids.isEmpty: return ids[0]
+        default: break
+        }
+        let norm = IntentParser.normalise(transcript)
+        if let id = EntityResolver.resolve(norm, from: availablePills) { return id }
+        // Look for a pill name inside the sentence: 3-, 2- then 1-word windows.
+        let words = norm.split(separator: " ").map(String.init)
+        var found: [String] = []
+        for size in stride(from: min(3, words.count), through: 1, by: -1) {
+            for start in 0...(words.count - size) {
+                let gram = words[start..<(start + size)].joined(separator: " ")
+                guard gram.count >= 3,
+                      let id = EntityResolver.resolve(gram, from: availablePills) else { continue }
+                if !found.contains(id) { found.append(id) }
+            }
+            if !found.isEmpty { break }
+        }
+        return found.first(where: { active.contains($0) }) ?? found.first
     }
 
     // MARK: - Helpers

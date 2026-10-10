@@ -284,6 +284,25 @@ enum IntentParserTests {
         check("mets Notion dans le notch",
               parse("mets Notion dans le notch", pills: pills), .pillAdd(id: "integration_notion"))
 
+        // Real phrases from a test on the Mac (Settings → Voice history)
+        check("Merci tu peux mettre la pilule GitHub à la place de notion",
+              parse("Merci tu peux mettre la pilule GitHub à la place de notion", pills: pills),
+              .pillReplace(old: "integration_notion", new: "integration_github"))
+        check("mets GitHub à la place de Notion",
+              parse("mets GitHub à la place de Notion", pills: pills),
+              .pillReplace(old: "integration_notion", new: "integration_github"))
+        check("GitHub au lieu de Notion",
+              parse("GitHub au lieu de Notion", pills: pills),
+              .pillReplace(old: "integration_notion", new: "integration_github"))
+        check("put GitHub instead of Notion",
+              parse("put GitHub instead of Notion", pills: pills),
+              .pillReplace(old: "integration_notion", new: "integration_github"))
+        check("Ouais tu peux me mettre la pilule Gemini",
+              parse("Ouais tu peux me mettre la pilule Gemini", pills: pills), .pillAdd(id: "agent_gemini"))
+        check("bon alors ajoute Notion",
+              parse("bon alors ajoute Notion", pills: pills), .pillAdd(id: "integration_notion"))
+        check("On s'en fout c'est", parse("On s'en fout c'est", pills: pills), .unknown)
+
         // Single pill with conjunction → NOT multi-action (fallback to single-intent)
         checkNilMultiAction("mets Gemini et Cursor",
                             parseMulti("mets Gemini et Cursor"))
