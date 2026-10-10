@@ -378,6 +378,7 @@ final class IslandWindowController: NSWindowController {
     // is elsewhere, so a hidden island costs next to nothing (CLAUDE.md: 0 % CPU when hidden).
 
     private static let fastPoll: TimeInterval = 1.0 / 60.0
+    private static let nearPoll: TimeInterval = 1.0 / 20.0
     private static let idlePoll: TimeInterval = 1.0 / 8.0
     private var pollInterval: TimeInterval = 0
 
@@ -394,21 +395,23 @@ final class IslandWindowController: NSWindowController {
             MainActor.assumeIsolated { self?.pollFrame() }
         }
         // A few ms of slack lets macOS group our wakeups with others; hover is unaffected.
-        timer.tolerance = interval == Self.idlePoll ? 0.04 : 0.004
+        timer.tolerance = interval == Self.idlePoll ? 0.04 : interval == Self.nearPoll ? 0.01 : 0.004
         RunLoop.main.add(timer, forMode: .common)
         frameTimer = timer
     }
 
     /// Picks the polling rate for the next ticks (see startPolling).
-    /// "Near" is measured from the island itself, not from the big transparent panel
-    /// (720×560): with the panel, most of the top of the screen counted as near and a
-    /// hidden island polled at 60 Hz nearly all the time. Desktop Mochi has its own poll.
+    /// Three rates for a hidden island: 60 Hz close to the island itself, 20 Hz in the
+    /// wide band around the panel (a pointer flicked up still reaches the close zone
+    /// within one tick), 8 Hz elsewhere. Before, the whole band ran at 60 Hz, so a hidden
+    /// island polled at 60 Hz most of the time. Desktop Mochi has its own poll.
     private func adjustPollRate(mouse: NSPoint, panelFrame: NSRect, islandRect: NSRect) {
         let island = islandRect.offsetBy(dx: panelFrame.minX, dy: panelFrame.minY)
         let nearIsland = island.insetBy(dx: -200, dy: -160).contains(mouse)
+        let inBand = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
         let busy = state.mode != .hidden || inAttachDrag || attachDragStart != nil
             || fsm.state != .hidden || nearIsland
-        let wanted = busy ? Self.fastPoll : Self.idlePoll
+        let wanted = busy ? Self.fastPoll : inBand ? Self.nearPoll : Self.idlePoll
         if wanted != pollInterval { startPolling(interval: wanted) }
     }
 

@@ -468,13 +468,13 @@ final class VoiceEngine: ObservableObject {
         // A short noise (cough, click) legitimately gives no text: only count windows
         // where speech went on for a while.
         guard elapsed >= 3 else { return }
-        // Music without words gives no text either: not a stuck recognizer. Rebuilding
-        // for it cost a restart and half a second of deafness each time.
-        if AppState.shared.musicPlaying || SpotifyController.shared.isPlaying { return }
+        // Music without words gives no text either: while music plays it takes 6 silent
+        // windows, not 2, before a rebuild (each costs a restart and ~0.5 s of deafness).
+        let music = AppState.shared.musicPlaying || SpotifyController.shared.isPlaying
         deafWindows += 1
-        if deafWindows >= 2 {
+        if deafWindows >= (music ? 6 : 2) {
             deafWindows = 0
-            appendAppLog("nb.log", "[Voice] recognizer returned nothing for 2 windows, rebuilding")
+            appendAppLog("nb.log", "[Voice] recognizer returned nothing for \(music ? 6 : 2) windows, rebuilding")
             triggerPipelineRebuild(reason: "recognizer deaf")
         }
     }

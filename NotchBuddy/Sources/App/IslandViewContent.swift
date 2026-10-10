@@ -3675,7 +3675,8 @@ struct TickerView: View {
             Color.clear
 
             // Row A: completed row — always rendered at phase=1 + completedScale
-            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, onDiffTap: rowADiffTap)
+            // Row A never shows its shimmer (phase 1): it doesn't animate one either.
+            TickerRowView(text: rowA, phase: 1.0, isActive: isActive, shimmerPaused: true, onDiffTap: rowADiffTap)
                 .scaleEffect(completedScale, anchor: .leading)
                 .offset(x: -10, y: rowAOffset)
                 .opacity(rowAOpacity)
@@ -3766,6 +3767,7 @@ struct TickerRowView: View {
     let text: String
     let phase: Double   // 0 = current (shimmer, large), 1 = completed (dim, scaled down by caller)
     var isActive: Bool = true
+    var shimmerPaused: Bool = false
     var onDiffTap: (() -> Void)? = nil
 
     var body: some View {
@@ -3791,7 +3793,7 @@ struct TickerRowView: View {
                 // Filename + counts
                 HStack(spacing: 0) {
                     ZStack(alignment: .leading) {
-                        TickerShimmerText(text: dp.filename, paused: !isActive || phase >= 1)
+                        TickerShimmerText(text: dp.filename, paused: shimmerPaused || !isActive)
                             .opacity(shimmerOpacity)
                         Text(dp.filename)
                             .font(.system(size: 13, weight: .medium))
@@ -3834,8 +3836,8 @@ struct TickerRowView: View {
 
                 // Text: shimmer fades out, dim completed text fades in (overlapping cross-fade)
                 ZStack(alignment: .leading) {
-                    // A completed row (phase 1) or an idle task never shows the shimmer.
-                    TickerShimmerText(text: text, paused: !isActive || phase >= 1)
+                    // An idle task never shows the shimmer (nor row A, see shimmerPaused).
+                    TickerShimmerText(text: text, paused: shimmerPaused || !isActive)
                         .opacity(shimmerOpacity)
                     Text(text)
                         .font(.system(size: 13, weight: .medium))

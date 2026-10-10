@@ -231,9 +231,17 @@ struct MiniBotCanvasView: View {
 
     @Environment(\.islandViewActive) private var viewActive
 
-    /// The rate the mini Mochis used to be drawn at (the built-in display's).
-    private static let displayFPS: Double =
-        Double(min(120, max(60, NSScreen.screens.first?.maximumFramesPerSecond ?? 60)))
+    /// The rate the mini Mochis used to be drawn at: the island screen's refresh rate,
+    /// looked up at most every 2 s (the island can move to another display).
+    @MainActor private static var fpsCache: (value: Double, at: CFTimeInterval) = (60, -10)
+    @MainActor private static var displayFPS: Double {
+        let now = CACurrentMediaTime()
+        if now - fpsCache.at > 2 {
+            let fps = IslandWindowController.islandScreen().maximumFramesPerSecond
+            fpsCache = (Double(min(120, max(30, fps))), now)
+        }
+        return fpsCache.value
+    }
 
     var body: some View {
         // A 12–20 pt Mochi: 30 fps looks the same as the display rate and costs a quarter

@@ -138,7 +138,9 @@ final class VoiceAudio: @unchecked Sendable {
         lastBufferTime = Date()
 
         // Tune durations to the real buffer length (often 100 ms on macOS, not 1024 frames).
-        if buf.frameLength > 0, buf.frameLength != tunedFrameLength {
+        // Retuned only when the length moves by more than 5 % (some devices jitter a frame).
+        if buf.frameLength > 0,
+           abs(Double(buf.frameLength) - Double(tunedFrameLength)) > Double(tunedFrameLength) * 0.05 {
             tunedFrameLength = buf.frameLength
             let fps = buf.format.sampleRate / Double(buf.frameLength)
             vad.setFrameRate(fps)
