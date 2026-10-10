@@ -42,8 +42,10 @@ final class VoiceBrain {
 
     // MARK: - Conversation lifecycle
 
+    /// Keeps the session created (and prewarmed) at wake time, so the first turn's
+    /// context and the warm model carry into the conversation.
     func beginConversation() {
-        sessionBox = VoiceBrain._makeSession()
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
     }
 
     func endConversation() {
@@ -75,7 +77,7 @@ final class VoiceBrain {
     func resolveWithStreaming(
         _ transcript: String,
         pills: [PillDefinition],
-        onSentence: @escaping @MainActor (String) -> Void
+        onSentence: @escaping @MainActor (_ sentence: String, _ hasActions: Bool) -> Void
     ) async -> BrainResult? {
         if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
         return await VoiceBrain._resolveWithStreaming(
@@ -172,7 +174,7 @@ final class VoiceBrain {
         _ transcript: String,
         pills: [PillDefinition],
         sessionBox: AnyObject?,
-        onSentence: @escaping @MainActor (String) -> Void
+        onSentence: @escaping @MainActor (_ sentence: String, _ hasActions: Bool) -> Void
     ) async -> BrainResult? {
         #if canImport(FoundationModels)
         if #available(macOS 26, *) {
@@ -207,7 +209,8 @@ final class VoiceBrain {
                             let sentence = String(accumulated[startIdx..<afterBoundary])
                                 .trimmingCharacters(in: .whitespaces)
                             if !sentence.isEmpty {
-                                await MainActor.run { onSentence(sentence) }
+                                let acts = !collector.intents.isEmpty
+                                await MainActor.run { onSentence(sentence, acts) }
                             }
                             sentUpTo = accumulated.distance(from: accumulated.startIndex, to: afterBoundary)
                         }
@@ -218,7 +221,8 @@ final class VoiceBrain {
                         let startIdx = accumulated.index(accumulated.startIndex, offsetBy: sentUpTo)
                         let remaining = String(accumulated[startIdx...]).trimmingCharacters(in: .whitespaces)
                         if !remaining.isEmpty {
-                            await MainActor.run { onSentence(remaining) }
+                            let acts = !collector.intents.isEmpty
+                            await MainActor.run { onSentence(remaining, acts) }
                         }
                     }
 

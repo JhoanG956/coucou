@@ -1,5 +1,6 @@
 #if !APPSTORE
 import AppKit
+import Combine
 import SwiftUI
 
 // MARK: - VoiceCaptionState
@@ -10,6 +11,9 @@ final class VoiceCaptionState: ObservableObject {
     @Published var userLine: String = ""
     @Published var responseLine: String = ""
     @Published var isVisible: Bool = false
+    /// Live words while the mic is open for a command (mirrors VoiceEngine).
+    @Published var liveLine: String = ""
+    @Published var isListening: Bool = false
 }
 
 // MARK: - VoiceCaptionManager
@@ -34,12 +38,35 @@ final class VoiceCaptionManager {
 
     private var panel: NSPanel?
     private var hideTask: Task<Void, Never>?
+    private var subs: Set<AnyCancellable> = []
 
     private let captionWidth:  CGFloat = 360
-    private let captionHeight: CGFloat = 52
+    private let captionHeight: CGFloat = 76   // 1 line heard + 2 lines of answer
     private let notchGap:      CGFloat = 6
 
-    private init() {}
+    private init() {
+        // Only these two engine properties: observing the whole engine would redraw
+        // the caption on every mic level change.
+        let engine = VoiceEngine.shared
+        engine.$commandTranscript
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] t in
+                MainActor.assumeIsolated { self?.state.liveLine = t }
+            }
+            .store(in: &subs)
+        engine.$isListeningForCommand
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] on in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.state.isListening = on
+                    if on { self.state.liveLine = "" }
+                }
+            }
+            .store(in: &subs)
+    }
 
     // MARK: - Show / hide
 
@@ -111,7 +138,9 @@ final class VoiceCaptionManager {
         )
         p.isOpaque = false
         p.backgroundColor = .clear
-        p.level = .statusBar
+        // Same level as the island, so the caption is never hidden behind it.
+        p.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 3)
+        p.ignoresMouseEvents = true
         p.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         p.contentView = view
         p.alphaValue = 0
@@ -144,31 +173,44 @@ final class VoiceCaptionManager {
 struct VoiceCaptionView: View {
     @ObservedObject var state: VoiceCaptionState
 
+    /// While the mic is open: what I am saying, live. Afterwards: what I said + the answer.
+    private var heard: String { state.isListening ? state.liveLine : state.userLine }
+    private var answer: String { state.isListening ? "" : state.responseLine }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if !state.userLine.isEmpty {
-                Text(state.userLine)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+        VStack(spacing: 0) {
+            if !heard.isEmpty || !answer.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    if !heard.isEmpty {
+                        Text(verbatim: heard)
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.55))
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                    }
+                    if !answer.isEmpty {
+                        Text(verbatim: answer)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(maxWidth: 360, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.black.opacity(0.92))
+                )
+                .transition(.opacity)
             }
-            if !state.responseLine.isEmpty {
-                Text(state.responseLine)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-            }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.black.opacity(0.88))
-        )
-        .frame(width: 360)
+        .animation(.easeOut(duration: 0.2), value: heard.isEmpty && answer.isEmpty)
+        .frame(width: 360, height: 76, alignment: .top)
+        .environment(\.colorScheme, .dark)
     }
 }
 #endif

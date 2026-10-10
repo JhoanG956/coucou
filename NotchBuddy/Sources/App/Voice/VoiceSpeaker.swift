@@ -65,21 +65,27 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         synth.speak(utt)
     }
 
-    /// Picks the highest quality installed voice for the given locale.
-    /// Falls back to .premium → .enhanced → default language voice.
+    /// Picks the best installed voice for the spoken locale: same region first
+    /// (fr-FR before fr-CA), then quality (.premium > .enhanced > default).
+    /// Novelty voices and the user's Personal Voice are never used.
     private func _bestVoice(for locale: Locale?) -> AVSpeechSynthesisVoice? {
         guard let loc = locale else { return nil }
         let lang = loc.language.languageCode?.identifier ?? ""
         guard !lang.isEmpty else { return nil }
+        let region = loc.region?.identifier
+        let exact  = region.map { "\(lang)-\($0)" }
 
-        let voices = AVSpeechSynthesisVoice.speechVoices().filter {
-            $0.language.hasPrefix(lang)
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { v in
+            (v.language == lang || v.language.hasPrefix(lang + "-"))
+                && !v.voiceTraits.contains(.isNoveltyVoice)
+                && !v.voiceTraits.contains(.isPersonalVoice)
         }
-        if voices.isEmpty { return AVSpeechSynthesisVoice(language: lang) }
+        guard !voices.isEmpty else { return AVSpeechSynthesisVoice(language: exact ?? lang) }
 
-        // Sort by quality descending (.premium > .enhanced > default)
-        let sorted = voices.sorted { $0.quality.rawValue > $1.quality.rawValue }
-        return sorted.first ?? AVSpeechSynthesisVoice(language: lang)
+        func rank(_ v: AVSpeechSynthesisVoice) -> (Int, Int) {
+            (v.language == exact ? 1 : 0, v.quality.rawValue)
+        }
+        return voices.max { rank($0) < rank($1) }
     }
 
     // MARK: - AVSpeechSynthesizerDelegate

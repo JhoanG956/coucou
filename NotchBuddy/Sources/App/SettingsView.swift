@@ -1269,7 +1269,7 @@ struct SettingsView: View {
 
                 Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
 
-                Toggle(String(localized: "Sous-titres"), isOn: $captionEnabled)
+                Toggle(String(localized: "voice.setting-captions"), isOn: $captionEnabled)
 
                 Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
                     .font(.system(size: 11))

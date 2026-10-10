@@ -1468,10 +1468,17 @@ extension IslandWindowController {
             let brainWarm = VoiceBrain.shared.isSessionReady
             var brainUsed = false
 
+            // A stale "finished speaking" handler from the previous turn would re-open
+            // the mic between two streamed sentences: drop it before streaming.
+            VoiceSpeaker.shared.onDidFinish = nil
+
             let brain = await VoiceBrain.shared.resolveWithStreaming(
                 transcript, pills: pills
-            ) { sentence in
-                VoiceSpeaker.shared.enqueue(sentence, locale: locale)
+            ) { sentence, hasActions in
+                // When the model is acting (tool call), its text is not spoken: the real
+                // outcome comes from VoiceActionRunner below ("C'est fait" must not be
+                // said before the action ran, or when it failed / needs a question).
+                if !hasActions { VoiceSpeaker.shared.enqueue(sentence, locale: locale) }
                 VoiceCaptionManager.shared.appendResponse(sentence)
             }
 
@@ -1481,22 +1488,36 @@ extension IslandWindowController {
 
             if let brain {
                 if !brain.intents.isEmpty {
-                    // Run brain intents; model already voiced confirmation via streaming TTS.
+                    // Run the actions the model asked for: removals before additions.
                     var sorted = brain.intents
                     sorted.sort { a, b in
                         let ra: Bool = { switch a { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
                         let rb: Bool = { switch b { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
                         return ra && !rb
                     }
+                    effectiveIntent = sorted[0]
+                    var parts: [String] = []
+                    var anyFailure = false
+                    var questionResult: VoiceActionResult? = nil
                     for bi in sorted {
                         let r = await runner.run(bi, availablePills: pills, rawTranscript: transcript)
-                        if case .success = r.outcome {
+                        parts.append(r.message)
+                        switch r.outcome {
+                        case .success:
                             effectiveIntent = bi
                             VoiceTranscriptHistory.shared.record(transcript: transcript, intent: bi, origin: .brain)
+                        case .failure:
+                            anyFailure = true
+                        case .question:
+                            questionResult = r
                         }
                     }
-                    result = VoiceActionResult(outcome: .success, message: brain.text)
-                    brainUsed = true
+                    // Same path as a parser command below: short spoken confirmation,
+                    // or the question ("laquelle j'enlève ?") with its re-listen.
+                    VoiceCaptionManager.shared.clearResponse()
+                    result = questionResult ?? VoiceActionResult(
+                        outcome: anyFailure ? .failure : .success,
+                        message: parts.joined(separator: " · "))
                 } else if !brain.text.isEmpty {
                     result = VoiceActionResult(outcome: .success, message: brain.text)
                     brainUsed = true
