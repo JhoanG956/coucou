@@ -144,7 +144,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         }
         guard !voices.isEmpty else { return AVSpeechSynthesisVoice(language: exact ?? lang) }
         let wanted: AVSpeechSynthesisVoiceGender = gender == "male" ? .male : .female
-        let ofGender = voices.filter { gender(of: $0) == wanted }
+        let ofGender = voices.filter { Self.gender(of: $0) == wanted }
         let pool = ofGender.isEmpty ? voices : ofGender
 
         func rank(_ v: AVSpeechSynthesisVoice) -> (Int, Int) {

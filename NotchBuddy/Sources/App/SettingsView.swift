@@ -1340,10 +1340,11 @@ struct SettingsView: View {
                         HStack(spacing: 8) {
                             Text(String(localized: "voice.tts-pitch"))
                             Slider(value: elevenGender == "male" ? $pitchMale : $pitchFemale,
-                                   in: 0.8...1.6, step: 0.05) { editing in
-                                // Released: hear the new pitch right away.
-                                if !editing { speakVoiceSample() }
-                            }
+                                   in: 0.8...1.6, step: 0.05,
+                                   onEditingChanged: { editing in
+                                       // Released: hear the new pitch right away.
+                                       if !editing { speakVoiceSample() }
+                                   })
                             .frame(maxWidth: 180)
                         }
                         let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
