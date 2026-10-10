@@ -126,6 +126,14 @@ final class VoiceEngine: ObservableObject {
 
     func cancelListening() { endCommand(postFinished: false) }
 
+    /// Settings → Voice language changed: restart recognition in the new language.
+    func reloadLanguage() {
+        guard audio != nil else { return }
+        stopAudioPipeline()
+        if isEnabled && !isPaused { startAudioPipeline() }
+        VoiceBrain.shared.endConversation()   // next session gets instructions in the new language
+    }
+
     /// Start the next conversation turn (re-listen for 8 s without wake phrase).
     /// Called by IslandWindowController after showing a command result.
     func startConversationTurn() {
@@ -656,8 +664,13 @@ final class VoiceEngine: ObservableObject {
     // MARK: - Helpers
 
     private func suitableLocale() -> Locale? {
-        var candidates = MacDictation.automaticLocales()
-        candidates += [Locale(identifier: "fr-FR"), Locale(identifier: "en-US")]
+        // The language chosen in Settings → Voice first (English by default), then the
+        // dictation languages, then the usual fallbacks.
+        var candidates: [Locale] = VoiceSettings.language == "fr"
+            ? [Locale(identifier: "fr-FR"), Locale(identifier: "fr-CA")]
+            : [Locale(identifier: "en-US"), Locale(identifier: "en-GB"), Locale(identifier: "en-AU")]
+        candidates += MacDictation.automaticLocales()
+        candidates += [Locale(identifier: "en-US"), Locale(identifier: "fr-FR")]
         for locale in candidates {
             if let r = SFSpeechRecognizer(locale: locale),
                r.supportsOnDeviceRecognition, r.isAvailable {

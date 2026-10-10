@@ -35,6 +35,23 @@ enum VoiceSettings {
         set { UserDefaults.standard.set(newValue, forKey: captionEnabledKey) }
     }
 
+    /// Language Coucou listens and answers in: "en" (default) or "fr".
+    static var language: String {
+        get { UserDefaults.standard.string(forKey: "voiceLanguage") ?? "en" }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceLanguage") }
+    }
+
+    /// Voice used to answer: "system" (macOS voices) or "elevenlabs" (user's API key).
+    static var ttsEngine: String {
+        get { UserDefaults.standard.string(forKey: "voiceTTSEngine") ?? "system" }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceTTSEngine") }
+    }
+    /// ElevenLabs voice: "female" (default) or "male".
+    static var elevenGender: String {
+        get { UserDefaults.standard.string(forKey: "voiceElevenGender") ?? "female" }
+        set { UserDefaults.standard.set(newValue, forKey: "voiceElevenGender") }
+    }
+
     /// Weather by voice (Open-Meteo, no key). Off by default: network only when the user
     /// turned it on and set a city.
     static var weatherEnabled: Bool {
