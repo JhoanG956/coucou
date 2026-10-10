@@ -36,6 +36,10 @@ final class WakeSpotter: @unchecked Sendable {
     /// timeout (1110) and cancellations — those do not count as backoff failures.
     var onWakeWindowEnded: ((Bool) -> Void)?
 
+    /// Extra strings to add to the recognizer's contextual hints (e.g. pill names).
+    /// Set before calling `beginWindow`. Thread-safe (read under `lock`).
+    var additionalContextualStrings: [String] = []
+
     // MARK: - State (all guarded by `lock`)
 
     private let lock = NSLock()
@@ -77,7 +81,8 @@ final class WakeSpotter: @unchecked Sendable {
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults  = true
             req.requiresOnDeviceRecognition = true
-            req.contextualStrings = ["Coucou", "OK Coucou", "okay Coucou", "hey Coucou"]
+            let extra = additionalContextualStrings
+            req.contextualStrings = ["Coucou", "OK Coucou", "okay Coucou", "hey Coucou"] + extra
             preroll.forEach { req.append($0) }
 
             recognizer   = r

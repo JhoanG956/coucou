@@ -6,11 +6,22 @@ import Speech
 
 /// Persisted voice feature settings and permission helpers.
 enum VoiceSettings {
-    static let enabledKey = "voiceEnabled"
+    static let enabledKey     = "voiceEnabled"
+    static let speakEnabledKey = "voiceSpeakEnabled"
 
     static var isEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: enabledKey) }
         set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+    }
+
+    /// Coucou responds aloud after each command. Default: on.
+    static var speakEnabled: Bool {
+        get {
+            let d = UserDefaults.standard
+            if d.object(forKey: speakEnabledKey) == nil { return true }   // default on
+            return d.bool(forKey: speakEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: speakEnabledKey) }
     }
 
     // MARK: - Permissions

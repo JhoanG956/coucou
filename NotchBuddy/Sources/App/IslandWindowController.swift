@@ -25,6 +25,8 @@ final class IslandWindowController: NSWindowController {
     // Voice result auto-dismiss timer
     #if !APPSTORE
     private var voiceResultWork: DispatchWorkItem?
+    private var isInConversation = false
+    private var conversationContext = ConversationContext()
     #endif
 
     // Suppress peek sound on next reveal (e.g. musicReveal)
@@ -322,6 +324,15 @@ final class IslandWindowController: NSWindowController {
                         AppState.shared.voiceResult = result
                         self.expand(to: .voiceResult)
                         self.scheduleVoiceDismiss(delay: 1.5)
+                    } else if self.isInConversation {
+                        // Conversation ended by 8-second silence
+                        self.isInConversation = false
+                        self.conversationContext.reset()
+                        self.voiceResultWork?.cancel()
+                        self.voiceResultWork = nil
+                        VoiceEngine.shared.endConversation()
+                        VoiceBrain.shared.endConversation()
+                        self.scheduleVoiceDismiss(delay: 0.3)
                     } else {
                         self.fsm.voiceFinished()
                     }
@@ -516,6 +527,16 @@ final class IslandWindowController: NSWindowController {
         guard fsm.isHeldOpen?() != true || keepsApprovalPending else { return }
         if !keepsApprovalPending { state.isPinned = false }
         finishedPinTimer?.cancel()
+        #if !APPSTORE
+        VoiceSpeaker.shared.stop()
+        if isInConversation {
+            isInConversation = false
+            voiceResultWork?.cancel()
+            voiceResultWork = nil
+            VoiceEngine.shared.endConversation()
+            VoiceBrain.shared.endConversation()
+        }
+        #endif
         // Keep the FSM in step with what is on screen (home/coucou → petit now).
         fsm.collapse()
         setMode(.compact)
@@ -594,6 +615,7 @@ final class IslandWindowController: NSWindowController {
 
         case .talkToCoucou:
             #if !APPSTORE
+            VoiceSpeaker.shared.stop()
             VoiceEngine.shared.startListeningDirectly()
             #endif
         }
@@ -1306,7 +1328,7 @@ struct GhostBotView: View {
 #if !APPSTORE
 extension IslandWindowController {
 
-    /// Run the intent derived from `transcript`, show VoiceResultView for 2 s (6 s for questions), then collapse.
+    /// Run the intent derived from `transcript`, show VoiceResultView, then continue conversation or collapse.
     @MainActor
     func handleVoiceCommand(_ transcript: String) async {
         let pills  = PillCatalog.available
@@ -1315,24 +1337,55 @@ extension IslandWindowController {
         // Propagate recognition locale so responses are in the spoken language.
         runner.commandLocale = VoiceEngine.shared.speechLocale
 
-        // ── Follow-up answer to a pending question ────────────────────────────────
-        if runner.pendingQuestion != nil {
-            let result = await runner.handleAnswer(transcript, availablePills: pills)
-            showVoiceResult(result, emote: result.outcome == .success ? BotEmote.happy : nil)
+        // ── Conversation end phrase ────────────────────────────────────────────────
+        let normTranscript = WakePhrase.normalise(transcript)
+        if isInConversation && TurnEndPolicy.conversationEndPhrases.contains(normTranscript) {
+            endConversation(speaking: true)
             return
         }
 
-        // ── Multi-action: "mets Gemini et enlève GitHub" ──────────────────────────
-        if let intents = IntentParser.parseMultiAction(transcript, pills: pills), intents.count >= 2 {
+        // ── Follow-up answer to a pending question ─────────────────────────────────
+        if runner.pendingQuestion != nil {
+            let result = await runner.handleAnswer(transcript, availablePills: pills)
+            if result.outcome == .success {
+                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            } else {
+                NotificationCenter.default.post(name: .botDizzy, object: nil)
+            }
+            AppState.shared.voiceResult = result
+            expand(to: .voiceResult)
+            speakAndContinueConversation(result)
+            return
+        }
+
+        // ── Multi-action: removals before additions ───────────────────────────────
+        if var intents = IntentParser.parseMultiAction(transcript, pills: pills), intents.count >= 2 {
+            // Sort: removals first
+            intents.sort { a, b in
+                let isRemoveA: Bool
+                switch a {
+                case .pillRemove, .pillRemoveMultiple: isRemoveA = true
+                default: isRemoveA = false
+                }
+                let isRemoveB: Bool
+                switch b {
+                case .pillRemove, .pillRemoveMultiple: isRemoveB = true
+                default: isRemoveB = false
+                }
+                return isRemoveA && !isRemoveB
+            }
             var parts: [String] = []
             var anyFailure = false
+            var lastSuccess: VoiceIntent? = nil
             for intent in intents {
                 let r = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
                 parts.append(r.message)
                 if case .failure = r.outcome { anyFailure = true }
                 // .question in multi-action: treat as failure (no re-listen in combined flow).
                 if case .question = r.outcome { anyFailure = true }
+                if case .success = r.outcome { lastSuccess = intent }
             }
+            if let last = lastSuccess { conversationContext.update(last) }
             let combined = VoiceActionResult(
                 outcome: anyFailure ? .failure : .success,
                 message: parts.joined(separator: " · ")
@@ -1342,18 +1395,59 @@ extension IslandWindowController {
             } else {
                 NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             }
-            showVoiceResult(combined)
+            AppState.shared.voiceResult = combined
+            expand(to: .voiceResult)
+            speakAndContinueConversation(combined)
             return
         }
 
-        // ── Single command ────────────────────────────────────────────────────────
-        let intent = IntentParser.parse(transcript, pills: pills)
-        let result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+        // ── Relative context resolution ────────────────────────────────────────────
+        let intent: VoiceIntent
+        if isInConversation,
+           let resolved = conversationContext.resolveRelative(transcript, pills: pills) {
+            intent = resolved
+        } else {
+            intent = IntentParser.parse(transcript, pills: pills)
+        }
+
+        // ── Single command ─────────────────────────────────────────────────────────
+        var result = await runner.run(intent, availablePills: pills, rawTranscript: transcript)
+        var effectiveIntent = intent
+
+        // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence).
+        if case .unknown = intent,
+           let brain = await VoiceBrain.shared.resolve(transcript, pills: pills) {
+            if !brain.intents.isEmpty {
+                // Run all brain intents: removals before additions (same rule as parseMultiAction).
+                var sorted = brain.intents
+                sorted.sort { a, b in
+                    let ra: Bool = { switch a { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
+                    let rb: Bool = { switch b { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
+                    return ra && !rb
+                }
+                var parts: [String] = []
+                var anyFailure = false
+                for bi in sorted {
+                    let r = await runner.run(bi, availablePills: pills, rawTranscript: transcript)
+                    parts.append(r.message)
+                    if case .failure  = r.outcome { anyFailure = true }
+                    if case .question = r.outcome { anyFailure = true }
+                    if case .success  = r.outcome { effectiveIntent = bi }
+                }
+                result = VoiceActionResult(
+                    outcome: anyFailure ? .failure : .success,
+                    message: parts.joined(separator: " · ")
+                )
+            } else if !brain.text.isEmpty {
+                result = VoiceActionResult(outcome: .success, message: brain.text)
+            }
+        }
 
         // Mochi reaction
         switch result.outcome {
         case .success:
             NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+            conversationContext.update(effectiveIntent)
         case .failure:
             NotificationCenter.default.post(name: .botDizzy, object: nil)
         case .question:
@@ -1365,16 +1459,27 @@ extension IslandWindowController {
         expand(to: .voiceResult)
 
         if case .question = result.outcome {
-            // Re-open listening in command phase (skip wake gate) so the answer goes straight
-            // to the command pipeline. Give 5 s initial silence — user needs to read the question.
-            voiceResultWork?.cancel()
-            voiceResultWork = nil
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-                guard self != nil else { return }
-                VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+            // Speak the question aloud, then re-listen once speech finishes.
+            // Give 5 s initial silence so the user has time to read/hear the question.
+            let speaker = VoiceSpeaker.shared
+            if VoiceSettings.speakEnabled {
+                speaker.speak(result.message, locale: VoiceEngine.shared.speechLocale)
+                speaker.onDidFinish = { [weak self] in
+                    Task { @MainActor in
+                        guard self != nil else { return }
+                        VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                    }
+                }
+            } else {
+                voiceResultWork?.cancel()
+                voiceResultWork = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                    guard self != nil else { return }
+                    VoiceEngine.shared.startListeningDirectly(firstWordTimeout: 5.0)
+                }
             }
         } else {
-            scheduleVoiceDismiss(delay: 2.0)
+            speakAndContinueConversation(result)
         }
     }
 
@@ -1388,6 +1493,57 @@ extension IslandWindowController {
         AppState.shared.voiceResult = result
         expand(to: .voiceResult)
         scheduleVoiceDismiss(delay: 2.0)
+    }
+
+    /// Speak the result message (if enabled) then start next conversation turn.
+    @MainActor
+    private func speakAndContinueConversation(_ result: VoiceActionResult) {
+        if !isInConversation { VoiceBrain.shared.beginConversation() }
+        isInConversation = true
+
+        let speaker = VoiceSpeaker.shared
+        if VoiceSettings.speakEnabled {
+            let locale = VoiceEngine.shared.speechLocale
+            speaker.speak(result.message, locale: locale)
+            speaker.onDidFinish = { [weak self] in
+                Task { @MainActor in
+                    self?.scheduleConversationContinue(delay: 0.3)
+                }
+            }
+        } else {
+            // No speech: continue after showing result for 1.5 s
+            scheduleConversationContinue(delay: 1.5)
+        }
+    }
+
+    /// Schedule the next conversation listening turn.
+    @MainActor
+    private func scheduleConversationContinue(delay: TimeInterval) {
+        voiceResultWork?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                guard let self, self.isInConversation else { return }
+                VoiceEngine.shared.startConversationTurn()
+            }
+        }
+        voiceResultWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
+    /// End conversation window, optionally trigger a farewell emote, then collapse.
+    @MainActor
+    private func endConversation(speaking: Bool) {
+        isInConversation = false
+        conversationContext.reset()
+        voiceResultWork?.cancel()
+        voiceResultWork = nil
+        VoiceEngine.shared.endConversation()
+        VoiceBrain.shared.endConversation()
+        if speaking {
+            // Brief farewell emote
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        }
+        scheduleVoiceDismiss(delay: 0.5)
     }
 
     @MainActor

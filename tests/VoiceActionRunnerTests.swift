@@ -23,6 +23,7 @@ final class MockMusic: MusicControlling, @unchecked Sendable {
     @MainActor func playPlaylist(_ n: String) async -> Bool { calls.append("playlist:\(n)"); return playlistResult }
     @MainActor func launchAndPlay() async      { calls.append("launchAndPlay") }
     @MainActor func launchSpotify() async      { calls.append("launchSpotify") }
+    @MainActor func openSearch(_ n: String)    { calls.append("openSearch:\(n)") }
 }
 
 @MainActor
@@ -124,10 +125,10 @@ enum VoiceActionRunnerTests {
         check("search → search:Daft Punk", music.calls.last, "search:Daft Punk")
         music.calls = []
 
-        // Search not found → failure
+        // Search not found → Apple Music search opened → success
         music.searchResult = false
         let searchFail = await runner.run(.musicPlaySearch(name: "XYZ"), availablePills: pills)
-        check("search not found → failure", searchFail.outcome, .failure)
+        check("search not found → failure", searchFail.outcome, .success)
         music.searchResult = true
         music.calls = []
 
