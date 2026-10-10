@@ -16,11 +16,12 @@ struct BotCanvasView: View {
     @StateObject private var engine = BotEngine()
 
     var body: some View {
-        TimelineView(.animation(paused: state.mode == .hidden || paused)) { timeline in
+        // 60 fps open, 30 fps in the small resting island: the engine still moves one
+        // 0.05 step per display frame (MochiFrameClock), so the motion is the same as at
+        // the display rate, with half to a quarter of the drawing.
+        TimelineView(.animation(minimumInterval: state.mode == .expanded ? 1.0 / 60.0 : 1.0 / 30.0,
+                                paused: state.mode == .hidden || paused)) { _ in
             Canvas { context, size in
-                let now = timeline.date.timeIntervalSinceReferenceDate
-                let dtRaw = min(0.05, now - engine.lastTime)
-                let dt = dtRaw
                 let look = lookXY(state: state)
                 engine.lookX = look.x
                 engine.lookY = look.y
@@ -86,7 +87,7 @@ struct BotCanvasView: View {
                 }
                 #endif
 
-                engine.update(dt: dt)
+                MochiFrameClock.advance(engine)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 // Rigid-roll: when Mochi wears an outfit (presence > 0.05) and is rolling,
@@ -193,6 +194,8 @@ struct BotCanvasView: View {
                                              nw: state.notchWidth, nh: state.notchHeight)
         let screen = IslandWindowController.islandScreen().frame
         let desktopTop = IslandWindowController.desktopTop
+        // The pointer read now, not from the island poll (which slows down far from it).
+        let mouse = DesktopSpace.topDown(NSEvent.mouseLocation, desktopTop: desktopTop)
         func botPoint(islandH: CGFloat) -> CGPoint {
             let (botCx, botCy, _, _) = botPosition(mode: state.mode, view: state.view,
                                                     islandW: islandW, islandH: islandH,
@@ -207,8 +210,8 @@ struct BotCanvasView: View {
             ? min(300, 240 + CGFloat(state.chatHistory.count) * 40)
             : islandH
         let botY = actualH == islandH ? botX : botPoint(islandH: actualH)
-        return (tanh((state.mousePosition.x - botX.x) / 260),
-                -tanh((state.mousePosition.y - botY.y) / 200))
+        return (tanh((mouse.x - botX.x) / 260),
+                -tanh((mouse.y - botY.y) / 200))
     }
 }
 
@@ -231,17 +234,6 @@ struct MiniBotCanvasView: View {
 
     @Environment(\.islandViewActive) private var viewActive
 
-    /// The rate the mini Mochis used to be drawn at: the island screen's refresh rate,
-    /// looked up at most every 2 s (the island can move to another display).
-    @MainActor private static var fpsCache: (value: Double, at: CFTimeInterval) = (60, -10)
-    @MainActor private static var displayFPS: Double {
-        let now = CACurrentMediaTime()
-        if now - fpsCache.at > 2 {
-            let fps = IslandWindowController.islandScreen().maximumFramesPerSecond
-            fpsCache = (Double(min(120, max(30, fps))), now)
-        }
-        return fpsCache.value
-    }
 
     var body: some View {
         // A 12–20 pt Mochi: 30 fps looks the same as the display rate and costs a quarter
@@ -249,14 +241,7 @@ struct MiniBotCanvasView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !viewActive)) { _ in
             Canvas { context, size in
                 engine.setDancing(isDancing)
-                // The engine moves 0.05 per step, one step per display frame as before:
-                // same motion, only fewer drawings.
-                let elapsed = min(1.0 / 15.0, max(0, CACurrentMediaTime() - engine.lastTime))
-                engine.stepDebt += elapsed * Self.displayFPS
-                let steps = min(8, Int(engine.stepDebt))
-                engine.stepDebt -= Double(steps)
-                if steps == 0 { engine.lastTime = CACurrentMediaTime() }
-                for _ in 0..<steps { engine.update(dt: 0.05) }
+                MochiFrameClock.advance(engine)
                 var ctx = context
                 engine.applyDance(&ctx, size: size)
                 engine.draw(context: ctx, size: size)
@@ -282,5 +267,34 @@ struct MiniBotCanvasView: View {
                 engine.eyeOverrideUntil = .greatestFiniteMagnitude
             }
         }
+    }
+}
+
+// MARK: - Frame clock
+
+/// Mochi's engine has always moved one `update(dt: 0.05)` per display frame (its look,
+/// colour, springs and particles are tuned to that). Drawing slower than the display must
+/// not slow Mochi down: each drawn frame runs the steps of the display frames it skipped.
+@MainActor
+enum MochiFrameClock {
+    /// The island screen's refresh rate, looked up at most every 2 s.
+    private static var fpsCache: (value: Double, at: CFTimeInterval) = (60, -10)
+    static var displayFPS: Double {
+        let now = CACurrentMediaTime()
+        if now - fpsCache.at > 2 {
+            let fps = IslandWindowController.islandScreen().maximumFramesPerSecond
+            fpsCache = (Double(min(120, max(30, fps))), now)
+        }
+        return fpsCache.value
+    }
+
+    static func advance(_ engine: BotEngine) {
+        let now = CACurrentMediaTime()
+        let elapsed = min(1.0 / 15.0, max(0, now - engine.lastTime))
+        engine.stepDebt += elapsed * displayFPS
+        let steps = min(8, Int(engine.stepDebt))
+        engine.stepDebt -= Double(steps)
+        if steps == 0 { engine.lastTime = now }
+        for _ in 0..<steps { engine.update(dt: 0.05) }
     }
 }
