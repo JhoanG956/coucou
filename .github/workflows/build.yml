@@ -90,6 +90,18 @@ jobs:
       - name: Claude settings file tests
         run: bash scripts/test-claude-settings.sh
 
+      - name: Turn end policy tests
+        run: bash scripts/test-turn-end-policy.sh
+
+      - name: Voice spotter generation tests
+        run: bash scripts/test-voice-spotter-gen.sh
+
+      - name: Voice wake blocked tests
+        run: bash scripts/test-voice-wake-blocked.sh
+
+      - name: Conversation context tests
+        run: bash scripts/test-conversation-context.sh
+
       - name: Build
         run: |
           xcodebuild \

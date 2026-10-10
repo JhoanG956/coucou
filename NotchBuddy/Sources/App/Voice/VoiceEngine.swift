@@ -87,8 +87,12 @@ final class VoiceEngine: ObservableObject {
 
     /// Initial silence timeout for the current direct-listen session.
     private var directInitialTimeout: TimeInterval = 3.0
-    private static let silenceTimeout:           TimeInterval = 1.2
-    private static let commandMaxTime:           TimeInterval = 10.0
+    private static let silenceTimeout:           TimeInterval = 1.5
+    private static let commandMaxTime:           TimeInterval = 20.0
+
+    // Conversation window
+    private(set) var isInConversation: Bool = false
+    private var conversationTurnWork: DispatchWorkItem? = nil
     private static let wakeWindowMax:            TimeInterval = 20.0
     private static let stallTimeout:             TimeInterval = 2.0
     private static let unavailableRebuildDelay:  TimeInterval = 10.0
@@ -96,6 +100,10 @@ final class VoiceEngine: ObservableObject {
     private static let maxRebuildsPerMinute                   = 5
 
     private static let cancelPhrases = ["annule", "annuler", "cancel", "laisse tomber", "never mind"]
+    private static let conversationEndPhrases: Set<String> = [
+        "merci", "c est bon", "c'est bon", "that s all", "that's all", "stop",
+        "laisse tomber", "annule", "annuler", "cancel", "never mind", "bye", "au revoir",
+    ]
 
     // MARK: - Init
 
@@ -104,6 +112,13 @@ final class VoiceEngine: ObservableObject {
         let buildHash = Bundle.main.object(forInfoDictionaryKey: "CoucouGitHash") as? String ?? "unknown"
         appendAppLog("nb.log", "[Voice] build \(buildHash)")
         observeSystemEvents()
+        VoiceSpeaker.shared.onDidFinish = { [weak self] in
+            Task { @MainActor in
+                guard let self, self.isListeningForCommand else { return }
+                self.audio?.resetVAD()
+                appendAppLog("nb.log", "[Voice] speaker finished, VAD recalibrated")
+            }
+        }
         if isEnabled && !isPaused { startAudioPipeline() }
     }
 
@@ -120,6 +135,21 @@ final class VoiceEngine: ObservableObject {
     }
 
     func cancelListening() { endCommand(postFinished: false) }
+
+    /// Start the next conversation turn (re-listen for 8 s without wake phrase).
+    /// Called by IslandWindowController after showing a command result.
+    func startConversationTurn() {
+        isInConversation = true
+        startListeningDirectly(firstWordTimeout: 8.0)
+    }
+
+    /// End the conversation window and return to normal wake-phrase mode.
+    func endConversation() {
+        isInConversation = false
+        conversationTurnWork?.cancel()
+        conversationTurnWork = nil
+        endCommand(postFinished: false)
+    }
 
     /// `firstWordTimeout`: seconds of silence allowed before the first word (default 3 s;
     /// pass `Self.directListenInitialTimeout` = 5 s for follow-up questions so the user
@@ -165,6 +195,7 @@ final class VoiceEngine: ObservableObject {
 
         let a = VoiceAudio()
         let s = WakeSpotter()
+        s.additionalContextualStrings = PillCatalog.available.map { $0.name }
 
         // ── Spotter callbacks ─────────────────────────────────────────────────
 
@@ -485,13 +516,19 @@ final class VoiceEngine: ObservableObject {
     }
 
     private func commandUpdate(_ command: String) {
+        // Semi-duplex: ignore updates while Coucou is speaking.
+        guard !VoiceSpeaker.shared.isSpeaking else { return }
         commandTranscript = command
         let wc = command.split(separator: " ").count
         if wc > lastWordCount {
             lastWordCount = wc
             resetSilenceTimer()
             let trimmed = command.trimmingCharacters(in: .whitespaces)
-            if Self.cancelPhrases.contains(WakePhrase.normalise(trimmed)) {
+            let normTrimmed = WakePhrase.normalise(trimmed)
+            if Self.cancelPhrases.contains(normTrimmed) {
+                endCommand(postFinished: true)
+            } else if isInConversation && Self.conversationEndPhrases.contains(normTrimmed) {
+                // Post voiceFinished with the end phrase so IslandWindowController can handle cleanup
                 endCommand(postFinished: true)
             }
         }
@@ -501,7 +538,12 @@ final class VoiceEngine: ObservableObject {
 
     private func resetSilenceTimer() {
         silenceWork?.cancel()
-        let timeout = lastWordCount > 0 ? Self.silenceTimeout : directInitialTimeout
+        let timeout: TimeInterval
+        if lastWordCount == 0 {
+            timeout = directInitialTimeout
+        } else {
+            timeout = TurnEndPolicy.silenceDelay(for: WakePhrase.normalise(commandTranscript))
+        }
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
         }

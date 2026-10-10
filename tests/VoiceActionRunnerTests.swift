@@ -23,6 +23,7 @@ final class MockMusic: MusicControlling, @unchecked Sendable {
     @MainActor func playPlaylist(_ n: String) async -> Bool { calls.append("playlist:\(n)"); return playlistResult }
     @MainActor func launchAndPlay() async      { calls.append("launchAndPlay") }
     @MainActor func launchSpotify() async      { calls.append("launchSpotify") }
+    @MainActor func openSearch(_ n: String)    { calls.append("openSearch:\(n)") }
 }
 
 @MainActor

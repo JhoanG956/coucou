@@ -1265,6 +1265,11 @@ struct SettingsView: View {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
+                Toggle(String(localized: "voice.setting-speak"), isOn: Binding(
+                    get: { VoiceSettings.speakEnabled },
+                    set: { VoiceSettings.speakEnabled = $0 }
+                ))
+
                 Text("When enabled, Coucou listens for the wake word «\u{202F}OK Coucou\u{202F}». Speech recognition runs entirely on-device — no audio or transcript leaves your Mac.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -1291,6 +1296,21 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+
+                // Local model status
+                #if canImport(FoundationModels)
+                if #available(macOS 26, *) {
+                    let status = VoiceBrain.shared.modelStatus
+                    HStack(spacing: 6) {
+                        Image(systemName: status == .available ? "cpu.fill" : "cpu")
+                            .foregroundColor(status == .available ? .green : .secondary)
+                        Text(localModelStatusLabel(status))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                #endif
 
                 if let err = voiceEngine.audioError {
                     HStack(spacing: 6) {
@@ -1337,6 +1357,17 @@ struct SettingsView: View {
                 && VoiceSettings.speechStatus == .granted
         }
     }
+
+    #if !APPSTORE
+    private func localModelStatusLabel(_ status: LocalModelStatus) -> String {
+        switch status {
+        case .available:            return String(localized: "voice.model-available")
+        case .notMacOS26:           return String(localized: "voice.model-not-macos26")
+        case .appleIntelligenceOff: return String(localized: "voice.model-ai-off")
+        case .languageUnsupported:  return String(localized: "voice.model-lang")
+        }
+    }
+    #endif
 
     private var micStatusIcon:  String { VoiceSettings.micStatus    == .granted ? "checkmark.circle.fill" : "xmark.circle.fill" }
     private var micStatusColor: Color  { VoiceSettings.micStatus    == .granted ? .green : .red }
