@@ -148,6 +148,9 @@ final class VoiceEngine: ObservableObject {
         guard isEnabled, !isPaused, !isListeningForCommand else { return }
         guard let audio = audio, let spotter = spotter, let loc = locale else { return }
         wakeWindowWork?.cancel(); wakeWindowWork = nil
+        // Close any active wake window first — TTS audio can trigger VAD and leave
+        // an active window open; beginWindow returns false (alreadyActive) otherwise.
+        if spotter.isActive { spotter.endWindow() }
         isListeningForCommand = true
         commandTranscript     = ""
         lastWordCount         = 0
@@ -158,7 +161,20 @@ final class VoiceEngine: ObservableObject {
         NotificationCenter.default.post(name: .voiceWoke, object: "direct" as NSString)
         let preroll = audio.drainPreroll()
         // startInCommandPhase: skip wake-phrase gate, deliver speech directly as command.
-        spotter.beginWindow(locale: loc, preroll: preroll, startInCommandPhase: true)
+        let started = spotter.beginWindow(locale: loc, preroll: preroll, startInCommandPhase: true)
+        if !started {
+            appendAppLog("nb.log", "[Voice] direct listen refused (alreadyActive/unavailable), retrying in 150ms")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self, self.isListeningForCommand else { return }
+                guard let spotter = self.spotter, let audio = self.audio, let loc = self.locale else { return }
+                let preroll2 = audio.drainPreroll()
+                let started2 = spotter.beginWindow(locale: loc, preroll: preroll2, startInCommandPhase: true)
+                if !started2 {
+                    appendAppLog("nb.log", "[Voice] direct listen still refused, giving up")
+                    self.endCommand(postFinished: true)
+                }
+            }
+        }
         resetSilenceTimer()
         let maxItem = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.endCommand(postFinished: true) }
@@ -248,6 +264,10 @@ final class VoiceEngine: ObservableObject {
 
         a.onVoiceStart = { [weak self] in
             guard let self else { return }
+            guard !VoiceSpeaker.shared.isSpeaking else {
+                appendAppLog("nb.log", "[Voice] vad start ignored (speaker active)")
+                return
+            }
             appendAppLog("nb.log", "[Voice] vad start")
             voiceSegmentActive = true
             backoff.reset()

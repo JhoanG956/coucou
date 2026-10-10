@@ -202,6 +202,39 @@ enum IntentParserTests {
               parse("mets le bidule Stripe", pills: pills),
               .pillAdd(id: "integration_stripe"))
 
+        // ── Filler words: "pile", "aussi", "stp" ────────────────────────
+        check("ajoute la pile GitHub",
+              parse("ajoute la pile GitHub", pills: pills),
+              .pillAdd(id: "integration_github"))
+        check("ajoute aussi Stripe",
+              parse("ajoute aussi Stripe", pills: pills),
+              .pillAdd(id: "integration_stripe"))
+        check("enlève la pile Vercel",
+              parse("enlève la pile Vercel", pills: pills),
+              .pillRemove(id: "integration_vercel"))
+
+        // ── New add triggers ─────────────────────────────────────────────
+        check("je veux GitHub",
+              parse("je veux GitHub", pills: pills),
+              .pillAdd(id: "integration_github"))
+        check("il me faut Notion",
+              parse("il me faut Notion", pills: pills),
+              .pillAdd(id: "integration_notion"))
+
+        // ── New remove triggers ──────────────────────────────────────────
+        check("vire GitHub",
+              parse("vire GitHub", pills: pills),
+              .pillRemove(id: "integration_github"))
+        check("dégage Vercel",
+              parse("dégage Vercel", pills: pills),
+              .pillRemove(id: "integration_vercel"))
+        check("enlève-moi Notion",
+              parse("enlève-moi Notion", pills: pills),
+              .pillRemove(id: "integration_notion"))
+        check("plus besoin de Stripe",
+              parse("plus besoin de Stripe", pills: pills),
+              .pillRemove(id: "integration_stripe"))
+
         // ── parseMultiAction ─────────────────────────────────────────────────
         checkMultiAction("mets le truc Gemini et enlève GitHub",
                          parseMulti("mets le truc Gemini et enlève GitHub"),
@@ -212,6 +245,45 @@ enum IntentParserTests {
         checkMultiAction("add GitHub then remove Vercel",
                          parseMulti("add GitHub then remove Vercel"),
                          [.pillAdd(id: "integration_github"), .pillRemove(id: "integration_vercel")])
+        // Comma splitting
+        checkMultiAction("ajoute GitHub, enlève Vercel",
+                         parseMulti("ajoute GitHub, enlève Vercel"),
+                         [.pillAdd(id: "integration_github"), .pillRemove(id: "integration_vercel")])
+
+        // No separator: a second action verb starts a new action
+        checkMultiAction("ajoute Stripe enlève Vercel",
+                         parseMulti("ajoute Stripe enlève Vercel"),
+                         [.pillAdd(id: "integration_stripe"), .pillRemove(id: "integration_vercel")])
+        checkMultiAction("enlève GitHub mets Notion",
+                         parseMulti("enlève GitHub mets Notion"),
+                         [.pillRemove(id: "integration_github"), .pillAdd(id: "integration_notion")])
+        checkMultiAction("tu peux enlever GitHub et ajouter Notion",
+                         parseMulti("tu peux enlever GitHub et ajouter Notion"),
+                         [.pillRemove(id: "integration_github"), .pillAdd(id: "integration_notion")])
+        checkMultiAction("enlève Vercel ajoute Notion et Stripe",
+                         parseMulti("enlève Vercel ajoute Notion et Stripe"),
+                         [.pillRemove(id: "integration_vercel"),
+                          .pillAddMultiple(ids: ["integration_notion", "integration_stripe"])])
+        checkMultiAction("retire Vercel, ajoute Notion",
+                         parseMulti("retire Vercel, ajoute Notion"),
+                         [.pillRemove(id: "integration_vercel"), .pillAdd(id: "integration_notion")])
+        checkMultiAction("pause et ajoute Notion",
+                         parseMulti("pause et ajoute Notion"),
+                         [.musicPause, .pillAdd(id: "integration_notion")])
+        checkMultiAction("lance la musique ajoute Notion",
+                         parseMulti("lance la musique ajoute Notion"),
+                         [.musicPlay(target: nil), .pillAdd(id: "integration_notion")])
+        // A band name with "et" stays one search
+        checkNilMultiAction("mets du Simon et Garfunkel",
+                            parseMulti("mets du Simon et Garfunkel"))
+        checkNilMultiAction("ajoute Notion et Stripe",
+                            parseMulti("ajoute Notion et Stripe"))
+        // Trailing location is ignored
+        check("ajoute Notion dans les pilules",
+              parse("ajoute Notion dans les pilules", pills: pills), .pillAdd(id: "integration_notion"))
+        check("mets Notion dans le notch",
+              parse("mets Notion dans le notch", pills: pills), .pillAdd(id: "integration_notion"))
+
         // Single pill with conjunction → NOT multi-action (fallback to single-intent)
         checkNilMultiAction("mets Gemini et Cursor",
                             parseMulti("mets Gemini et Cursor"))

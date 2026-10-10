@@ -21,6 +21,10 @@ enum IntentParser {
         var (fwords, frawWords) = defilter(words, rawWords: rawWords0)
         guard !fwords.isEmpty else { return .unknown }
 
+        // ── 0. Strip a trailing location: "… dans les pilules", "… dans le notch" ──
+        (fwords, frawWords) = stripTrailingLocation(fwords, rawWords: frawWords)
+        guard !fwords.isEmpty else { return .unknown }
+
         // ── 0a. Strip politeness prefixes from the start ─────────────────────
         //    "tu peux", "est-ce que tu peux", "peux-tu", "can you", etc.
         for prefix in politenessPrefixes {
@@ -237,23 +241,93 @@ enum IntentParser {
     /// `.pillAddMultiple`).
     static func parseMultiAction(_ raw: String, pills: [PillDefinition] = []) -> [VoiceIntent]? {
         let conjunctions: Set<String> = ["et", "puis", "ensuite", "and", "then"]
-        let normWords = normalise(raw).split(separator: " ").map(String.init)
 
-        // Split normalised word array on conjunctions.
-        var normParts: [[String]] = []
-        var cur: [String] = []
-        for w in normWords {
-            if conjunctions.contains(w) {
-                if !cur.isEmpty { normParts.append(cur); cur = [] }
-            } else { cur.append(w) }
+        // 1. Commas (before normalise, which strips punctuation).
+        let commaParts = raw.split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        // 2. Action verbs: "ajoute Stripe enlève Vercel" → two pieces, no "et" needed.
+        //    Words before the first verb stay with it ("tu peux enlever GitHub").
+        let verbPieces = commaParts.flatMap { splitOnActionVerbs($0) }
+
+        // 3. Inside a piece, split on conjunctions when every part parses on its own
+        //    ("pause et ajoute Notion", "mets du Daft Punk et monte le son"). Otherwise the
+        //    piece stays whole ("ajoute Notion et Stripe" = one multi-add, "mets du Simon
+        //    et Garfunkel" = one search), unless the whole is a music search swallowing a
+        //    second command.
+        var intents: [VoiceIntent] = []
+        for piece in verbPieces {
+            let words = normalise(piece).split(separator: " ").map(String.init)
+            var parts: [[String]] = []
+            var cur: [String] = []
+            for w in words {
+                if conjunctions.contains(w) {
+                    if !cur.isEmpty { parts.append(cur); cur = [] }
+                } else { cur.append(w) }
+            }
+            if !cur.isEmpty { parts.append(cur) }
+            let sub = parts.map { parse($0.joined(separator: " "), pills: pills) }
+            if parts.count >= 2, sub.allSatisfy({ $0 != .unknown }) {
+                intents.append(contentsOf: sub)
+                continue
+            }
+            let whole = parse(piece, pills: pills)
+            guard whole != .unknown else { return nil }
+            intents.append(whole)
         }
-        if !cur.isEmpty { normParts.append(cur) }
-        guard normParts.count >= 2 else { return nil }
+        return intents.count >= 2 ? intents : nil
+    }
 
-        // Each part must produce a non-.unknown intent.
-        let intents = normParts.map { parse($0.joined(separator: " "), pills: pills) }
-        let allValid = intents.allSatisfy { if case .unknown = $0 { return false }; return true }
-        return allValid ? intents : nil
+    /// Action verbs that start a new action inside one sentence (normalised forms,
+    /// imperative and infinitive, FR + EN).
+    static let segmentVerbs: Set<String> = [
+        "ajoute", "ajouter", "rajoute", "rajouter", "mets", "met", "mettre", "remets", "remettre",
+        "active", "activer", "enleve", "enlever", "retire", "retirer", "supprime", "supprimer",
+        "vire", "virer", "degage", "degager", "desactive", "desactiver", "cache", "cacher",
+        "lance", "lancer", "joue", "jouer",
+        "add", "remove", "put", "enable", "disable", "play",
+    ]
+
+    /// "ajoute Stripe enleve Vercel" → ["ajoute Stripe", "enleve Vercel"].
+    /// A new segment starts at an action verb only when the current one already has a verb.
+    static func splitOnActionVerbs(_ segment: String) -> [String] {
+        let words = segment.split(separator: " ").map(String.init)
+        var parts: [[String]] = []
+        var cur: [String] = []
+        var curHasVerb = false
+        for w in words {
+            let isVerb = segmentVerbs.contains(normalise(w))
+            if isVerb && curHasVerb {
+                parts.append(cur); cur = []; curHasVerb = false
+            }
+            cur.append(w)
+            if isVerb { curHasVerb = true }
+        }
+        if !cur.isEmpty { parts.append(cur) }
+        // "mets Gemini et | enlève GitHub": the joining word stays out of both pieces.
+        let joins: Set<String> = ["et", "puis", "ensuite", "and", "then"]
+        return parts.compactMap { p in
+            var p = p
+            while let l = p.last,  joins.contains(normalise(l)) { p.removeLast() }
+            while let f = p.first, joins.contains(normalise(f)) { p.removeFirst() }
+            return p.isEmpty ? nil : p.joined(separator: " ")
+        }
+    }
+
+    /// Drops a trailing "dans les pilules" / "dans le notch" / "dans la barre" (after defilter,
+    /// so "piles" is already gone and "mes" is already "les").
+    private static func stripTrailingLocation(
+        _ words: [String], rawWords: [String]
+    ) -> ([String], [String]) {
+        guard let i = words.lastIndex(of: "dans"), i > 0 else { return (words, rawWords) }
+        let tail = Array(words[(i + 1)...])
+        let articles: Set<String> = ["les", "la", "le", "l"]
+        let places:   Set<String> = ["pilules", "pilule", "notch", "encoche", "barre", "liste"]
+        let ok = (tail.count == 1 && articles.contains(tail[0]))
+              || (tail.count == 2 && articles.contains(tail[0]) && places.contains(tail[1]))
+        guard ok else { return (words, rawWords) }
+        return (Array(words[..<i]), Array(rawWords[..<min(i, rawWords.count)]))
     }
 
     // MARK: - Normalisation
@@ -289,7 +363,8 @@ enum IntentParser {
         // "truc", "chose", "machin", "bidule" = placeholder words used before an entity name
         // e.g. "mets le truc Gemini" → "mets Gemini"
         let fillers:  Set<String>    = ["un", "peu", "s", "il", "te", "plait", "moi",
-                                        "truc", "chose", "machin", "bidule"]
+                                        "truc", "chose", "machin", "bidule",
+                                        "pile", "piles", "aussi", "stp"]
         let synonyms: [String: String] = ["ma": "la", "mon": "le", "mes": "les"]
         var fw: [String] = []
         var fr: [String] = []
@@ -351,7 +426,7 @@ enum IntentParser {
     private static func stripArticles(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
                                       "some", "the", "a", "an", "pilule", "pill",
-                                      "ma", "mon", "mes"]
+                                      "pile", "piles", "ma", "mon", "mes"]
         var ws = name.split(separator: " ").map(String.init)
         while let first = ws.first, articles.contains(first) { ws.removeFirst() }
         return ws.joined(separator: " ")
@@ -361,7 +436,7 @@ enum IntentParser {
     private static func stripArticlesRaw(_ name: String) -> String {
         let articles: Set<String> = ["du", "de", "la", "le", "les", "des", "l",
                                       "some", "the", "a", "an", "pilule", "pill",
-                                      "ma", "mon", "mes"]
+                                      "pile", "piles", "ma", "mon", "mes"]
         var ws = name.split(separator: " ").map(String.init)
         while let first = ws.first, articles.contains(first.lowercased()) { ws.removeFirst() }
         return ws.joined(separator: " ")
@@ -551,11 +626,13 @@ enum IntentParser {
     private static let pillAddOnlyTriggers: [[String]] = [
         ["active"], ["affiche"], ["montre"], ["rajoute"], ["ajoute"],
         ["add"], ["enable"], ["show"], ["activate"],
+        ["je", "veux"], ["me", "faut"],
     ]
 
     private static let pillRemoveTriggers: [[String]] = [
         ["enleve"], ["supprime"], ["desactive"], ["cache"], ["retire"], ["efface"],
         ["remove"], ["disable"], ["hide"], ["delete"],
+        ["vire"], ["degage"], ["enleve", "moi"], ["plus", "besoin", "de"],
     ]
 
     // Bare music verbs (single word → musicPlay)
