@@ -1315,13 +1315,31 @@ struct SettingsView: View {
                                 ElevenLabsTTS.shared.reset()
                             }
                         }
-                        Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
-                            Text(String(localized: "voice.tts-female")).tag("female")
-                            Text(String(localized: "voice.tts-male")).tag("male")
+                    }
+
+                    Picker(String(localized: "voice.tts-gender"), selection: $elevenGender) {
+                        Text(String(localized: "voice.tts-female")).tag("female")
+                        Text(String(localized: "voice.tts-male")).tag("male")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 220)
+                    .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
+
+                    if ttsEngine == "system" {
+                        let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
+                                                                gender: elevenGender)
+                        Text(String(format: String(localized: "voice.mac-voice-current %@"), current))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(String(localized: "voice.mac-voices-help"))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(String(localized: "voice.mac-voices-open")) {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") {
+                                NSWorkspace.shared.open(url)
+                            }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 220)
-                        .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
                     }
 
                     Button(String(localized: "voice.tts-test")) {
