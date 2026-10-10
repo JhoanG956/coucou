@@ -117,7 +117,7 @@ final class VoiceBrain {
             Ne pose une question que si tu as vraiment besoin d'une précision pour agir : une seule, courte, qui finit par « ? ». Sinon, ne finis jamais par une question.
             Utilise les outils pour les pilules et la musique.
             Pour toute question sur Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, les agents (Claude Code, Codex…), le plan Claude ou Codex, la musique ou la météo, appelle d'abord l'outil service et réponds avec ses données, sans rien inventer.
-            Pour un mail, appelle l'outil mail : il prépare le mail dans Mail, c'est l'utilisateur qui clique sur Envoyer. Si on te demande de l'écrire, rédige toi-même le texte.
+            Pour un mail, appelle l'outil mail : Coucou demande ce qui manque, puis ouvre le mail dans le notch et c'est l'utilisateur qui clique sur Envoyer. Si on te demande de l'écrire, rédige toi-même le texte.
             Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
             """
         }
@@ -127,7 +127,7 @@ final class VoiceBrain {
         Only ask a question when you truly need a detail to act: one short question ending with "?". Otherwise never end with a question.
         Use the tools for pills and music.
         For any question about Stripe, GitHub, Vercel, Resend, n8n, Notion, Cal.com, agents (Claude Code, Codex…), the Claude or Codex plan, music or the weather, call the service tool first and answer from its data, never invent.
-        For an email, call the mail tool: it prepares the email in Mail and the user clicks Send. When asked to write it, write the text yourself.
+        For an email, call the mail tool: Coucou asks for what is missing, then opens the email in the notch and the user clicks Send. When asked to write it, write the text yourself.
         For pill names, use the exact name the user said.
         """
     }
@@ -410,7 +410,7 @@ struct MusicTool: Tool, @unchecked Sendable {
 @available(macOS 26, *)
 struct MailTool: Tool, @unchecked Sendable {
     let name        = "mail"
-    let description = "Prepare an email in Apple Mail (the user clicks Send). Recipient is a contact name or an email address; file is an optional file name to attach (searched in Downloads, Desktop, Documents, Pictures)."
+    let description = "Prepare an email (Coucou asks for anything missing; the user clicks Send). Recipient is a contact name or an email address; file is an optional file name to attach (searched in Downloads, Desktop, Documents, Pictures)."
 
     @Generable
     struct Arguments {

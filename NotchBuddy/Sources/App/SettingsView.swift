@@ -1266,8 +1266,19 @@ struct SettingsView: View {
     @AppStorage("voiceListenLanguage") private var listenLanguage: String = "auto"
     @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
     @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
+    @AppStorage("voicePitchFemale")    private var pitchFemale: Double = VoiceSettings.defaultPitchFemale
+    @AppStorage("voicePitchMale")      private var pitchMale: Double = VoiceSettings.defaultPitchMale
+    @AppStorage("voiceWebSearchEnabled") private var webSearchEnabled: Bool = false
+    @State private var webKeySaved: Bool = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty
     @State private var elevenKeyDraft: String = ""
     @State private var elevenKeySaved: Bool = KeychainStore.shared.get(ElevenLabsTTS.keyName) != nil
+
+    private func speakVoiceSample() {
+        let en = voiceLanguage != "fr"
+        VoiceSpeaker.shared.speak(en ? "Hi, I'm Coucou. Say OK Coucou whenever you need me."
+                                     : "Salut, c'est Coucou. Dis OK Coucou quand tu as besoin de moi.",
+                                  locale: Locale(identifier: en ? "en-US" : "fr-FR"))
+    }
 
     @ViewBuilder private var voiceSection: some View {
         GroupBox(String(localized: "«\u{202F}OK Coucou\u{202F}» — voice wake word")) {
@@ -1326,6 +1337,15 @@ struct SettingsView: View {
                     .onChange(of: elevenGender) { _, _ in ElevenLabsTTS.shared.reset() }
 
                     if ttsEngine == "system" {
+                        HStack(spacing: 8) {
+                            Text(String(localized: "voice.tts-pitch"))
+                            Slider(value: elevenGender == "male" ? $pitchMale : $pitchFemale,
+                                   in: 0.8...1.6, step: 0.05) { editing in
+                                // Released: hear the new pitch right away.
+                                if !editing { speakVoiceSample() }
+                            }
+                            .frame(maxWidth: 180)
+                        }
                         let current = VoiceSpeaker.macVoiceName(for: Locale(identifier: voiceLanguage == "fr" ? "fr-FR" : "en-US"),
                                                                 gender: elevenGender)
                         Text(String(format: String(localized: "voice.mac-voice-current %@"), current))
@@ -1342,15 +1362,19 @@ struct SettingsView: View {
                         }
                     }
 
-                    Button(String(localized: "voice.tts-test")) {
-                        let en = voiceLanguage != "fr"
-                        VoiceSpeaker.shared.speak(en ? "Hi, I'm Coucou. Say OK Coucou whenever you need me."
-                                                     : "Salut, c'est Coucou. Dis OK Coucou quand tu as besoin de moi.",
-                                                  locale: Locale(identifier: en ? "en-US" : "fr-FR"))
-                    }
+                    Button(String(localized: "voice.tts-test")) { speakVoiceSample() }
                 }
 
                 Toggle(String(localized: "voice.setting-captions"), isOn: $captionEnabled)
+
+                Toggle(String(localized: "voice.setting-web"), isOn: $webSearchEnabled)
+                    .disabled(!webKeySaved && !webSearchEnabled)
+                Text(webKeySaved ? String(localized: "voice.setting-web-desc")
+                                 : String(localized: "voice.setting-web-nokey"))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onAppear { webKeySaved = !(KeychainStore.shared.get("anthropic-api-key") ?? "").isEmpty }
 
                 Toggle(String(localized: "voice.setting-weather"), isOn: $weatherEnabled)
                 if weatherEnabled {

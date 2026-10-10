@@ -136,10 +136,10 @@ final class VoiceEngine: ObservableObject {
 
     /// Start the next conversation turn (re-listen for 8 s without wake phrase).
     /// Called by IslandWindowController after showing a command result.
-    func startConversationTurn() {
+    func startConversationTurn(firstWordTimeout: TimeInterval = 8.0) {
         isInConversation = true
         audio?.resetVAD()
-        startListeningDirectly(firstWordTimeout: 8.0)
+        startListeningDirectly(firstWordTimeout: firstWordTimeout)
     }
 
     /// End the conversation window and return to normal wake-phrase mode.
@@ -189,7 +189,8 @@ final class VoiceEngine: ObservableObject {
             Task { @MainActor in self?.endCommand(postFinished: true) }
         }
         commandMaxWork = maxItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.directListenMaxTime, execute: maxItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(Self.directListenMaxTime, firstWordTimeout + 10),
+                                      execute: maxItem)
     }
 
     /// Locale used for the current recognition session — nil if pipeline is not running.
