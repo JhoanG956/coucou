@@ -103,7 +103,7 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         let utt = AVSpeechUtterance(string: text)
         utt.pitchMultiplier = 1.15
         utt.rate = AVSpeechUtteranceDefaultSpeechRate * 1.1
-        utt.voice = _bestVoice(for: locale)
+        utt.voice = Self.bestVoice(for: locale, gender: VoiceSettings.elevenGender)
         currentUtterance = utt
         synth.speak(utt)
     }
@@ -124,15 +124,15 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
         }
     }
 
-    /// Picks the best installed voice for the spoken locale: same region first
-    /// (en-US before en-GB), then quality (.premium > .enhanced > default).
-    /// Novelty voices and the user's Personal Voice are never used.
-    private func _bestVoice(for locale: Locale?) -> AVSpeechSynthesisVoice? {
+    /// Best installed Mac voice for the language and the chosen gender (Settings → Voice):
+    /// quality first (.premium > .enhanced > default — Ava Premium beats a compact US voice),
+    /// then same region. Novelty voices and the user's Personal Voice are never used.
+    /// Falls back to any gender when none of the chosen one is installed.
+    static func bestVoice(for locale: Locale?, gender: String) -> AVSpeechSynthesisVoice? {
         guard let loc = locale else { return nil }
         let lang = loc.language.languageCode?.identifier ?? ""
         guard !lang.isEmpty else { return nil }
-        let region = loc.region?.identifier
-        let exact  = region.map { "\(lang)-\($0)" }
+        let exact = loc.region.map { "\(lang)-\($0.identifier)" }
 
         let voices = AVSpeechSynthesisVoice.speechVoices().filter { v in
             (v.language == lang || v.language.hasPrefix(lang + "-"))
@@ -140,11 +140,23 @@ final class VoiceSpeaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDe
                 && !v.voiceTraits.contains(.isPersonalVoice)
         }
         guard !voices.isEmpty else { return AVSpeechSynthesisVoice(language: exact ?? lang) }
+        let wanted: AVSpeechSynthesisVoiceGender = gender == "male" ? .male : .female
+        let pool = voices.contains { $0.gender == wanted } ? voices.filter { $0.gender == wanted } : voices
 
         func rank(_ v: AVSpeechSynthesisVoice) -> (Int, Int) {
-            (v.language == exact ? 1 : 0, v.quality.rawValue)
+            (v.quality.rawValue, v.language == exact ? 1 : 0)
         }
-        return voices.max { rank($0) < rank($1) }
+        return pool.max { rank($0) < rank($1) }
+    }
+
+    /// "Ava (Premium)" — shown in Settings so it is clear which voice Coucou uses.
+    static func macVoiceName(for locale: Locale, gender: String) -> String {
+        guard let v = bestVoice(for: locale, gender: gender) else { return "—" }
+        switch v.quality {
+        case .premium:  return "\(v.name) (Premium)"
+        case .enhanced: return "\(v.name) (Enhanced)"
+        default:        return v.name
+        }
     }
 
     // MARK: - AVSpeechSynthesizerDelegate
