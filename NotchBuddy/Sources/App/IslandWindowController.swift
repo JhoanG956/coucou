@@ -25,7 +25,11 @@ final class IslandWindowController: NSWindowController {
     // Voice result auto-dismiss timer
     #if !APPSTORE
     private var voiceResultWork: DispatchWorkItem?
+    /// True only while Coucou listens for the answer to a question it asked.
     private var isInConversation = false
+    /// Context (last action, on-device model session) is kept a little after a turn so
+    /// "OK Coucou, et Stripe aussi" still works; this resets it.
+    private var voiceContextExpiry: DispatchWorkItem?
     private var conversationContext = ConversationContext()
     private var consecutiveFailures = 0
     private var hasSpokenPasCompris = false
@@ -340,6 +344,8 @@ final class IslandWindowController: NSWindowController {
             let isDirect = (note.object as? String) == "direct"
             Task { @MainActor [weak self] in
                 // Genuine wake phrase (not programmatic re-listen) → clear any pending question
+                AppState.shared.voiceActive = true
+                self?.voiceContextExpiry?.cancel()
                 if !isDirect {
                     VoiceActionRunner.shared.pendingQuestion = nil
                     // The island stays compact now: the tick says "I heard OK Coucou".
@@ -364,14 +370,8 @@ final class IslandWindowController: NSWindowController {
                         self.expand(to: .voiceResult)
                         self.scheduleVoiceDismiss(delay: 1.5)
                     } else if self.isInConversation {
-                        // Conversation ended by 8-second silence
-                        self.isInConversation = false
-                        self.conversationContext.reset()
-                        self.voiceResultWork?.cancel()
-                        self.voiceResultWork = nil
-                        VoiceEngine.shared.endConversation()
-                        VoiceBrain.shared.endConversation()
-                        self.scheduleVoiceDismiss(delay: 0.3)
+                        // No answer to Coucou's question: stop listening.
+                        self.closeVoiceTurn()
                     } else {
                         self.fsm.voiceFinished()
                     }
@@ -620,12 +620,16 @@ final class IslandWindowController: NSWindowController {
         finishedPinTimer?.cancel()
         #if !APPSTORE
         VoiceSpeaker.shared.stop()
-        if isInConversation {
+        if isInConversation || AppState.shared.voiceActive {
+            // Closing the island ends the voice exchange (speech was just cut, so its
+            // "finished" callback will not come): reset everything that it would have.
             isInConversation = false
             voiceResultWork?.cancel()
             voiceResultWork = nil
             VoiceEngine.shared.endConversation()
-            VoiceBrain.shared.endConversation()
+            VoiceCaptionManager.shared.hide(after: 0)
+            AppState.shared.voiceResult = nil
+            AppState.shared.voiceActive = false
         }
         #endif
         // Keep the FSM in step with what is on screen (home/coucou → petit now).
@@ -1444,7 +1448,7 @@ extension IslandWindowController {
         let normTranscript = WakePhrase.normalise(transcript)
         if isInConversation && TurnEndPolicy.conversationEndPhrases.contains(normTranscript) {
             VoiceTranscriptHistory.shared.record(transcript: transcript, note: "end", origin: .end)
-            endConversation(speaking: true)
+            closeVoiceTurn()
             return
         }
 
@@ -1460,7 +1464,7 @@ extension IslandWindowController {
                     // Never log the words themselves (VOICE.md: no transcript on disk).
                     appendAppLog("nb.log", "[Voice] ignoring short spurious transcript")
                     VoiceTranscriptHistory.shared.record(transcript: transcript, note: "—", origin: .ignored)
-                    scheduleConversationContinue(delay: 0.2)
+                    closeVoiceTurn()
                     return
                 }
             }
@@ -1470,9 +1474,7 @@ extension IslandWindowController {
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
             VoiceTranscriptHistory.shared.record(transcript: transcript, note: result.message, origin: .answer)
-            if result.outcome == .success {
-                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
-            } else {
+            if result.outcome != .success {
                 NotificationCenter.default.post(name: .botDizzy, object: nil)
             }
             VoiceCaptionManager.shared.setUserLine(transcript)
@@ -1520,8 +1522,6 @@ extension IslandWindowController {
             )
             if anyFailure {
                 NotificationCenter.default.post(name: .botDizzy, object: nil)
-            } else {
-                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(combined.message)
@@ -1533,7 +1533,7 @@ extension IslandWindowController {
         // ── Relative context resolution ────────────────────────────────────────────
         let intent: VoiceIntent
         let transcriptOrigin: TranscriptOrigin
-        if isInConversation,
+        if conversationContext.lastIntent != nil,
            let resolved = conversationContext.resolveRelative(transcript, pills: pills) {
             intent = resolved
             transcriptOrigin = .context
@@ -1557,8 +1557,16 @@ extension IslandWindowController {
         let tActionEnd = Date()
         let actionMs   = Int(tActionEnd.timeIntervalSince(tParseEnd) * 1000)
 
+        // Incomplete phrase ("je veux que tu ajoutes…", nothing named): ask which pill
+        // and listen for it, instead of guessing or saying "pas compris".
+        var askedBack = false
+        if case .unknown = intent, let ask = runner.askIfIncomplete(transcript) {
+            result = ask
+            askedBack = true
+        }
+
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence) with streaming TTS.
-        if case .unknown = intent {
+        if case .unknown = intent, !askedBack {
             let tBrain0  = Date()
             let brainWarm = VoiceBrain.shared.isSessionReady
             var brainUsed = false
@@ -1622,7 +1630,6 @@ extension IslandWindowController {
             if brainUsed {
                 // TTS sentences already enqueued via streaming. Enter conversation and
                 // continue once the speaker queue drains.
-                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
                 conversationContext.update(effectiveIntent)
                 consecutiveFailures = 0
                 AppState.shared.voiceResult = result
@@ -1638,22 +1645,27 @@ extension IslandWindowController {
         // Mid-conversation, a phrase with no command in it (talking to someone else,
         // "on s'en fout c'est"…) is dropped silently: no dizzy Mochi, no "pas compris".
         // Two in a row end the conversation.
-        if isInConversation, case .unknown = effectiveIntent, result.outcome == .failure {
-            consecutiveFailures += 1
-            appendAppLog("nb.log", "[Voice] conversation: no command in phrase, ignored")
-            if consecutiveFailures >= 2 {
-                consecutiveFailures = 0
-                endConversation(speaking: false)
-            } else {
-                scheduleConversationContinue(delay: 0.2)
+        if case .unknown = effectiveIntent, result.outcome == .failure {
+            if isInConversation {
+                // Second miss (or noise while waiting for an answer): stop there.
+                appendAppLog("nb.log", "[Voice] answer had no command in it, ignored")
+                closeVoiceTurn()
+                return
             }
+            // First miss right after "OK Coucou": ask once, like a person would
+            // ("Pardon, tu peux répéter ?"), then listen for the repeat.
+            let again = VoiceActionResult(
+                outcome: .success,
+                message: VoiceActionRunner.localizedString("voice.ask-repeat", locale: runner.commandLocale))
+            VoiceCaptionManager.shared.appendResponse(again.message)
+            AppState.shared.voiceResult = again
+            speakAndContinueConversation(again)
             return
         }
 
         // Mochi reaction + consecutive failure tracking
         switch result.outcome {
         case .success:
-            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
             conversationContext.update(effectiveIntent)
             consecutiveFailures = 0
         case .failure:
@@ -1711,93 +1723,91 @@ extension IslandWindowController {
         scheduleVoiceDismiss(delay: 2.0)
     }
 
-    /// Speak the result message (if enabled) then start next conversation turn.
+    /// Speak the result, then stop listening — unless the answer is a question, in which
+    /// case listen once for the reply. Coucou cannot tell whether I am talking to it or
+    /// to someone else, so it only keeps the mic open when it asked something.
     @MainActor
     private func speakAndContinueConversation(_ result: VoiceActionResult) {
-        if !isInConversation {
-            VoiceBrain.shared.beginConversation()
-            consecutiveFailures = 0
-            hasSpokenPasCompris = false
-        }
-        isInConversation = true
-
+        let asks = Self.isQuestion(result)
         let speaker = VoiceSpeaker.shared
-        let shouldSpeak: Bool
-        if result.outcome == .failure && hasSpokenPasCompris {
-            shouldSpeak = false   // max 1 "pas compris" per conversation
-        } else {
-            shouldSpeak = VoiceSettings.speakEnabled
-        }
-        if result.outcome == .failure { hasSpokenPasCompris = true }
-        if shouldSpeak {
-            let locale = VoiceEngine.shared.speechLocale
-            speaker.speak(result.message, locale: locale)
+        if VoiceSettings.speakEnabled {
+            speaker.speak(result.message, locale: VoiceEngine.shared.speechLocale)
             speaker.onDidFinish = { [weak self] in
-                Task { @MainActor in
-                    self?.scheduleConversationContinue(delay: 0.15)
-                }
+                Task { @MainActor in self?.finishVoiceTurn(expectAnswer: asks) }
             }
         } else {
-            // No speech: continue after 1.5 s
-            scheduleConversationContinue(delay: 1.5)
+            // No speech: leave the caption up a moment, then finish.
+            voiceResultWork?.cancel()
+            let item = DispatchWorkItem { [weak self] in
+                Task { @MainActor in self?.finishVoiceTurn(expectAnswer: asks) }
+            }
+            voiceResultWork = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: item)
         }
     }
 
-    /// Enter/stay in conversation mode after brain streaming TTS queues drain.
+    /// After the on-device model's streamed answer: same rule once the speech drains.
     @MainActor
     private func _enterConversationAfterStreamedSpeech() {
-        if !isInConversation {
-            VoiceBrain.shared.beginConversation()
-            consecutiveFailures = 0
-            hasSpokenPasCompris = false
-        }
-        isInConversation = true
+        let asks = Self.isQuestion(AppState.shared.voiceResult)
         let speaker = VoiceSpeaker.shared
         if speaker.isSpeaking {
             speaker.onDidFinish = { [weak self] in
-                Task { @MainActor in
-                    self?.scheduleConversationContinue(delay: 0.15)
-                }
+                Task { @MainActor in self?.finishVoiceTurn(expectAnswer: asks) }
             }
         } else {
-            scheduleConversationContinue(delay: 0.15)
+            finishVoiceTurn(expectAnswer: asks)
         }
     }
 
-    /// Schedule the next conversation listening turn.
-    @MainActor
-    private func scheduleConversationContinue(delay: TimeInterval) {
-        voiceResultWork?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            Task { @MainActor in
-                guard let self, self.isInConversation else { return }
-                // Tick sound + listening emote signal that Mochi is ready to hear the next command.
-                SoundEngine.shared.play("tick")
-                NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.listening)
-                VoiceEngine.shared.startConversationTurn()
-            }
-        }
-        voiceResultWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    /// A question Coucou asked: an explicit follow-up, or an answer ending with "?".
+    private static func isQuestion(_ result: VoiceActionResult?) -> Bool {
+        guard let result else { return false }
+        if case .question = result.outcome { return true }
+        let t = result.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.hasSuffix("?") || t.hasSuffix("？") || t.hasSuffix("؟")
     }
 
-    /// End conversation window, optionally trigger a farewell emote, then collapse.
+    /// Listen once for the reply to Coucou's question, or close the turn.
     @MainActor
-    private func endConversation(speaking: Bool) {
+    private func finishVoiceTurn(expectAnswer: Bool) {
+        // One follow-up only: the reply to a question closes the turn after it is handled
+        // (unless that reply leads to another question, e.g. "which one do I remove?").
+        if expectAnswer && VoiceEngine.shared.isEnabled {
+            isInConversation = true
+            VoiceBrain.shared.beginConversation()
+            if AppState.shared.soundEnabled { SoundEngine.shared.play("tick") }
+            VoiceEngine.shared.startConversationTurn()
+        } else {
+            closeVoiceTurn()
+        }
+    }
+
+    /// Stop listening and let the island settle. The context (last action, model session)
+    /// stays 90 s so a new "OK Coucou, et Stripe aussi" still understands "aussi".
+    @MainActor
+    private func closeVoiceTurn() {
         isInConversation = false
-        conversationContext.reset()
         consecutiveFailures = 0
         hasSpokenPasCompris = false
-        voiceResultWork?.cancel()
-        voiceResultWork = nil
         VoiceEngine.shared.endConversation()
-        VoiceBrain.shared.endConversation()
         VoiceCaptionManager.shared.endConversation()
-        if speaking {
-            // Brief farewell emote
-            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        scheduleVoiceDismiss(delay: 0.3)
+        voiceContextExpiry?.cancel()
+        let expiry = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.conversationContext.reset()
+                VoiceBrain.shared.endConversation()
+            }
         }
-        scheduleVoiceDismiss(delay: 0.5)
+        voiceContextExpiry = expiry
+        DispatchQueue.main.asyncAfter(deadline: .now() + 90, execute: expiry)
+    }
+
+    /// Kept for the paths that still call it (collapse, end phrase): close and forget.
+    @MainActor
+    private func endConversation(speaking: Bool) {
+        closeVoiceTurn()
     }
 
     @MainActor
@@ -1807,6 +1817,7 @@ extension IslandWindowController {
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
             AppState.shared.voiceResult = nil
+            AppState.shared.voiceActive = false
             // Reset view before collapsing so shouldIgnoreWake never sees a stale .voiceResult.
             AppState.shared.view = self.defaultView()
             self.fsm.voiceFinished()

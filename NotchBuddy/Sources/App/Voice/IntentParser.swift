@@ -56,6 +56,26 @@ enum IntentParser {
             return .pillReplace(old: old, new: new)
         }
 
+        // ── 0d. "j'ai envie d'écouter du Drake", "je veux écouter Daft Punk" ──
+        if let i = fwords.lastIndex(where: { $0 == "ecouter" || $0 == "ecoute" }),
+           i > 0 || fwords.count > 1 {
+            let articles: Set<String> = ["du", "de", "des", "la", "le", "les", "l", "d", "un", "une"]
+            var restN = Array(fwords[(i + 1)...])
+            var restR = Array(frawWords[min(i + 1, frawWords.count)...])
+            while let f = restN.first, articles.contains(f) {
+                restN.removeFirst(); if !restR.isEmpty { restR.removeFirst() }
+            }
+            if !restN.isEmpty {
+                if musicGenericWords.contains(restN.joined(separator: " ")) {
+                    return .musicPlay(target: nil)
+                }
+                if restN != ["ca"] && restN != ["moi"] {
+                    let raw = restR.joined(separator: " ")
+                    return .musicPlaySearch(name: raw.isEmpty ? restN.joined(separator: " ") : raw)
+                }
+            }
+        }
+
         // ── 1. Explicit music-only patterns ──────────────────────────────────
         if matchesAny(fwords, in: pausePrefixes)   { return .musicPause }
         if matchesAny(fwords, in: nextPrefixes)    { return .musicNext }
@@ -135,6 +155,13 @@ enum IntentParser {
             if !clean.isEmpty {
                 return .musicPlayPlaylist(name: cleanRaw.isEmpty ? clean : cleanRaw)
             }
+            // "lance ma playlist" with no name: the runner asks which one.
+            return .musicPlayPlaylist(name: "")
+        }
+        // "tu peux lancer ma playlist" (the trigger needs a name after it): ask which one.
+        if fwords.last == "playlist" || fwords.last == "playlists",
+           fwords.contains(where: { ["lance", "mets", "met", "joue", "balance", "play", "start"].contains($0) }) {
+            return .musicPlayPlaylist(name: "")
         }
 
         // ── 8. pillMain triggers (setMain-only verbs) ────────────────────────
@@ -585,6 +612,10 @@ enum IntentParser {
 
     /// Polite prefix sequences stripped from the START of the word array (longest first).
     private static let politenessPrefixes: [[String]] = [
+        // "je veux que tu ajoutes…", "j'aimerais que tu…", "(il) faut que tu…"
+        // ("il" is already a filler, so "il faut que tu" arrives as "faut que tu")
+        ["je", "veux", "que", "tu"], ["je", "voudrais", "que", "tu"],
+        ["j", "aimerais", "que", "tu"], ["faut", "que", "tu"],
         ["est", "ce", "que", "tu", "peux"],
         ["est", "ce", "que", "tu", "pourrais"],
         ["tu", "peux"],
@@ -619,6 +650,21 @@ enum IntentParser {
         "baisser":     "baisse",
         "couper":      "coupe",
         "arreter":     "arrete",
+        // 2nd person / subjunctive after "je veux que tu …"
+        "ajoutes":     "ajoute",
+        "rajoutes":    "rajoute",
+        "enleves":     "enleve",
+        "retires":     "retire",
+        "supprimes":   "supprime",
+        "mettes":      "mets",
+        "lances":      "lance",
+        "actives":     "active",
+        "desactives":  "desactive",
+        "remplaces":   "remplace",
+        // "démarre Apple Music" = "lance Apple Music"
+        "demarrer":    "lance",
+        "demarre":     "lance",
+        "demarres":    "lance",
     ]
 
     private static let pausePrefixes: [[String]] = [

@@ -193,6 +193,28 @@ enum VoiceActionRunnerTests {
         check("second unclear answer → failure", unclear2.outcome, .failure)
         check("question dropped after second miss", runner.pendingQuestion == nil, true)
 
+        // Incomplete phrase → asks which pill, then uses the answer
+        pills_.active = ["integration_github"]
+        pills_.calls  = []
+        let incomplete = runner.askIfIncomplete("Modifie-moi les piles je veux que tu ajoutes")
+        if case .question = incomplete?.outcome { print("✓  incomplete add → question"); pass += 1 }
+        else { print("✗  incomplete add — got \(String(describing: incomplete))"); fail += 1 }
+        let pick = await runner.handleAnswer("Gemini", availablePills: pills)
+        check("which pill answer → success", pick.outcome, .success)
+        check("which pill answer → gemini added", pills_.calls.contains("toggle:agent_gemini"), true)
+        check("no question for a phrase without verb", runner.askIfIncomplete("ouais ça va") == nil, true)
+        let incompleteRemove = runner.askIfIncomplete("enlève-moi la")
+        if case .question = incompleteRemove?.outcome { print("✓  incomplete remove → question"); pass += 1 }
+        else { print("✗  incomplete remove"); fail += 1 }
+        runner.pendingQuestion = nil
+
+        // Playlist without a name → asks which one
+        let noName = await runner.run(.musicPlayPlaylist(name: ""), availablePills: pills)
+        if case .question = noName.outcome { print("✓  playlist without name → question"); pass += 1 }
+        else { print("✗  playlist without name — got \(noName.outcome)"); fail += 1 }
+        check("playlist question pending", runner.pendingQuestion != nil, true)
+        runner.pendingQuestion = nil
+
         // ── Pills: add multiple ───────────────────────────────────────────────
         pills_.active = ["integration_github"]
         pills_.calls  = []

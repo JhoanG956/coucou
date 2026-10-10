@@ -61,6 +61,8 @@ struct VoiceActionResult: Equatable {
 struct PendingVoiceQuestion {
     enum Kind {
         case removeWhich(toAdd: String)   // 4-pill limit: which pill to remove to add X?
+        case whichPill(add: Bool)         // "ajoute…" with no pill named: which one?
+        case whichPlaylist                // "lance ma playlist": which playlist?
     }
     let kind: Kind
     let text: String

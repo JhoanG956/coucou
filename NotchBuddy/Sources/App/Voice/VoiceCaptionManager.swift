@@ -55,6 +55,15 @@ final class VoiceCaptionManager {
                 MainActor.assumeIsolated { self?.state.liveLine = t }
             }
             .store(in: &subs)
+        // Follow the island: it can open or close while I am talking.
+        let app = AppState.shared
+        app.$mode.combineLatest(app.$view)
+            .removeDuplicates { $0 == $1 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.reposition(animated: true) }
+            }
+            .store(in: &subs)
         engine.$isListeningForCommand
             .removeDuplicates()
             .receive(on: RunLoop.main)
@@ -76,7 +85,8 @@ final class VoiceCaptionManager {
         hideTask = nil
 
         if panel == nil { _buildPanel() }
-        _position(on: screen, notchHeight: notchHeight)
+        self.screen = screen
+        reposition(animated: false)
 
         guard let p = panel else { return }
         if !p.isVisible { p.alphaValue = 0; p.orderFrontRegardless() }
@@ -147,13 +157,31 @@ final class VoiceCaptionManager {
         panel = p
     }
 
-    private func _position(on screen: NSScreen, notchHeight: CGFloat) {
-        guard let p = panel else { return }
+    private var screen: NSScreen?
+
+    /// Just under the visible island (compact, open or hidden), centred on it.
+    /// The island window is a fixed panel: its visible height comes from islandSize().
+    private func reposition(animated: Bool) {
+        guard let p = panel, let screen else { return }
+        let app = AppState.shared
+        let (_, fixedH) = islandSize(mode: app.mode, view: app.view, progress: app.uploadProgress,
+                                     nw: app.notchWidth, nh: app.notchHeight)
+        var islandH = fixedH
+        if app.mode == .expanded && app.view == .prompt {
+            islandH = min(300, 240 + CGFloat(app.chatHistory.count) * 40)
+        }
+        let visibleH = max(islandH, app.notchHeight)
         let sf = screen.frame
-        let x = sf.midX - captionWidth / 2
-        // AppKit origin is bottom-left; notch is at top of screen
-        let y = sf.maxY - notchHeight - notchGap - captionHeight
-        p.setFrameOrigin(NSPoint(x: x, y: y))
+        let origin = NSPoint(x: sf.midX - captionWidth / 2,
+                             y: sf.maxY - visibleH - notchGap - captionHeight)
+        if animated && p.isVisible {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.25
+                p.animator().setFrameOrigin(origin)
+            }
+        } else {
+            p.setFrameOrigin(origin)
+        }
     }
 
     private func _fadeOut() {

@@ -24517,66 +24517,326 @@
         }
       }
     },
-    "integrations.github.ci-hint": {
+    "voice.ask-repeat": {
+      "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
+            "value": "عفوًا، هل يمكنك التكرار؟"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
+            "value": "দুঃখিত, আবার বলবে?"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The CI row follows the branch of your last Claude Code session."
+            "value": "Sorry, can you say that again?"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La fila de CI sigue la rama de tu última sesión de Claude Code."
+            "value": "Perdona, ¿puedes repetir?"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La ligne CI suit la branche de ta dernière session Claude Code."
+            "value": "Pardon, tu peux répéter ?"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
+            "value": "माफ़ करना, फिर से बोलोगे?"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
+            "value": "Maaf, bisa diulang?"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A linha de CI segue a branch da sua última sessão do Claude Code."
+            "value": "Desculpa, pode repetir?"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Строка CI следует за веткой вашей последней сессии Claude Code."
+            "value": "Прости, можешь повторить?"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
+            "value": "抱歉，可以再说一遍吗？"
+          }
+        }
+      }
+    },
+    "voice.ask-which-pill-add": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أي حبة تريد أن تضيف؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোন পিল যোগ করবে?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which pill do you want to add?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué píldora quieres añadir?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle pilule tu veux ajouter ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कौन-सी पिल जोड़नी है?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pil mana yang mau ditambahkan?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qual pílula você quer adicionar?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какую пилюлю добавить?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要添加哪个胶囊？"
+          }
+        }
+      }
+    },
+    "voice.ask-which-pill-remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أي حبة تريد أن تزيل؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোন পিল সরাবে?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which pill do you want to remove?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué píldora quieres quitar?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle pilule tu veux retirer ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कौन-सी पिल हटानी है?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pil mana yang mau dihapus?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qual pílula você quer remover?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какую пилюлю убрать?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要移除哪个胶囊？"
+          }
+        }
+      }
+    },
+    "voice.ask-which-playlist": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أي قائمة تشغيل؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোন প্লেলিস্ট?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which playlist?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué playlist?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle playlist ?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कौन-सी प्लेलिस्ट?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist yang mana?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qual playlist?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Какой плейлист?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "哪个播放列表？"
+          }
+        }
+      }
+    },
+    "Google account not connected": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حساب Google غير متصل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google অ্যাকাউন্ট সংযুক্ত নয়"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google account not connected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta de Google no conectada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compte Google non connecté"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google खाता कनेक्ट नहीं है"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akun Google belum terhubung"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conta do Google não conectada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аккаунт Google не подключён"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未连接 Google 账号"
           }
         }
       }
@@ -24645,66 +24905,66 @@
         }
       }
     },
-    "Google account not connected": {
+    "integrations.github.ci-hint": {
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "حساب Google غير متصل"
+            "value": "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google অ্যাকাউন্ট সংযুক্ত নয়"
+            "value": "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google account not connected"
+            "value": "The CI row follows the branch of your last Claude Code session."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuenta de Google no conectada"
+            "value": "La fila de CI sigue la rama de tu última sesión de Claude Code."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compte Google non connecté"
+            "value": "La ligne CI suit la branche de ta dernière session Claude Code."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google खाता कनेक्ट नहीं है"
+            "value": "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "Akun Google belum terhubung"
+            "value": "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conta do Google não conectada"
+            "value": "A linha de CI segue a branch da sua última sessão do Claude Code."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Аккаунт Google не подключён"
+            "value": "Строка CI следует за веткой вашей последней сессии Claude Code."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未连接 Google 账号"
+            "value": "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
           }
         }
       }

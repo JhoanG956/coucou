@@ -265,8 +265,11 @@ final class VoiceEngine: ObservableObject {
 
         a.onVoiceStart = { [weak self] in
             guard let self else { return }
-            guard !VoiceSpeaker.shared.isSpeaking else {
-                appendAppLog("nb.log", "[Voice] vad start ignored (speaker active)")
+            guard !VoiceSpeaker.shared.isBusy else {
+                // Coucou's own voice. But with music playing the sound never "ends", so
+                // this start would be the last one: open the window once Coucou is quiet.
+                appendAppLog("nb.log", "[Voice] vad start deferred (speaker active)")
+                self.openWindowWhenSpeakerQuiet(audio: a, spotter: s, locale: loc)
                 return
             }
             appendAppLog("nb.log", "[Voice] vad start")
@@ -284,8 +287,10 @@ final class VoiceEngine: ObservableObject {
             firstUnavailableAt  = nil
             wakeWindowWork?.cancel(); wakeWindowWork = nil
             if !isListeningForCommand && !s.isInCommandPhase {
-                s.endWindow()
-                appendAppLog("nb.log", "[Voice] window close")
+                let elapsed = Date().timeIntervalSince(self.windowOpenedAt)
+                let st = s.endWindow()
+                appendAppLog("nb.log", "[Voice] window close \(Self.describe(st))")
+                self.checkDeafRecognizer(st, elapsed: elapsed)
             }
         }
 
@@ -321,6 +326,7 @@ final class VoiceEngine: ObservableObject {
         spotter?.onCommandUpdate   = nil
         spotter?.onCommandEnd      = nil
         spotter?.onWakeWindowEnded = nil
+        deferredStartWork?.cancel(); deferredStartWork = nil
         audio?.stop()
         audio              = nil
         spotter            = nil
@@ -394,12 +400,68 @@ final class VoiceEngine: ObservableObject {
         wakeWindowWork?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self, !isListeningForCommand else { return }
-            spotter.endWindow()
-            appendAppLog("nb.log", "[Voice] window close (20s)")
+            let st = spotter.endWindow()
+            // Log only: a 20 s window can be steady background noise with no words.
+            appendAppLog("nb.log", "[Voice] window close (20s) \(Self.describe(st))")
             self.openWakeWindow(audio: audio, spotter: spotter, locale: locale)
         }
         wakeWindowWork = item
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.wakeWindowMax, execute: item)
+    }
+
+    // MARK: - Deferred voice start
+
+    private var deferredStartWork: DispatchWorkItem?
+
+    /// A voice start swallowed while Coucou was talking: with continuous sound (music on
+    /// the speakers) the VAD never ends and never starts again, so without this Coucou
+    /// stayed deaf until the music stopped. Checks every 0.3 s, then opens the window.
+    private func openWindowWhenSpeakerQuiet(audio: VoiceAudio, spotter: WakeSpotter, locale: Locale) {
+        guard deferredStartWork == nil else { return }
+        scheduleDeferredStartCheck(audio: audio, spotter: spotter, locale: locale)
+    }
+
+    private func scheduleDeferredStartCheck(audio: VoiceAudio, spotter: WakeSpotter, locale: Locale) {
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.deferredStartWork = nil
+            if VoiceSpeaker.shared.isBusy {
+                self.scheduleDeferredStartCheck(audio: audio, spotter: spotter, locale: locale)
+                return
+            }
+            guard self.audio === audio, !self.isListeningForCommand, !spotter.isActive else { return }
+            appendAppLog("nb.log", "[Voice] vad start (deferred)")
+            audio.resetVAD()
+            self.voiceSegmentActive = true
+            self.backoff.reset()
+            self.consecErrorStreak  = 0
+            self.openWakeWindow(audio: audio, spotter: spotter, locale: locale)
+        }
+        deferredStartWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: item)
+    }
+
+    // MARK: - Deaf recognizer detection
+
+    /// Speech was heard (VAD) but the recognizer returned no text at all, window after
+    /// window: it is stuck. Rebuild the pipeline instead of staying deaf until relaunch.
+    private var deafWindows = 0
+
+    private static func describe(_ st: WakeSpotter.WindowStats) -> String {
+        "partials=\(st.partials) words=\(st.maxWords) coucou-like=\(st.nearWake ? "yes" : "no")"
+    }
+
+    private func checkDeafRecognizer(_ st: WakeSpotter.WindowStats, elapsed: TimeInterval) {
+        if st.partials > 0 { deafWindows = 0; return }
+        // A short noise (cough, click) legitimately gives no text: only count windows
+        // where speech went on for a while.
+        guard elapsed >= 3 else { return }
+        deafWindows += 1
+        if deafWindows >= 2 {
+            deafWindows = 0
+            appendAppLog("nb.log", "[Voice] recognizer returned nothing for 2 windows, rebuilding")
+            triggerPipelineRebuild(reason: "recognizer deaf")
+        }
     }
 
     // MARK: - Pipeline rebuild (rate-limited)
@@ -531,7 +593,7 @@ final class VoiceEngine: ObservableObject {
 
     private func commandUpdate(_ command: String) {
         // Semi-duplex: ignore updates while Coucou is speaking.
-        guard !VoiceSpeaker.shared.isSpeaking else { return }
+        guard !VoiceSpeaker.shared.isBusy else { return }
         commandTranscript = command
         let wc = command.split(separator: " ").count
         if wc > lastWordCount {

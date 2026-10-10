@@ -74,7 +74,10 @@ struct BotCanvasView: View {
 
                 #if !APPSTORE
                 if state.view == .listening {
-                    engine.listeningLevel  = CGFloat(VoiceEngine.shared.micLevel)
+                    // Expanded listening view only (no longer used by voice, kept for the
+                    // view itself). Smoothed so the eyes do not follow every mic frame.
+                    let target = CGFloat(VoiceEngine.shared.micLevel)
+                    engine.listeningLevel += (target - engine.listeningLevel) * 0.12
                     engine.listeningHasWords = !VoiceEngine.shared.commandTranscript.isEmpty
                 }
                 #endif
@@ -108,6 +111,11 @@ struct BotCanvasView: View {
         .onChange(of: state.effectiveState) { _, newState in
             engine.setState(newState)
         }
+        #if !APPSTORE
+        .onChange(of: state.voiceActive) { _, on in
+            if on { engine.enterVoiceCompact() } else { engine.exitVoiceCompact() }
+        }
+        #endif
         .onChange(of: state.view) { oldView, newView in
             // Morph up when upload view is active
             if state.mode == .expanded && newView == .upload {
