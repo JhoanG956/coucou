@@ -1417,9 +1417,27 @@ extension IslandWindowController {
         // If unknown, try VoiceBrain (macOS 26 + Apple Intelligence).
         if case .unknown = intent,
            let brain = await VoiceBrain.shared.resolve(transcript, pills: pills) {
-            if let firstIntent = brain.intents.first {
-                result = await runner.run(firstIntent, availablePills: pills, rawTranscript: transcript)
-                effectiveIntent = firstIntent
+            if !brain.intents.isEmpty {
+                // Run all brain intents: removals before additions (same rule as parseMultiAction).
+                var sorted = brain.intents
+                sorted.sort { a, b in
+                    let ra: Bool = { switch a { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
+                    let rb: Bool = { switch b { case .pillRemove, .pillRemoveMultiple: return true; default: return false } }()
+                    return ra && !rb
+                }
+                var parts: [String] = []
+                var anyFailure = false
+                for bi in sorted {
+                    let r = await runner.run(bi, availablePills: pills, rawTranscript: transcript)
+                    parts.append(r.message)
+                    if case .failure  = r.outcome { anyFailure = true }
+                    if case .question = r.outcome { anyFailure = true }
+                    if case .success  = r.outcome { effectiveIntent = bi }
+                }
+                result = VoiceActionResult(
+                    outcome: anyFailure ? .failure : .success,
+                    message: parts.joined(separator: " · ")
+                )
             } else if !brain.text.isEmpty {
                 result = VoiceActionResult(outcome: .success, message: brain.text)
             }

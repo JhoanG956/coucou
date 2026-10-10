@@ -55,7 +55,10 @@ final class VoiceBrain {
     /// Try to resolve `transcript` using the language model.
     /// Returns nil if the model is unavailable or if the model cannot map to any intent.
     func resolve(_ transcript: String, pills: [PillDefinition]) async -> BrainResult? {
-        await VoiceBrain._resolve(transcript, pills: pills, sessionBox: sessionBox)
+        // Lazily create session on first call so the model is available
+        // even for the very first turn (before speakAndContinueConversation fires).
+        if sessionBox == nil { sessionBox = VoiceBrain._makeSession() }
+        return await VoiceBrain._resolve(transcript, pills: pills, sessionBox: sessionBox)
     }
 
     // MARK: - Static impl helpers
@@ -95,6 +98,7 @@ final class VoiceBrain {
                 Réponds toujours dans la langue de l'utilisateur.
                 Réponds avec une phrase courte et directe.
                 Utilise les outils disponibles pour exécuter des commandes sur les pills et la musique.
+                Pour les noms de pilules, utilise le nom exact fourni par l'utilisateur.
                 """
             )
             return SessionContainer(session: session, collector: collector)
@@ -113,20 +117,22 @@ final class VoiceBrain {
             let collector = container.collector
             collector.reset()
 
-            let pillList = pills.prefix(20)
-                               .map { "\($0.id) (\($0.name))" }
-                               .joined(separator: ", ")
+            // All pill names — no prefix limit; no IDs (tool resolves names via EntityResolver)
+            let pillNames = pills.map { $0.name }.joined(separator: ", ")
             let prompt = """
                 User said: "\(transcript)"
-                Available pills: \(pillList)
+                Available pill names: \(pillNames)
                 Use a tool if this is a command. Otherwise answer naturally in the user's language.
                 """
 
             do {
-                let response = try await withBrainTimeout(seconds: 4) {
-                    try await container.session.respond(to: prompt)
+                // Extract .content (String, Sendable) inside the task to avoid
+                // LanguageModelSession.Response<String>: not Sendable.
+                let text = try await withBrainTimeout(seconds: 4) {
+                    let response = try await container.session.respond(to: prompt)
+                    return response.content
                 }
-                return BrainResult(intents: collector.intents, text: response.content)
+                return BrainResult(intents: collector.intents, text: text)
             } catch {
                 return nil
             }
@@ -185,27 +191,43 @@ final class SessionContainer: @unchecked Sendable {
 @available(macOS 26, *)
 struct PillTool: Tool, @unchecked Sendable {
     let name        = "pill"
-    let description = "Add, remove, set as main, or list pills in the notch"
+    let description = "Add, remove, set as main, or list pills in the notch. Use the pill name the user said."
 
     @Generable
     struct Arguments {
-        @Guide(description: "Action to perform: add | remove | setMain | list")
+        @Guide(description: "Action: add | remove | setMain | list")
         var action: String
-        @Guide(description: "Pill identifier, e.g. integration_github or agent_cursor. Empty for list.")
-        var pillId: String
+        @Guide(description: "Pill name as the user said it, e.g. GitHub, Cursor, n8n. Empty for list.")
+        var pillName: String
     }
 
     let collector: IntentCollector
 
     func call(arguments: Arguments) async throws -> String {
+        if arguments.action == "list" {
+            let active = await MainActor.run { () -> String in
+                let s = AppState.shared
+                let ids = s.activeIntegrations.union([s.mainPillId])
+                let names = ids.compactMap { PillCatalog.definition(for: $0)?.name }.sorted()
+                return names.isEmpty ? "none" : names.joined(separator: ", ")
+            }
+            return "Active pills: \(active)"
+        }
+
+        let id = await MainActor.run {
+            EntityResolver.resolve(arguments.pillName, from: PillCatalog.available)
+        }
+        guard let pillId = id else {
+            return "unknown pill: \(arguments.pillName)"
+        }
         let intent: VoiceIntent? = switch arguments.action {
-        case "add":     .pillAdd(id: arguments.pillId)
-        case "remove":  .pillRemove(id: arguments.pillId)
-        case "setMain": .pillSetMain(id: arguments.pillId)
+        case "add":     .pillAdd(id: pillId)
+        case "remove":  .pillRemove(id: pillId)
+        case "setMain": .pillSetMain(id: pillId)
         default:        nil
         }
         if let i = intent { collector.append(i) }
-        return arguments.action == "list" ? "Listing active pills" : "\(arguments.action) \(arguments.pillId)"
+        return "\(arguments.action) \(pillId)"
     }
 }
 
@@ -248,19 +270,48 @@ struct MusicTool: Tool, @unchecked Sendable {
 @available(macOS 26, *)
 struct StatusTool: Tool, @unchecked Sendable {
     let name        = "status"
-    let description = "Report Coucou status: list active pills, current agent session, or overall app state"
+    let description = "Report Coucou status: active pills, current agent sessions, music now playing"
 
     @Generable
     struct Arguments {
-        @Guide(description: "What to report: pills | session | all")
+        @Guide(description: "What to report: pills | sessions | music | all")
         var query: String
     }
 
     let collector: IntentCollector
 
     func call(arguments: Arguments) async throws -> String {
-        // Status is answered in natural language by the model; no VoiceIntent needed.
-        return "status:\(arguments.query)"
+        let info = await MainActor.run { () -> String in
+            let s = AppState.shared
+            var parts: [String] = []
+
+            // Main pill + active integrations
+            let mainName = PillCatalog.definition(for: s.mainPillId)?.name ?? s.mainPillId
+            let activeNames = s.activeIntegrations
+                .compactMap { PillCatalog.definition(for: $0)?.name }
+                .sorted()
+            let allActive = ([mainName] + activeNames).joined(separator: ", ")
+            parts.append("Main pill: \(mainName). Active: \(allActive)")
+
+            // Agent sessions
+            let running = s.tasks.filter { $0.state != .idle }
+            if !running.isEmpty {
+                let sessionStr = running
+                    .map { "\($0.name) (\($0.state.rawValue))" }
+                    .joined(separator: ", ")
+                parts.append("Sessions: \(sessionStr)")
+            } else {
+                parts.append("No active sessions")
+            }
+
+            // Music
+            if s.musicPlaying, let title = MusicController.shared.trackTitle {
+                parts.append("Now playing: \(title)")
+            }
+
+            return parts.joined(separator: ". ")
+        }
+        return info
     }
 }
 
