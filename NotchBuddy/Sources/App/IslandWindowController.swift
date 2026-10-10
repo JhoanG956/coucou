@@ -401,7 +401,7 @@ final class IslandWindowController: NSWindowController {
     }
 
     /// Picks the polling rate for the next ticks (see startPolling).
-    /// Three rates for a hidden island: 60 Hz close to the island itself, 20 Hz in the
+    /// Three rates for a hidden or resting island: 60 Hz close to the island itself, 20 Hz in the
     /// wide band around the panel (a pointer flicked up still reaches the close zone
     /// within one tick), 8 Hz elsewhere. Before, the whole band ran at 60 Hz, so a hidden
     /// island polled at 60 Hz most of the time. Desktop Mochi has its own poll.
@@ -409,8 +409,11 @@ final class IslandWindowController: NSWindowController {
         let island = islandRect.offsetBy(dx: panelFrame.minX, dy: panelFrame.minY)
         let nearIsland = island.insetBy(dx: -200, dy: -160).contains(mouse)
         let inBand = panelFrame.insetBy(dx: -120, dy: -120).contains(mouse)
-        let busy = state.mode != .hidden || inAttachDrag || attachDragStart != nil
-            || fsm.state != .hidden || nearIsland
+        // The resting (compact) island is treated like the hidden one: Mochi reads the
+        // pointer itself every frame, so only hover and clicks need this poll, and those
+        // only near the island. 60 Hz while open, dragging or close to it.
+        let busy = state.mode == .expanded || inAttachDrag || attachDragStart != nil
+            || fsm.state == .home || fsm.state == .coucou || fsm.state == .listening || nearIsland
         let wanted = busy ? Self.fastPoll : inBand ? Self.nearPoll : Self.idlePoll
         if wanted != pollInterval { startPolling(interval: wanted) }
     }
@@ -1462,9 +1465,8 @@ extension IslandWindowController {
         if runner.pendingQuestion != nil {
             let result = await runner.handleAnswer(transcript, availablePills: pills)
             VoiceTranscriptHistory.shared.record(transcript: transcript, note: result.message, origin: .answer)
-            if result.outcome != .success {
-                NotificationCenter.default.post(name: .botDizzy, object: nil)
-            }
+            // A question back ("What's the subject?") is not a miss: no reaction.
+            if result.outcome == .failure { voiceMissReaction() }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(result.message)
             AppState.shared.voiceResult = result
@@ -1508,9 +1510,7 @@ extension IslandWindowController {
                 outcome: anyFailure ? .failure : .success,
                 message: parts.joined(separator: " · ")
             )
-            if anyFailure {
-                NotificationCenter.default.post(name: .botDizzy, object: nil)
-            }
+            if anyFailure { voiceMissReaction() }
             VoiceCaptionManager.shared.setUserLine(transcript)
             VoiceCaptionManager.shared.appendResponse(combined.message)
             AppState.shared.voiceResult = combined
@@ -1671,7 +1671,7 @@ extension IslandWindowController {
             conversationContext.update(effectiveIntent)
             consecutiveFailures = 0
         case .failure:
-            NotificationCenter.default.post(name: .botDizzy, object: nil)
+            voiceMissReaction()
             if isInConversation { consecutiveFailures += 1 }
         case .question:
             break   // Mochi will show listening after re-open
@@ -1718,7 +1718,7 @@ extension IslandWindowController {
         if let emote = emote {
             NotificationCenter.default.post(name: .triggerEmote, object: emote)
         } else if result.outcome == .failure {
-            NotificationCenter.default.post(name: .botDizzy, object: nil)
+            voiceMissReaction()
         }
         AppState.shared.voiceResult = result
         expand(to: .voiceResult)
@@ -1803,6 +1803,13 @@ extension IslandWindowController {
         } else {
             closeVoiceTurn()
         }
+    }
+
+    /// A voice command that failed: a small "huh?" from Mochi. Not .botDizzy, which is the
+    /// slap reaction and opened the "Too many hits at once" card in the middle of a mail.
+    @MainActor
+    func voiceMissReaction() {
+        NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.surprised)
     }
 
     /// Seconds to wait for the first word of a reply: longer while Coucou waits for a
