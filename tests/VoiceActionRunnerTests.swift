@@ -215,6 +215,26 @@ enum VoiceActionRunnerTests {
         check("playlist question pending", runner.pendingQuestion != nil, true)
         runner.pendingQuestion = nil
 
+        // Language offer: speak French, answered in English → asked once, "oui" switches
+        var switched: String? = nil
+        runner.onLanguageSwitch = { switched = $0 }
+        runner.commandLocale = Locale(identifier: "en-US")
+        let offer = runner.offerLanguageSwitch(to: "fr")
+        check("offer is in English", offer.contains("Want me to answer in French?"), true)
+        let yes = await runner.handleAnswer("oui vas-y", availablePills: pills)
+        check("oui → switch to fr", switched, "fr")
+        check("oui → answered in French", yes.message.contains("en français"), true)
+        switched = nil
+        runner.commandLocale = Locale(identifier: "en-US")
+        _ = runner.offerLanguageSwitch(to: "fr")
+        let no = await runner.handleAnswer("non c'est bon", availablePills: pills)
+        check("non → no switch", switched == nil, true)
+        check("non → keeps English", no.message.contains("English"), true)
+        check("isYes yeah", VoiceActionRunner.isYes("yeah sure"), true)
+        check("isYes not on non", VoiceActionRunner.isYes("non"), false)
+        runner.pendingQuestion = nil
+        runner.commandLocale = nil
+
         // ── Pills: add multiple ───────────────────────────────────────────────
         pills_.active = ["integration_github"]
         pills_.calls  = []

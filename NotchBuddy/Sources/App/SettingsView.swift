@@ -1263,6 +1263,7 @@ struct SettingsView: View {
     @AppStorage("voiceWeatherEnabled") private var weatherEnabled: Bool = false
     @AppStorage("voiceWeatherCity")    private var weatherCity: String = ""
     @AppStorage("voiceLanguage")       private var voiceLanguage: String = "en"
+    @AppStorage("voiceListenLanguage") private var listenLanguage: String = "auto"
     @AppStorage("voiceTTSEngine")      private var ttsEngine: String = "system"
     @AppStorage("voiceElevenGender")   private var elevenGender: String = "female"
     @State private var elevenKeyDraft: String = ""
@@ -1274,12 +1275,20 @@ struct SettingsView: View {
                 Toggle(String(localized: "Enable voice command"), isOn: $voiceEngine.isEnabled)
                     .disabled(!voicePermissionsGranted && !voiceEngine.isEnabled)
 
+                Picker(String(localized: "voice.listen-language"), selection: $listenLanguage) {
+                    Text(String(localized: "voice.listen-auto")).tag("auto")
+                    Text(verbatim: "English").tag("en")
+                    Text(verbatim: "Français").tag("fr")
+                }
+                .frame(maxWidth: 320)
+                .onChange(of: listenLanguage) { _, _ in VoiceEngine.shared.reloadLanguage() }
+
                 Picker(String(localized: "voice.language"), selection: $voiceLanguage) {
                     Text(verbatim: "English").tag("en")
                     Text(verbatim: "Français").tag("fr")
                 }
-                .frame(maxWidth: 260)
-                .onChange(of: voiceLanguage) { _, _ in VoiceEngine.shared.reloadLanguage() }
+                .frame(maxWidth: 320)
+                .onChange(of: voiceLanguage) { _, _ in VoiceBrain.shared.endConversation() }
 
                 Toggle(String(localized: "voice.setting-speak"), isOn: $speakEnabled)
 

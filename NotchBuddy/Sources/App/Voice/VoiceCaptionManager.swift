@@ -206,7 +206,7 @@ struct VoiceCaptionView: View {
         guard state.isListening else { return state.userLine }
         // In the language Coucou speaks, not the interface language.
         return state.liveLine.isEmpty
-            ? VoiceActionRunner.localizedString("voice.caption-listening", locale: VoiceEngine.shared.speechLocale)
+            ? VoiceActionRunner.localizedString("voice.caption-listening", locale: VoiceSettings.answerLocale)
             : state.liveLine
     }
     private var answer: String { state.isListening ? "" : state.responseLine }
