@@ -4,13 +4,14 @@
 
 # Coucou
 
-**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows and Linux — and keeps an eye on your AI coding agent sessions. And now on your iPhone too.**
+**A tiny friend that lives in your Mac's notch — or at the top of your screen on Windows and Linux — and keeps an eye on your AI coding agent sessions. And now on your phone too: iPhone and Android.**
 
 Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing. Walk away from your Mac and Mochi follows you to your iPhone: Lock Screen, Dynamic Island, widgets, Siri.
 
 [![Version](https://img.shields.io/github/v/release/Louis-CFM/coucou?filter=v*&label=version&color=0A84FF)](https://github.com/Louis-CFM/coucou/releases)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
 ![iOS 18+](https://img.shields.io/badge/iOS-18%2B-black?logo=apple)
+![Android 11+](https://img.shields.io/badge/Android-11%2B-3DDC84?logo=android&logoColor=white)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-AppImage%20%7C%20deb%20%7C%20rpm-FCC624?logo=linux&logoColor=black)
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
@@ -57,6 +58,7 @@ Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch
 - 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows and Linux).
 - 🖥️ **Any Mac, notch or not** — on an iMac, a Mac mini, or a MacBook with its lid closed on an external display, Mochi sits in a small bar at the top of the screen. With several displays, pick his screen in Settings → General, or let him follow your mouse *(macOS)*.
 - 📱 **Coucou on iPhone** — your sessions, approvals and services in your pocket, with Live Activities, widgets and Siri. See [Coucou on iPhone](#coucou-on-iphone).
+- 🤖 **Coucou for Android** — your agents, approvals with your fingerprint, questions and chat on an Android phone, linked to Coucou on Windows or Linux over your Wi-Fi. By [@Rhytam23](https://github.com/Rhytam23). See [Coucou for Android](#coucou-for-android).
 - 📅 **Weekly recap** *(macOS)* — every Monday morning Coucou shows a summary of the past week: time coding, sessions, files, lines changed, commands, permissions, top agent and project, busiest day and longest session. Share it as a 1080 × 1920 image with Mochi — project names optional. All local, no sync.
 - 🌍 **10 languages** — English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, Bahasa Indonesia. Pick one in Settings → General → Language; community translations welcome.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain, Windows Credential Manager or Linux Secret Service (GNOME Keyring, KWallet). The app only talks to the services you plug in.
@@ -87,6 +89,18 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🔒 **Through your own iCloud** — sessions sync through your private CloudKit database; project names, commands and questions are encrypted with your iCloud keys. No Coucou server sees your projects, commands or keys. Turn it on in the Mac app: Settings → General → iPhone.
 
 **Get it on your iPhone in 3 steps:** install Coucou on your iPhone ([Join the TestFlight beta](https://testflight.apple.com/join/3GpeHv2b) — free, App Store coming soon), turn on **Settings → General → iPhone** in the Mac app (0.1.9 or later), and use the same Apple Account in iCloud on both. Full guide, troubleshooting and build-it-yourself: [docs/IPHONE.md](docs/IPHONE.md).
+
+## Coucou for Android
+
+**Coucou for Android** brings Mochi to Android phones. It was built by [Rhytam Biswas (@Rhytam23)](https://github.com/Rhytam23) and lives in [`android/`](android/).
+
+- 🔐 **Approve from your phone** — a permission request rises over any screen, even on a locked phone; **Allow** needs your fingerprint or screen lock, **Deny** doesn't. A command too long to show in full can only be allowed on the computer.
+- 🧑‍💻 **Your agents at a glance** — the agent that needs you, the others below, plan usage and your services when the computer shares them.
+- 💬 **Answers and chat** — answer Claude Code's questions and chat through the computer's own AI keys (the keys never leave the computer).
+- 🏝️ **An island over other apps** *(optional)* — a black island drops from the camera cut-out while an agent works, plus a widget, a quick-settings tile and an ongoing notification.
+- 🔒 **Local and private** — the phone talks straight to your computer on your Wi-Fi, paired with a QR code and a pinned certificate. The phone link is **off by default**, and nothing listens until you turn it on.
+
+**Status:** the code is in this repository and has been tested on a real phone (Android 13) with the Windows app. The phone link isn't in the Windows and Linux 0.3.0 installers yet: it ships in the next Windows and Linux release, together with the first signed Android APK. Until then you can [build both from source](#build-from-source). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
 
 <table>
 <tr>
@@ -152,6 +166,16 @@ The App Store build of the Mac app runs in Apple's sandbox, so a few features st
 4. Open Coucou on the iPhone, allow notifications, and start a Claude Code session on the Mac.
 
 Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md).
+
+### Android
+
+The signed APK comes with the next Windows and Linux release, which also adds the phone link to the computer app. Until then:
+
+1. **Build the app** from [`android/`](android/) (see [Build from source](#build-from-source)) and install it on your phone (Android 11 or later).
+2. **On your computer**, run a Windows or Linux build of Coucou from `main` (an installed 0.3.0 has no phone link, so close it first): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
+3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
+
+Everything else, troubleshooting included, is in [`android/README.md`](android/README.md).
 
 ### Download for macOS
 
@@ -226,6 +250,14 @@ npm install
 npm run pack                # AppImage, .deb and .rpm land in windows/release/
 ```
 
+**Android** — requirements: JDK 17 and the Android SDK (platform 35).
+
+```bash
+git clone https://github.com/Louis-CFM/coucou.git
+cd coucou/android
+./gradlew assembleDebug      # the APK lands in app/build/outputs/apk/debug/
+```
+
 ## Setup
 
 Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Linux) → **Settings…**
@@ -242,6 +274,7 @@ Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows, Li
 | **Ollama server** *(macOS)* | chat with local models via Ollama | Settings → Chat → Local models → **Connect** |
 | **LM Studio server** *(macOS)* | chat with local models via LM Studio | Settings → Chat → Local models → **Connect** |
 | **iPhone** *(macOS)* | sessions, approvals, questions and Mochi on your iPhone | Settings → General → iPhone · your private iCloud, see [docs/IPHONE.md](docs/IPHONE.md) |
+| **Android phone** *(Windows, Linux)* | sessions, approvals, questions and chat on your Android phone | Settings → Android phone · off by default, your local network only, see [android/README.md](android/README.md) |
 | **Active pills** *(macOS)* | choose which tools and agents appear in the island | Settings → Active pills |
 | Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com, Google Calendar (your own OAuth client) | the service pills | Keychain / Windows Credential Manager / Secret Service, all optional |
 
@@ -311,6 +344,11 @@ The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party depen
 - Claude Code hooks go through the same `coucou-hook`, over a Unix socket in
   `$XDG_RUNTIME_DIR`; keys live in the Secret Service.
 
+**Android**
+
+- A native Kotlin and Jetpack Compose app; Mochi is drawn in code, ported from the Windows app, with his outfits and sounds.
+- The phone link (`windows/src-tauri/src/phone_link`) is an opt-in server in the Windows and Linux app, on your local network only: TLS with a certificate pinned at pairing, a pairing code that "Pair again" replaces (and disconnects every phone), and approvals bound to the exact request the computer is waiting on. The protocol is in [`docs/ANDROID_LINK.md`](docs/ANDROID_LINK.md).
+
 ## Contributing
 
 Issues and PRs are very welcome — new integrations, new emotes, new sounds, bug fixes. See [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -320,11 +358,13 @@ Want to add or improve a translation? Open a PR with changes to `NotchBuddy/Reso
 ## Credits
 
 Built by [Louis Raillé](https://louisraille.fr) with Claude Code.
+Coucou for Android and the phone link by [Rhytam Biswas (@Rhytam23)](https://github.com/Rhytam23).
+Thanks to everyone who sent a pull request — see [contributors](https://github.com/Louis-CFM/coucou/graphs/contributors).
 Inspired by the notch-companion concepts shared by design studios — this project is independent and not affiliated with any of them.
 
 ## License
 
-- **Code:** [MIT](LICENSE) — use it, fork it, learn from it, just keep the copyright notice.
+- **Code:** [MIT](LICENSE) — use it, fork it, learn from it, just keep the copyright notice. The Android app and the phone link are © Rhytam Biswas, also under MIT ([android/LICENSE](android/LICENSE)).
 - **Name, Mochi character, icon, sounds and media:** © Louis Raillé, all rights reserved — see [LICENSE-ASSETS.md](LICENSE-ASSETS.md). Shipping your own fork? Give it your own name and character.
 
 <div align="center">
