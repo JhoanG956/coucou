@@ -463,10 +463,13 @@ struct CountdownBar: View {
         let window = min(10.0, autoClose * 0.6)
         let elapsed = Date.now.timeIntervalSince(state.lastActivity)
         let remaining = autoClose - elapsed
-        if remaining < window {
-            barWidth = max(0, CGFloat(remaining / window) * 160)
-        } else {
-            barWidth = 0
+        let target: CGFloat = remaining < window ? max(0, CGFloat(remaining / window) * 160) : 0
+        // The timer ticks at 10 Hz; a linear animation over the same 0.1 s glides between ticks,
+        // so the bar shrinks on every display frame instead of in 10 steps a second.
+        if target < barWidth && barWidth - target < 40 {
+            withAnimation(.linear(duration: 0.1)) { barWidth = target }
+        } else if target != barWidth {
+            barWidth = target
         }
     }
 }
