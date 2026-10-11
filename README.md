@@ -100,7 +100,7 @@ The Mac app does the work; the iPhone app keeps you in the loop when you step aw
 - 🏝️ **An island over other apps** *(optional)* — a black island drops from the camera cut-out while an agent works, plus a widget, a quick-settings tile and an ongoing notification.
 - 🔒 **Local and private** — the phone talks straight to your computer on your Wi-Fi, paired with a QR code and a pinned certificate. The phone link is **off by default**, and nothing listens until you turn it on.
 
-**Status:** the code is in this repository and has been tested on a real phone (Android 13) with the Windows app. The phone link isn't in the Windows and Linux 0.3.0 installers yet: it ships in the next Windows and Linux release, together with the first signed Android APK. Until then you can [build both from source](#build-from-source). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
+**Status:** tested on a real phone (Android 13) with the Windows app. The phone link is in **Coucou 0.4.0 for Windows and Linux**. The first signed Android APK is on its way; until then you can [build the app from source](#build-from-source). Android needs Coucou on **Windows or Linux** (not the Mac), Android 11 or later, and both on the same Wi-Fi. Full guide: [`android/README.md`](android/README.md).
 
 <table>
 <tr>
@@ -139,6 +139,7 @@ Windows and Linux are released together, under the `windows-v*` and `linux-v*` t
 
 | Windows & Linux | Date | Highlights |
 |---------|------|------------|
+| 0.4.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.4.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.4.0) | Oct 11, 2026 | Your Android phone: the link for Coucou for Android, by @Rhytam23 — approvals with your fingerprint, answers, chat, off by default |
 | 0.3.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.3.0) · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.3.0) | Oct 9, 2026 | Linux catches up: Spotify with Mochi dancing, global shortcuts on Wayland, Open terminal brings the terminal back; open on hover, your own sounds, a colour per Mochi |
 | 0.2.0 · [Windows](https://github.com/Louis-CFM/coucou/releases/tag/windows-v0.2.0) | Oct 8, 2026 | Catches up with the Mac: nine agents with approvals, chat with any AI, plan usage, GitHub, wardrobe, 10 languages |
 | 0.1.1 · [Linux](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.1.1) | Oct 1, 2026 | First Linux build (beta) |
@@ -169,10 +170,10 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 
 ### Android
 
-The signed APK comes with the next Windows and Linux release, which also adds the phone link to the computer app. Until then:
+The first signed APK is on its way. Until then:
 
 1. **Build the app** from [`android/`](android/) (see [Build from source](#build-from-source)) and install it on your phone (Android 11 or later).
-2. **On your computer**, run a Windows or Linux build of Coucou from `main` (an installed 0.3.0 has no phone link, so close it first): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
+2. **On your computer**, install Coucou **0.4.0 or later** for [Windows](#windows) or [Linux](#linux): **Settings → Android phone**, turn on **Phone link**. If Windows asks about the firewall, allow Coucou on private networks.
 3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
 
 Everything else, troubleshooting included, is in [`android/README.md`](android/README.md).
@@ -195,7 +196,7 @@ Download **[Coucou-Windows.msi](https://github.com/Louis-CFM/coucou/releases/dow
 
 This is only because the app isn't signed with a paid certificate yet. Coucou is open source, and Microsoft Defender scans the installer as clean.
 
-**Windows and Linux 0.3.0** add open on hover, your own sounds, a colour of your own for each Mochi and the Mochi-to-desktop shortcut; on Linux, the Spotify pill with Mochi dancing to it, global shortcuts on Wayland and "Open terminal" that brings the terminal forward. 0.2.0 caught up with the Mac: Codex, Copilot CLI, Muse Code and six more agents with approvals from the island, answers to Claude's questions, live diffs, GitHub pull requests and CI, plan usage, local models, the wardrobe, Mochi on the desktop, keyboard shortcuts, the weekly recap and 10 languages. See the [changelog](CHANGELOG.md).
+**Windows and Linux 0.4.0** pair with [Coucou for Android](#coucou-for-android): approve, answer and chat from your Android phone (Settings → Android phone, off by default). 0.3.0 added open on hover, your own sounds, a colour of your own for each Mochi and the Mochi-to-desktop shortcut; on Linux, the Spotify pill with Mochi dancing to it, global shortcuts on Wayland and "Open terminal" that brings the terminal forward. 0.2.0 caught up with the Mac: Codex, Copilot CLI, Muse Code and six more agents with approvals from the island, answers to Claude's questions, live diffs, GitHub pull requests and CI, plan usage, local models, the wardrobe, Mochi on the desktop, keyboard shortcuts, the weekly recap and 10 languages. See the [changelog](CHANGELOG.md).
 
 There is no notch on a PC, so the island slides out of the top edge of the screen
 instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
@@ -203,7 +204,7 @@ rest of the differences.
 
 ### Linux
 
-**Coucou for Linux 0.3.0** is out (x86_64): [AppImage](https://github.com/Louis-CFM/coucou/releases/download/linux-v0.3.0/Coucou-Linux-0.3.0-x86_64.AppImage) · [.deb](https://github.com/Louis-CFM/coucou/releases/download/linux-v0.3.0/Coucou-Linux-0.3.0-amd64.deb) · [.rpm](https://github.com/Louis-CFM/coucou/releases/download/linux-v0.3.0/Coucou-Linux-0.3.0-x86_64.rpm) · [all files and checksums](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.3.0). The newest AppImage is always at [`linux-latest`](https://github.com/Louis-CFM/coucou/releases/download/linux-latest/Coucou-Linux-x86_64.AppImage).
+**Coucou for Linux 0.4.0** is out (x86_64): [AppImage](https://github.com/Louis-CFM/coucou/releases/download/linux-v0.4.0/Coucou-Linux-0.4.0-x86_64.AppImage) · [.deb](https://github.com/Louis-CFM/coucou/releases/download/linux-v0.4.0/Coucou-Linux-0.4.0-amd64.deb) · [.rpm](https://github.com/Louis-CFM/coucou/releases/download/linux-v0.4.0/Coucou-Linux-0.4.0-x86_64.rpm) · [all files and checksums](https://github.com/Louis-CFM/coucou/releases/tag/linux-v0.4.0). The newest AppImage is always at [`linux-latest`](https://github.com/Louis-CFM/coucou/releases/download/linux-latest/Coucou-Linux-x86_64.AppImage).
 
 - **AppImage** (any distribution): `chmod +x Coucou-Linux-*.AppImage`, then run it.
 - **Debian / Ubuntu**: `sudo apt install ./Coucou-Linux-*.deb`
