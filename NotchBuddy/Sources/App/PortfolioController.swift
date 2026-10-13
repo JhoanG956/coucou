@@ -26,8 +26,11 @@ enum ExchangeKind: String, CaseIterable, Sendable, Codable {
         }
     }
     var keychainPrefix: String { "portfolio-\(rawValue)" }
-    /// Whether a passphrase is required (Coinbase Pro, OKX).
-    var needsPassphrase: Bool { self == .okx || self == .coinbase }
+    /// Whether a passphrase is required (OKX).
+    var needsPassphrase: Bool { self == .okx }
+    /// Field labels: Coinbase keys are a key name and an EC private key (CDP API keys).
+    var keyLabel: String { self == .coinbase ? "Key name" : "API Key" }
+    var secretLabel: String { self == .coinbase ? "Private key" : "API Secret" }
 }
 
 enum WalletKind: String, CaseIterable, Sendable, Codable {
@@ -272,7 +275,6 @@ final class PortfolioController: ObservableObject {
             let ordered = configured.compactMap { conf in result.first { $0.id == conf.id } }
             // Get prices for all held symbols
             let symbols = Set(ordered.flatMap { $0.holdings.map(\.symbol) })
-                .filter { !$0.hasPrefix("USD") && !$0.hasPrefix("EUR") }  // stable coins, skip
             let prices = await Self.fetchPrices(symbols: Array(symbols))
             var priced = ordered
             for i in priced.indices {
@@ -319,11 +321,41 @@ final class PortfolioController: ObservableObject {
         var history: [Double]   // 7 daily closes, oldest first
     }
 
+    /// Cash held on an exchange: valued with the day's exchange rate, no market data.
+    private nonisolated static let fiat: Set<String> = ["USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY"]
+
+    /// USD price of every asset Coinbase knows (fiat and crypto), from its public exchange
+    /// rates: one request, no key. `rates[X]` is how many X one dollar buys.
+    private nonisolated static func fetchUSDRates() async -> [String: Double] {
+        guard let url = URL(string: "https://api.coinbase.com/v2/exchange-rates?currency=USD") else { return [:] }
+        var req = URLRequest(url: url, timeoutInterval: 8)
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rates = (json["data"] as? [String: Any])?["rates"] as? [String: Any] else { return [:] }
+        var out: [String: Double] = [:]
+        for (sym, v) in rates {
+            if let r = num(v), r > 0 { out[sym.uppercased()] = 1 / r }
+        }
+        return out
+    }
+
     private nonisolated static func fetchPrices(symbols: [String]) async -> [String: PriceInfo] {
         guard !symbols.isEmpty else { return [:] }
         var result: [String: PriceInfo] = [:]
+        // Cash and anything without a Coinbase market (USDT, smaller tokens) still get a
+        // price from the exchange rates; markets add the 24 h change and the curve.
+        let usdPrices = await fetchUSDRates()
+        for sym in symbols {
+            if sym == "USD" {
+                result[sym] = PriceInfo(price: 1, change24h: nil, history: [])
+            } else if let p = usdPrices[sym] {
+                result[sym] = PriceInfo(price: p, change24h: nil, history: [])
+            }
+        }
         await withTaskGroup(of: (String, PriceInfo?).self) { group in
-            for sym in symbols {
+            for sym in symbols where !fiat.contains(sym) {
                 group.addTask {
                     let pair = "\(sym)-USD"
                     let base = "https://api.exchange.coinbase.com/products/\(pair)"
@@ -600,46 +632,119 @@ private enum ExchangeFetcher {
     private static func krakenSymbol(_ raw: String) -> String {
         let map: [String: String] = [
             "XXBT": "BTC", "XETH": "ETH", "XLTC": "LTC", "XXLM": "XLM",
-            "XXMR": "XMR", "XXRP": "XRP", "XZEC": "ZEC", "ZUSD": "USDT",
+            "XXMR": "XMR", "XXRP": "XRP", "XZEC": "ZEC", "ZUSD": "USD",
             "ZEUR": "EUR",  "ZGBP": "GBP", "ZCAD": "CAD", "ZJPY": "JPY",
         ]
         return map[raw] ?? (raw.hasPrefix("X") || raw.hasPrefix("Z") ? String(raw.dropFirst()) : raw)
     }
 
-    // MARK: Coinbase (Exchange Pro)
+    // MARK: Coinbase (Advanced Trade, CDP API key)
 
+    /// Coinbase accounts through the Advanced Trade API, with a CDP API key: the only kind
+    /// a Coinbase user can create (Exchange/Pro keys are for institutional accounts). Each
+    /// request carries a fresh ES256 JWT signed with the key's EC private key.
     private static func fetchCoinbase() async throws -> [PortfolioHolding] {
-        guard let apiKey = PortfolioSettings.key(for: .coinbase), !apiKey.isEmpty,
-              let secret = PortfolioSettings.secret(for: .coinbase), !secret.isEmpty,
-              let passphrase = PortfolioSettings.passphrase(for: .coinbase), !passphrase.isEmpty,
-              let secretData = Data(base64Encoded: secret) else { throw FetchError.noCredentials }
-        let ts = String(Int64(Date().timeIntervalSince1970))
-        let path = "/accounts"
-        let message = "\(ts)GET\(path)"
-        let sig = HMACHelper.sha256b64(key: secretData, message: message)
-        guard let url = URL(string: "https://api.exchange.coinbase.com\(path)") else {
-            throw FetchError.badResponse("Invalid URL")
+        guard let keyName = PortfolioSettings.key(for: .coinbase)?
+                .trimmingCharacters(in: .whitespacesAndNewlines), !keyName.isEmpty,
+              let pem = PortfolioSettings.secret(for: .coinbase), !pem.isEmpty else {
+            throw FetchError.noCredentials
         }
-        var req = URLRequest(url: url, timeoutInterval: 10)
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue(apiKey,      forHTTPHeaderField: "CB-ACCESS-KEY")
-        req.setValue(sig,         forHTTPHeaderField: "CB-ACCESS-SIGN")
-        req.setValue(ts,          forHTTPHeaderField: "CB-ACCESS-TIMESTAMP")
-        req.setValue(passphrase,  forHTTPHeaderField: "CB-ACCESS-PASSPHRASE")
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-            let msg = String(data: data, encoding: .utf8) ?? "HTTP \((resp as? HTTPURLResponse)?.statusCode ?? 0)"
-            throw FetchError.badResponse(msg)
+        guard let signingKey = CoinbaseJWT.privateKey(from: pem) else {
+            throw FetchError.badResponse(String(localized: "portfolio.error.coinbase-key"))
         }
-        guard let accounts = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            throw FetchError.parseError
+        let host = "api.coinbase.com"
+        let path = "/api/v3/brokerage/accounts"
+        var totals: [String: Double] = [:]
+        var cursor: String?
+        for _ in 0..<10 {   // 250 accounts a page; ten pages is more than any account has
+            var comps = URLComponents()
+            comps.scheme = "https"
+            comps.host = host
+            comps.path = path
+            comps.queryItems = [URLQueryItem(name: "limit", value: "250")]
+                + (cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? [])
+            guard let url = comps.url else { throw FetchError.badResponse("Invalid URL") }
+            var req = URLRequest(url: url, timeoutInterval: 10)
+            let jwt = try CoinbaseJWT.make(keyName: keyName, key: signingKey,
+                                           method: "GET", host: host, path: path)
+            req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+                let msg = String(data: data, encoding: .utf8) ?? "HTTP \((resp as? HTTPURLResponse)?.statusCode ?? 0)"
+                throw FetchError.badResponse(msg)
+            }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let accounts = json["accounts"] as? [[String: Any]] else {
+                throw FetchError.parseError
+            }
+            for account in accounts {
+                guard let currency = account["currency"] as? String else { continue }
+                let available = Self.amount((account["available_balance"] as? [String: Any])?["value"])
+                let hold = Self.amount((account["hold"] as? [String: Any])?["value"])
+                totals[currency, default: 0] += available + hold
+            }
+            guard (json["has_next"] as? Bool) == true,
+                  let next = json["cursor"] as? String, !next.isEmpty else { break }
+            cursor = next
         }
-        return accounts.compactMap { a -> PortfolioHolding? in
-            guard let currency = a["currency"] as? String,
-                  let balance = (a["balance"] as? String).flatMap(Double.init),
-                  balance > 0.000001 else { return nil }
-            return PortfolioHolding(symbol: currency, amount: balance, price: 0)
+        return totals.filter { $0.value > 0.000001 }
+            .map { PortfolioHolding(symbol: $0.key, amount: $0.value, price: 0) }
+    }
+
+    private static func amount(_ v: Any?) -> Double {
+        if let s = v as? String { return Double(s) ?? 0 }
+        if let d = v as? Double { return d }
+        if let n = v as? NSNumber { return n.doubleValue }
+        return 0
+    }
+}
+
+// MARK: - Coinbase JWT (ES256)
+
+/// JWT for Coinbase's CDP API keys, as documented: header {alg ES256, kid, nonce, typ},
+/// claims {sub, iss "cdp", nbf, exp +120 s, uri "GET host/path"}. A new one per request.
+enum CoinbaseJWT {
+    /// The EC private key from what the user pasted: a PEM ("EC PRIVATE KEY" or "PRIVATE
+    /// KEY"), its lines joined by a single-line field, or with "\n" escapes as in the
+    /// downloaded cdp_api_key.json.
+    static func privateKey(from raw: String) -> P256.Signing.PrivateKey? {
+        let text = raw.replacingOccurrences(of: "\\n", with: "\n")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\" \n\r\t"))
+        var body = text
+        for marker in ["-----BEGIN EC PRIVATE KEY-----", "-----END EC PRIVATE KEY-----",
+                       "-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"] {
+            body = body.replacingOccurrences(of: marker, with: "")
         }
+        body = body.components(separatedBy: .whitespacesAndNewlines).joined()
+        guard let der = Data(base64Encoded: body) else { return nil }
+        if let key = try? P256.Signing.PrivateKey(derRepresentation: der) { return key }
+        // SEC1 ECPrivateKey: SEQUENCE { INTEGER 1, OCTET STRING (32-byte key), … }.
+        if let r = der.range(of: Data([0x02, 0x01, 0x01, 0x04, 0x20])), der.count >= r.upperBound + 32 {
+            return try? P256.Signing.PrivateKey(rawRepresentation: der.subdata(in: r.upperBound..<r.upperBound + 32))
+        }
+        return nil
+    }
+
+    static func make(keyName: String, key: P256.Signing.PrivateKey,
+                     method: String, host: String, path: String) throws -> String {
+        let now = Int(Date().timeIntervalSince1970)
+        let nonce = (0..<16).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
+        let header: [String: Any] = ["alg": "ES256", "kid": keyName, "nonce": nonce, "typ": "JWT"]
+        let claims: [String: Any] = ["sub": keyName, "iss": "cdp", "nbf": now, "exp": now + 120,
+                                     "uri": "\(method) \(host)\(path)"]
+        let h = try JSONSerialization.data(withJSONObject: header, options: [.withoutEscapingSlashes])
+        let c = try JSONSerialization.data(withJSONObject: claims, options: [.withoutEscapingSlashes])
+        let signingInput = base64URL(h) + "." + base64URL(c)
+        let signature = try key.signature(for: Data(signingInput.utf8))
+        return signingInput + "." + base64URL(signature.rawRepresentation)
+    }
+
+    static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 
@@ -665,13 +770,14 @@ private enum WalletFetcher {
         case .bitcoin:   return try await fetchBTC(address: wallet.address)
         case .dogecoin:  return try await fetchBlockchair(address: wallet.address, chain: "dogecoin",  symbol: "DOGE")
         case .litecoin:  return try await fetchBlockchair(address: wallet.address, chain: "litecoin",  symbol: "LTC")
-        case .ethereum:  return try await fetchEVM(address: wallet.address, rpcURL: "https://cloudflare-eth.com",              symbol: "ETH")
-        case .polygon:   return try await fetchEVM(address: wallet.address, rpcURL: "https://polygon-rpc.com",                 symbol: "POL")
-        case .bnbChain:  return try await fetchEVM(address: wallet.address, rpcURL: "https://bsc-dataseed.binance.org",        symbol: "BNB")
-        case .avalanche: return try await fetchEVM(address: wallet.address, rpcURL: "https://api.avax.network/ext/bc/C/rpc",   symbol: "AVAX")
-        case .arbitrum:  return try await fetchEVM(address: wallet.address, rpcURL: "https://arb1.arbitrum.io/rpc",            symbol: "ETH")
-        case .optimism:  return try await fetchEVM(address: wallet.address, rpcURL: "https://mainnet.optimism.io",             symbol: "ETH")
-        case .base:      return try await fetchEVM(address: wallet.address, rpcURL: "https://mainnet.base.org",                symbol: "ETH")
+        // Two public RPCs per chain: the second answers when the first is down or rate-limited.
+        case .ethereum:  return try await fetchEVM(address: wallet.address, rpcURLs: ["https://ethereum-rpc.publicnode.com", "https://cloudflare-eth.com"], symbol: "ETH")
+        case .polygon:   return try await fetchEVM(address: wallet.address, rpcURLs: ["https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com"], symbol: "POL")
+        case .bnbChain:  return try await fetchEVM(address: wallet.address, rpcURLs: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com"], symbol: "BNB")
+        case .avalanche: return try await fetchEVM(address: wallet.address, rpcURLs: ["https://api.avax.network/ext/bc/C/rpc", "https://avalanche-c-chain-rpc.publicnode.com"], symbol: "AVAX")
+        case .arbitrum:  return try await fetchEVM(address: wallet.address, rpcURLs: ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com"], symbol: "ETH")
+        case .optimism:  return try await fetchEVM(address: wallet.address, rpcURLs: ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com"], symbol: "ETH")
+        case .base:      return try await fetchEVM(address: wallet.address, rpcURLs: ["https://mainnet.base.org", "https://base-rpc.publicnode.com"], symbol: "ETH")
         case .solana:    return try await fetchSOL(address: wallet.address)
         case .tron:      return try await fetchTRON(address: wallet.address)
         case .xrp:       return try await fetchXRP(address: wallet.address)
@@ -719,6 +825,15 @@ private enum WalletFetcher {
     }
 
     // MARK: EVM (eth_getBalance JSON-RPC — works for any EVM chain)
+
+    private static func fetchEVM(address: String, rpcURLs: [String], symbol: String) async throws -> [PortfolioHolding] {
+        var lastError: Error = FetchError.networkError
+        for rpcURL in rpcURLs {
+            do { return try await fetchEVM(address: address, rpcURL: rpcURL, symbol: symbol) }
+            catch { lastError = error }
+        }
+        throw lastError
+    }
 
     private static func fetchEVM(address: String, rpcURL: String, symbol: String) async throws -> [PortfolioHolding] {
         guard let url = URL(string: rpcURL) else { throw FetchError.networkError }

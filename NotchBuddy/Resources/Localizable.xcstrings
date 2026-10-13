@@ -14511,18 +14511,34 @@
         }
       }
     },
-    "portfolio.instructions.coinbase" : {
+    "portfolio.error.coinbase-key" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In Coinbase → API → New API Key (Exchange/Pro). Enable View permission only. The secret is base64-encoded — paste it as-is."
+            "value" : "This private key can't be read. Paste the whole key, from BEGIN EC PRIVATE KEY to END EC PRIVATE KEY (ECDSA key)."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dans Coinbase → API → Nouvelle clé API (Exchange/Pro). Activer uniquement la permission Vue. Le secret est en base64 — collez-le tel quel."
+            "value" : "Cette clé privée est illisible. Colle toute la clé, de BEGIN EC PRIVATE KEY à END EC PRIVATE KEY (clé ECDSA)."
+          }
+        }
+      }
+    },
+    "portfolio.instructions.coinbase" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On coinbase.com → Settings → API (CDP) → Create API key, signature ECDSA, permission View only. Paste the key name (organizations/…/apiKeys/…) and the whole private key (BEGIN EC PRIVATE KEY…)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur coinbase.com → Paramètres → API (CDP) → Créer une clé API, signature ECDSA, permission Lecture (View) uniquement. Colle le nom de la clé (organizations/…/apiKeys/…) et toute la clé privée (BEGIN EC PRIVATE KEY…)."
           }
         }
       }

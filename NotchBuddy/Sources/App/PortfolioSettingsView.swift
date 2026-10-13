@@ -178,8 +178,8 @@ private struct AddExchangeSheet: View {
                 .padding(.bottom, 12)
 
             // Fields
-            fieldRow(label: "API Key", text: $apiKey)
-            fieldRow(label: "API Secret", text: $apiSecret, isSecret: true)
+            fieldRow(label: selectedExchange.keyLabel, text: $apiKey)
+            fieldRow(label: selectedExchange.secretLabel, text: $apiSecret, isSecret: true)
             if selectedExchange.needsPassphrase {
                 fieldRow(label: "Passphrase", text: $passphrase, isSecret: true)
             }
