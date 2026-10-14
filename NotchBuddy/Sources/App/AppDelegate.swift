@@ -56,6 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: NSLocalizedString("Open Coucou", comment: ""), action: #selector(openIsland), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Weekly recap", comment: ""), action: #selector(openWeeklyRecap), keyEquivalent: "")
+        #if !APPSTORE
+        menu.addItem(withTitle: String(localized: "hub.menu"), action: #selector(openFlowHub), keyEquivalent: "")
+        #endif
         menu.addItem(withTitle: NSLocalizedString("Settings…", comment: ""), action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
         menu.addItem(withTitle: NSLocalizedString("Quit", comment: ""), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -78,6 +81,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openWeeklyRecap() {
         islandController?.expand(to: .recap)
     }
+
+    #if !APPSTORE
+    @objc private func openFlowHub() {
+        if AppState.shared.mode == .expanded { islandController?.collapse() }
+        FlowHubController.shared.show()
+    }
+    #endif
 
     private var settingsWindow: NSWindow?
 

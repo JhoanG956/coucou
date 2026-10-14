@@ -36,6 +36,9 @@ jobs:
       - name: Test Flow dictation keys
         run: bash scripts/test-flow-keys.sh
 
+      - name: Test Flow text (snippets, dictionary, numbers)
+        run: bash scripts/test-flow-text.sh
+
       - name: Desktop Mochi and gaze tests
         run: bash scripts/test-desktop-mochi.sh
 

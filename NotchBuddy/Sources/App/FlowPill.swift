@@ -18,6 +18,8 @@ final class FlowPillModel: ObservableObject {
         case copied
         /// The microphone or speech recognition could not start.
         case failed
+        /// ⌃⌘V: the last dictation was pasted again.
+        case pastedAgain
     }
     @Published var phase: Phase = .idle
 }
@@ -84,22 +86,24 @@ struct FlowPillView: View {
         switch model.phase {
         case .copied: return Self.messageWidth(String(localized: "flow.copied-noaccess"))
         case .failed: return Self.messageWidth(String(localized: "flow.failed"))
-        default:      return 112
+        case .pastedAgain: return Self.messageWidth(String(localized: "flow.pasted-again"))
+        default:      return 118
         }
     }
 
     static func messageWidth(_ text: String) -> CGFloat {
         let font = NSFont.systemFont(ofSize: 12, weight: .medium)
         let w = (text as NSString).size(withAttributes: [.font: font]).width
-        return ceil(w) + 19 + 9 + 26 + 2
+        return ceil(w) + 22 + 9 + 26 + 2
     }
 
     private var capsule: some View {
         ZStack {
+            // Resting, the pill is see-through: whatever is behind it stays readable. Open, it is black.
             Capsule()
-                .fill(Color.black.opacity(open ? 0.94 : 0.86))
+                .fill(Color.black.opacity(open ? 0.94 : 0.28))
             Capsule()
-                .strokeBorder(Color.white.opacity(open ? 0.16 : 0.55), lineWidth: open ? 1 : 1.2)
+                .strokeBorder(Color.white.opacity(open ? 0.16 : 0.42), lineWidth: open ? 1 : 1.2)
             Capsule()
                 .strokeBorder(Color(hex: "#F97316").opacity(model.phase == .locked ? 0.85 : 0), lineWidth: 1.5)
             content
@@ -110,7 +114,7 @@ struct FlowPillView: View {
         .frame(width: open ? openWidth : Self.restingSize.width,
                height: open ? Self.openHeight : Self.restingSize.height)
         .clipShape(Capsule())          // the content stays inside while the pill opens
-        .shadow(color: .black.opacity(open ? 0.35 : 0.2), radius: open ? 10 : 4, y: open ? 4 : 1)
+        .shadow(color: .black.opacity(open ? 0.35 : 0), radius: open ? 10 : 0, y: open ? 4 : 0)
         .animation(.spring(response: 0.36, dampingFraction: 0.74), value: model.phase)
         .padding(.bottom, 2)
     }
@@ -129,6 +133,11 @@ struct FlowPillView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(Color(hex: "#E8E9EC"))
                     .fixedSize()
+            case .pastedAgain:
+                Text("flow.pasted-again")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(hex: "#E8E9EC"))
+                    .fixedSize()
             default:
                 dots
             }
@@ -137,23 +146,12 @@ struct FlowPillView: View {
         .fixedSize()
     }
 
-    /// Mochi's face, tiny: two eyes that squint while he works out the words.
+    /// Mochi, drawn by the same engine as the compact island's mini Mochis: his eyes wander all
+    /// around while you speak. 22 pt wide like a pill's Mochi (the canvas is larger, as there).
     private var mochi: some View {
-        let thinking = model.phase == .thinking
-        return RoundedRectangle(cornerRadius: 6.5, style: .continuous)
-            .fill(LinearGradient(colors: [Color(hex: "#F5F6F8"), Color(hex: "#C9CBD1")], startPoint: .top, endPoint: .bottom))
-            .frame(width: 19, height: 15)
-            .overlay(
-                HStack(spacing: 4.5) {
-                    ForEach(0..<2, id: \.self) { _ in
-                        Capsule()
-                            .fill(Color(hex: "#1A1412"))
-                            .frame(width: 2.6, height: thinking ? 1.4 : 4.2)
-                    }
-                }
-                .offset(y: 0.5)
-                .animation(.easeOut(duration: 0.15), value: thinking)
-            )
+        FlowMochiView(active: open)
+            .frame(width: 22 / 0.6, height: 22 / 0.6)
+            .frame(width: 22, height: 22, alignment: .center)
     }
 
     private var dots: some View {
@@ -171,6 +169,35 @@ struct FlowPillView: View {
             }
             .frame(height: 22)
         }
+    }
+}
+
+/// The pill's Mochi: a mini Mochi (BotEngine, like the pills of the compact island), white, idle,
+/// so his eyes wander around. Drawn only while the pill is open.
+private struct FlowMochiView: View {
+    let active: Bool
+    @StateObject private var engine: BotEngine
+
+    init(active: Bool) {
+        self.active = active
+        _engine = StateObject(wrappedValue: {
+            let e = BotEngine()
+            e.isMini = true
+            e.bodyColor = cgColorFromHex("#F5F6F8")
+            return e
+        }())
+    }
+
+    var body: some View {
+        TimelineView(.animation(paused: !active)) { timeline in
+            let frame = timeline.date   // redraw on every tick, as in MiniBotCanvasView
+            Canvas { context, size in
+                _ = frame
+                MochiFrameClock.advance(engine)
+                engine.draw(context: context, size: size)
+            }
+        }
+        .onAppear { engine.setState(.idle, force: true) }
     }
 }
 

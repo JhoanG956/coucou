@@ -1,7 +1,7 @@
 #if !APPSTORE
 import AppKit
 import ApplicationServices
-import Carbon.HIToolbox
+import Carbon
 
 /// The key that you hold to dictate.
 enum FlowKey: String, CaseIterable, Identifiable {
@@ -140,12 +140,14 @@ final class FlowDictation: ObservableObject {
     private func installMonitors() {
         // A global monitor sees the key in other apps, a local one while Coucou itself is in front.
         if let global = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: { [weak self] event in
-            let info = (event.type, event.keyCode, event.modifierFlags)
-            MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2) }
+            let info = (event.type, event.keyCode, event.modifierFlags,
+                        event.type == .keyDown ? event.charactersIgnoringModifiers : nil)
+            MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2, characters: info.3) }
         }) { monitors.append(global) }
         if let local = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown], handler: { [weak self] event in
-            let info = (event.type, event.keyCode, event.modifierFlags)
-            MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2) }
+            let info = (event.type, event.keyCode, event.modifierFlags,
+                        event.type == .keyDown ? event.charactersIgnoringModifiers : nil)
+            MainActor.assumeIsolated { self?.handle(type: info.0, keyCode: info.1, flags: info.2, characters: info.3) }
             return event
         }) { monitors.append(local) }
     }
@@ -173,11 +175,24 @@ final class FlowDictation: ObservableObject {
         }
     }
 
-    private func handle(type: NSEvent.EventType, keyCode: UInt16, flags: NSEvent.ModifierFlags) {
+    /// ⌃⌘V: the last dictation, pasted again.
+    static func isPasteAgain(characters: String?, flags: NSEvent.ModifierFlags) -> Bool {
+        let mods = flags.intersection([.command, .control, .option, .shift])
+        return mods == [.command, .control] && characters?.lowercased() == "v"
+    }
+
+    /// Pastes the last dictation again (⌃⌘V, or the button of the history).
+    func pasteAgain(_ text: String? = nil) {
+        guard let text = text ?? FlowStore.shared.lastText, !text.isEmpty else { return }
+        if FlowPaste.insert(text) { pill.flash(.pastedAgain) } else { pill.flash(.copied) }
+    }
+
+    private func handle(type: NSEvent.EventType, keyCode: UInt16, flags: NSEvent.ModifierFlags, characters: String?) {
         let now = ProcessInfo.processInfo.systemUptime
         switch type {
         case .keyDown:
             if keyCode == UInt16(kVK_Escape) { apply(logic.escape()) }
+            else if logic.phase == .idle, Self.isPasteAgain(characters: characters, flags: flags) { pasteAgain() }
             else { apply(logic.otherKey()) }
         case .flagsChanged where keyCode == key.keyCode:
             apply(key.isDown(flags) ? logic.keyDown(at: now) : logic.keyUp(at: now))
@@ -211,9 +226,13 @@ final class FlowDictation: ObservableObject {
     // MARK: - Listening
 
     /// One listen, from the key press to the paste. Cancelling it drops its words.
-    private final class Listen {
+    @MainActor private final class Listen {
         let dictation = MacDictation()
         var cancelled = false
+        /// The app the words go to, seen when the key went down.
+        let app = NSWorkspace.shared.frontmostApplication
+        let startedAt = Date()
+        var stoppedAt: Date?
     }
 
     private func begin() {
@@ -241,6 +260,7 @@ final class FlowDictation: ObservableObject {
     private func finish() {
         guard let listen = current else { pill.rest(); return }
         pill.model.phase = .thinking
+        listen.stoppedAt = Date()
         let opening = startTask
         Task { @MainActor [weak self] in
             await opening?.value
@@ -248,8 +268,23 @@ final class FlowDictation: ObservableObject {
             // moment so it makes it in.
             try? await Task.sleep(for: .milliseconds(Self.tailMilliseconds))
             guard !listen.cancelled else { return }
-            let text = await listen.dictation.finish().trimmingCharacters(in: .whitespacesAndNewlines)
+            let heard = await listen.dictation.finish().trimmingCharacters(in: .whitespacesAndNewlines)
             guard let self, !listen.cancelled else { return }
+            // Replacements and the dictionary, then Claude's clean-up when it is on, then the snippets.
+            let store = FlowStore.shared
+            let prepared = store.prepare(heard)
+            var body = prepared.text
+            if store.cleanupEnabled, !body.isEmpty {
+                let cleaned = await FlowCleanup.clean(body, style: store.style(for: listen.app?.bundleIdentifier),
+                                                      app: listen.app?.localizedName, words: store.words)
+                guard !listen.cancelled else { return }
+                if FlowText.keepsMarks(cleaned, prepared.snippets) { body = cleaned }
+            }
+            let text = FlowText.finish(body, snippets: prepared.snippets)
+            if !text.isEmpty {
+                let spoken = (listen.stoppedAt ?? Date()).timeIntervalSince(listen.startedAt)
+                store.record(text: text, app: listen.app?.localizedName, seconds: spoken)
+            }
             // A new listen may have begun meanwhile: its pill is left alone, but these words still go in.
             let latest = self.current === listen
             if latest { self.current = nil }
@@ -286,15 +321,23 @@ final class FlowDictation: ObservableObject {
 
 /// Puts the words where the cursor is: on the clipboard, then ⌘V, then the clipboard gets back what it held.
 enum FlowPaste {
+    /// Marks the words as passing through, so clipboard managers leave them out of their history
+    /// (the nspasteboard.org convention).
+    static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
+    static let autoGeneratedType = NSPasteboard.PasteboardType("org.nspasteboard.AutoGeneratedType")
+
     @MainActor static func insert(_ text: String) -> Bool {
         let board = NSPasteboard.general
         let saved = snapshot(board)
         board.clearContents()
+        board.declareTypes([.string, transientType, autoGeneratedType], owner: nil)
         board.setString(text, forType: .string)
+        board.setData(Data(), forType: transientType)
+        board.setData(Data(), forType: autoGeneratedType)
         guard AXIsProcessTrusted() else { return false }
 
         let source = CGEventSource(stateID: .combinedSessionState)
-        let v = CGKeyCode(kVK_ANSI_V)
+        let v = vKeyCode()
         let down = CGEvent(keyboardEventSource: source, virtualKey: v, keyDown: true)
         let up = CGEvent(keyboardEventSource: source, virtualKey: v, keyDown: false)
         down?.flags = .maskCommand
@@ -311,6 +354,31 @@ enum FlowPaste {
             restore(saved, to: board)
         }
         return true
+    }
+
+    /// The key that types "v" with ⌘ held in the current keyboard layout: the same key on QWERTY
+    /// and AZERTY, another one on Dvorak. Layouts with no "v" (Russian, Greek…) fall back to the
+    /// QWERTY key, which macOS uses for shortcuts there.
+    @MainActor static func vKeyCode() -> CGKeyCode {
+        let fallback = CGKeyCode(kVK_ANSI_V)
+        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let raw = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return fallback }
+        let data = Unmanaged<CFData>.fromOpaque(raw).takeUnretainedValue() as Data
+        let commandState = UInt32((cmdKey >> 8) & 0xFF)
+        let found: CGKeyCode? = data.withUnsafeBytes { bytes in
+            guard let layout = bytes.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return nil }
+            for code in 0..<128 {
+                var dead: UInt32 = 0
+                var length = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                let status = UCKeyTranslate(layout, UInt16(code), UInt16(kUCKeyActionDisplay), commandState,
+                                            UInt32(LMGetKbdType()), OptionBits(1 << kUCKeyTranslateNoDeadKeysBit),
+                                            &dead, 4, &length, &chars)
+                if status == noErr, length == 1, chars[0] == 0x76 { return CGKeyCode(code) }   // "v"
+            }
+            return nil
+        }
+        return found ?? fallback
     }
 
     private static func snapshot(_ board: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
