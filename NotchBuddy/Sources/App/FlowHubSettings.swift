@@ -8,6 +8,8 @@ struct HubSettingsPage: View {
     @ObservedObject private var store = FlowStore.shared
     @AppStorage("dictationLanguage") private var language = MacDictation.automatic
     @State private var confirmClear = false
+    @State private var showInDock = FlowHubController.showInDock
+    @State private var openAtLaunch = FlowHubController.openAtLaunch
 
     var body: some View {
         HubPageScaffold(title: String(localized: "hub.page.settings")) {
@@ -74,6 +76,21 @@ struct HubSettingsPage: View {
                     .font(.system(size: 12))
                     .foregroundColor(HubTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HubLabel(String(localized: "hub.settings.app"))
+            HubCard {
+                HubRow(title: String(localized: "hub.settings.dock"), detail: String(localized: "hub.settings.dock-detail")) {
+                    Toggle("", isOn: Binding(get: { showInDock }, set: { showInDock = $0; FlowHubController.showInDock = $0 }))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                HubDivider()
+                HubRow(title: String(localized: "hub.settings.open-at-launch")) {
+                    Toggle("", isOn: Binding(get: { openAtLaunch }, set: { openAtLaunch = $0; FlowHubController.openAtLaunch = $0 }))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
             }
 
             HubLabel(String(localized: "hub.settings.privacy"))

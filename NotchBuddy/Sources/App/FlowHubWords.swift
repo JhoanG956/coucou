@@ -20,9 +20,7 @@ struct HubDictionaryPage: View {
                         .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 if store.words.isEmpty {
-                    Text("hub.words-empty")
-                        .font(.system(size: 13))
-                        .foregroundColor(HubTheme.secondary)
+                    HubEmptyState(text: String(localized: "hub.words-empty"), state: .idle, color: "#A78BFA")
                 } else {
                     HubWrap(spacing: 8) {
                         ForEach(store.words, id: \.self) { word in
@@ -151,9 +149,7 @@ struct HubSnippetsPage: View {
                 }
             }
             if store.snippets.isEmpty {
-                Text("hub.snippets-empty")
-                    .font(.system(size: 13))
-                    .foregroundColor(HubTheme.secondary)
+                HubEmptyState(text: String(localized: "hub.snippets-empty"), color: "#F7B32B")
             }
             ForEach(store.snippets) { snippet in
                 HubCard {

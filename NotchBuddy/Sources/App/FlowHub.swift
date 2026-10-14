@@ -1,15 +1,46 @@
 #if !APPSTORE
 import AppKit
+import Carbon
 import SwiftUI
 
-/// The pages of the Coucou Flow window.
+/// The pages of the Coucou window: Flow (the dictation, the Notetaker) and the notch's settings.
 enum HubPage: String, CaseIterable, Identifiable {
     case dictation, notes, insights, dictionary, snippets, styles, settings
+    case general, pills, agents, chat, integrations, voice, shortcuts
 
     var id: String { rawValue }
 
+    static let flowPages: [HubPage] = [.dictation, .notes, .insights, .dictionary, .snippets, .styles, .settings]
+    static let notchPages: [HubPage] = [.general, .pills, .agents, .chat, .integrations, .voice, .shortcuts]
+
+    /// The section of Settings this page shows, for the notch's pages.
+    var settingsSection: String? {
+        switch self {
+        case .general:      return "general"
+        case .pills:        return "activepills"
+        case .agents:       return "agents"
+        case .chat:         return "chat"
+        case .integrations: return "integrations"
+        case .voice:        return "voice"
+        case .shortcuts:    return "shortcuts"
+        default:            return nil
+        }
+    }
+
+    /// The page showing a section of Settings ("chat", "voice"…).
+    static func forSettings(_ section: String) -> HubPage {
+        notchPages.first { $0.settingsSection == section } ?? .general
+    }
+
     var title: String {
         switch self {
+        case .general:      return String(localized: "General")
+        case .pills:        return String(localized: "Active pills")
+        case .agents:       return String(localized: "Agents")
+        case .chat:         return String(localized: "Chat")
+        case .integrations: return String(localized: "Integrations")
+        case .voice:        return String(localized: "Voice")
+        case .shortcuts:    return String(localized: "Shortcuts")
         case .dictation:  return String(localized: "hub.page.dictation")
         case .notes:      return String(localized: "hub.page.notes")
         case .insights:   return String(localized: "hub.page.insights")
@@ -28,17 +59,26 @@ enum HubPage: String, CaseIterable, Identifiable {
         case .dictionary: return "book.closed"
         case .snippets:   return "bolt"
         case .styles:     return "textformat"
-        case .settings:   return "gearshape"
+        case .settings:   return "slider.horizontal.3"
+        case .general:      return "gearshape"
+        case .pills:        return "square.grid.2x2"
+        case .agents:       return "terminal"
+        case .chat:         return "bubble.left.and.bubble.right"
+        case .integrations: return "puzzlepiece.extension"
+        case .voice:        return "waveform"
+        case .shortcuts:    return "keyboard"
         }
     }
 }
 
 /// The colors of the Coucou Flow window: the island's dark, with Coucou's orange.
 enum HubTheme {
-    static let window = Color(hex: "#0E0F11")
+    static let window = Color(hex: "#0A0B0D")
     static let sidebar = Color(hex: "#0A0B0D")
-    static let card = Color(hex: "#141518")
-    static let field = Color(hex: "#1A1B1F")
+    /// The big card on the right, where the pages are.
+    static let panel = Color(hex: "#111215")
+    static let card = Color(hex: "#18191C")
+    static let field = Color(hex: "#1F2024")
     static let line = Color.white.opacity(0.07)
     static let text = Color(hex: "#F5F6F8")
     static let body = Color(hex: "#E1E3E6")
@@ -54,6 +94,34 @@ enum HubTheme {
     static func speaker(_ index: Int) -> Color { speakers[max(0, index) % speakers.count] }
 }
 
+private struct HubPageKey: EnvironmentKey {
+    static let defaultValue: HubPage = .dictation
+}
+
+extension EnvironmentValues {
+    /// The page shown, for the colour and the Mochis of its top band.
+    var hubPage: HubPage {
+        get { self[HubPageKey.self] }
+        set { self[HubPageKey.self] = newValue }
+    }
+}
+
+extension HubPage {
+    /// The line under the title of the notch's pages.
+    static func notchSubtitle(_ page: HubPage) -> String? {
+        switch page {
+        case .general:      return String(localized: "hub.notch.general")
+        case .pills:        return String(localized: "hub.notch.pills")
+        case .agents:       return String(localized: "hub.notch.agents")
+        case .chat:         return String(localized: "hub.notch.chat")
+        case .integrations: return String(localized: "hub.notch.integrations")
+        case .voice:        return String(localized: "hub.notch.voice")
+        case .shortcuts:    return String(localized: "hub.notch.shortcuts")
+        default:            return nil
+        }
+    }
+}
+
 @MainActor
 final class HubRouter: ObservableObject {
     @Published var page: HubPage = .dictation
@@ -65,7 +133,38 @@ final class HubRouter: ObservableObject {
 final class FlowHubController {
     static let shared = FlowHubController()
     let router = HubRouter()
+    let windowState = HubWindowState()
     private var window: NSWindow?
+
+    static let showInDockKey = "coucouShowInDock"
+    static let openAtLaunchKey = "coucouOpenAtLaunch"
+
+    /// Coucou in the Dock, like a regular app (on by default in the GitHub build).
+    static var showInDock: Bool {
+        get { UserDefaults.standard.object(forKey: showInDockKey) as? Bool ?? true }
+        set {
+            UserDefaults.standard.set(newValue, forKey: showInDockKey)
+            NSApp.setActivationPolicy(newValue ? .regular : .accessory)
+            if newValue { NSApp.activate(ignoringOtherApps: true) }
+        }
+    }
+
+    /// The window opens when Coucou is opened by hand (never at login).
+    static var openAtLaunch: Bool {
+        get { UserDefaults.standard.object(forKey: openAtLaunchKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: openAtLaunchKey) }
+    }
+
+    /// Whether macOS opened Coucou at login, rather than you from the Finder, the Dock or Spotlight.
+    static func launchedAtLogin() -> Bool {
+        if let event = NSAppleEventManager.shared().currentAppleEvent,
+           event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue == OSType(keyAELaunchedAsLogInItem) {
+            return true
+        }
+        // A login item started by launchd may come without that flag: the first minutes after
+        // the Mac starts count as a login.
+        return ProcessInfo.processInfo.systemUptime < 180
+    }
 
     func show(_ page: HubPage? = nil) {
         if let page { router.page = page }
@@ -77,12 +176,13 @@ final class FlowHubController {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                            backing: .buffered, defer: false)
-        win.title = "Coucou Flow"
+        win.title = "Coucou"
         win.titlebarAppearsTransparent = true
         win.titleVisibility = .hidden
         win.appearance = NSAppearance(named: .darkAqua)
-        win.backgroundColor = NSColor(red: 0x0E / 255, green: 0x0F / 255, blue: 0x11 / 255, alpha: 1)
-        win.contentView = NSHostingView(rootView: FlowHubView(router: router))
+        win.backgroundColor = NSColor(red: 0x0A / 255, green: 0x0B / 255, blue: 0x0D / 255, alpha: 1)
+        win.contentView = NSHostingView(rootView: FlowHubView(router: router, windowState: windowState))
+        windowState.watch(win)
         win.contentMinSize = NSSize(width: 940, height: 600)
         win.isReleasedWhenClosed = false
         win.setFrameAutosaveName("CoucouFlowWindow")
@@ -95,18 +195,31 @@ final class FlowHubController {
 
 struct FlowHubView: View {
     @ObservedObject var router: HubRouter
+    @ObservedObject var windowState: HubWindowState
 
     var body: some View {
         HStack(spacing: 0) {
             HubSidebar(router: router)
+            // The pages sit in one big card, like Wispr Flow's window.
             page
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(HubTheme.window)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(LinearGradient(colors: [Color(hex: "#141518"), HubTheme.panel],
+                                             startPoint: .top, endPoint: .bottom))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.white.opacity(0.07)))
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+                .padding(.trailing, 10)
         }
         .background(HubTheme.window)
         .foregroundColor(HubTheme.text)
         .preferredColorScheme(.dark)
         .tint(HubTheme.accent)
+        .environment(\.hubVisible, windowState.visible)
+        .environment(\.hubPage, router.page)
     }
 
     @ViewBuilder private var page: some View {
@@ -118,6 +231,16 @@ struct FlowHubView: View {
         case .snippets:   HubSnippetsPage()
         case .styles:     HubStylesPage(router: router)
         case .settings:   HubSettingsPage()
+        default:
+            if let section = router.page.settingsSection {
+                VStack(alignment: .leading, spacing: 0) {
+                    HubHero(page: router.page, title: router.page.title, subtitle: HubPage.notchSubtitle(router.page))
+                        .padding(.horizontal, 28)
+                        .padding(.top, 24)
+                    SettingsView(embeddedSection: section)
+                        .id(section)
+                }
+            }
         }
     }
 }
@@ -131,19 +254,28 @@ private struct HubSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 10) {
-                HubMochi(size: 28)
-                (Text(verbatim: "Coucou ") + Text(verbatim: "Flow").foregroundColor(HubTheme.accent))
+                HubLiveMochi(size: 28)
+                Text(verbatim: "Coucou")
                     .font(.system(size: 18, weight: .bold))
             }
             .padding(.horizontal, 8)
             .padding(.top, 44)
-            .padding(.bottom, 18)
+            .padding(.bottom, 12)
 
-            ForEach([HubPage.dictation, .notes, .insights, .dictionary, .snippets, .styles]) { page in
-                HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    HubSidebarHeader(text: "Flow")
+                    ForEach(HubPage.flowPages) { page in
+                        HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                    }
+                    HubSidebarHeader(text: String(localized: "hub.section.notch"))
+                        .padding(.top, 14)
+                    ForEach(HubPage.notchPages) { page in
+                        HubSidebarItem(page: page, selected: router.page == page) { router.page = page }
+                    }
+                }
             }
-            Spacer(minLength: 12)
-            HubSidebarItem(page: .settings, selected: router.page == .settings) { router.page = .settings }
+            .scrollIndicators(.never)
             status
                 .padding(.top, 8)
         }
@@ -178,6 +310,20 @@ private struct HubSidebar: View {
     }
 }
 
+/// "FLOW", "NOTCH": the small capitals above a group of pages.
+private struct HubSidebarHeader: View {
+    let text: String
+
+    var body: some View {
+        Text(text.uppercased(with: .current))
+            .font(.system(size: 10.5, weight: .bold))
+            .tracking(1.2)
+            .foregroundColor(HubTheme.muted)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 4)
+    }
+}
+
 private struct HubSidebarItem: View {
     let page: HubPage
     let selected: Bool
@@ -196,7 +342,7 @@ private struct HubSidebarItem: View {
             }
             .foregroundColor(selected ? HubTheme.text : Color(hex: "#B7BBC2"))
             .padding(.horizontal, 10)
-            .frame(height: 36)
+            .frame(height: 32)
             .background(RoundedRectangle(cornerRadius: 9)
                 .fill(Color.white.opacity(selected ? 0.08 : (hover ? 0.04 : 0))))
             .contentShape(Rectangle())
@@ -232,29 +378,17 @@ struct HubPageScaffold<Trailing: View, Content: View>: View {
     @ViewBuilder var trailing: () -> Trailing
     @ViewBuilder var content: () -> Content
 
+    @Environment(\.hubPage) private var page
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                HStack(alignment: .bottom, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(title)
-                            .font(.system(size: 28, weight: .bold))
-                            .tracking(-0.5)
-                        if let subtitle {
-                            Text(subtitle)
-                                .font(.system(size: 14))
-                                .foregroundColor(HubTheme.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                    trailing()
-                }
+                HubHero(page: page, title: title, subtitle: subtitle, trailing: trailing)
                 content()
             }
-            .padding(.horizontal, 40)
-            .padding(.top, 38)
-            .padding(.bottom, 32)
+            .padding(.horizontal, 28)
+            .padding(.top, 24)
+            .padding(.bottom, 28)
             .frame(maxWidth: 1100, alignment: .leading)
         }
         .scrollIndicators(.automatic)

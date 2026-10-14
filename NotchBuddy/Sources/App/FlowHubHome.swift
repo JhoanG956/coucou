@@ -86,11 +86,8 @@ struct HubHomePage: View {
             }
             if store.history.isEmpty {
                 HubCard {
-                    Text(store.keepDays == 0 ? String(localized: "hub.history-off")
-                         : String(format: String(localized: "hub.history-empty %@"), flow.key.label))
-                        .font(.system(size: 14))
-                        .foregroundColor(HubTheme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HubEmptyState(text: store.keepDays == 0 ? String(localized: "hub.history-off")
+                                  : String(format: String(localized: "hub.history-empty %@"), flow.key.label))
                 }
             } else if groups.isEmpty {
                 Text("hub.search-empty")

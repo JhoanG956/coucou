@@ -3325,6 +3325,461 @@
         }
       }
     },
+    "hub.notch.agents" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code وCodex وبقية الوكلاء الذين يتابعهم موتشي."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex আর অন্য এজেন্ট যাদের মোচি অনুসরণ করে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex and the other agents Mochi follows."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex y los demás agentes que sigue Mochi."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex et les autres agents que Mochi suit."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex और बाकी एजेंट जिन पर मोची नज़र रखता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex, dan agen lain yang diikuti Mochi."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex e os outros agentes que o Mochi acompanha."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code, Codex и другие агенты, за которыми следит Мочи."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi 关注的 Claude Code、Codex 和其他智能体。"
+          }
+        }
+      }
+    },
+    "hub.notch.chat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ذكاء دردشة النوتش، بمفاتيحك الخاصة."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচ চ্যাটের AI, আপনার নিজের কী দিয়ে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The AI of the notch's chat, with your own keys."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La IA del chat del notch, con tus propias claves."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'IA du chat du notch, avec tes propres clés."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच चैट का AI, आपकी अपनी कुंजियों से।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI untuk obrolan notch, dengan kuncimu sendiri."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A IA do chat do notch, com suas próprias chaves."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ для чата в чёлке, с вашими ключами."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刘海聊天使用的 AI，用你自己的密钥。"
+          }
+        }
+      }
+    },
+    "hub.notch.general" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "موتشي وأصواته وسلوك النوتش."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "মোচি, তার শব্দ আর নচের আচরণ।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi, his sounds and how the notch behaves."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi, sus sonidos y cómo se comporta el notch."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi, ses sons et le comportement du notch."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मोची, उसकी आवाज़ें और नॉच का व्यवहार।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi, suaranya, dan perilaku notch."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Mochi, seus sons e o comportamento do notch."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мочи, его звуки и поведение чёлки."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi、它的声音和刘海的行为。"
+          }
+        }
+      }
+    },
+    "hub.notch.integrations" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe وGitHub وVercel وn8n وNotion وغيرها."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion আর বাকিগুলো।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion and the rest."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion y los demás."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion et les autres."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion और बाकी।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion, dan lainnya."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion e os outros."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe, GitHub, Vercel, n8n, Notion и другие."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stripe、GitHub、Vercel、n8n、Notion 等。"
+          }
+        }
+      }
+    },
+    "hub.notch.pills" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الحبوب الظاهرة في النوتش وترتيبها وألوانها."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচে দেখানো পিল, তাদের ক্রম আর রং।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The pills shown in the notch, their order and their colours."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las píldoras del notch, su orden y sus colores."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les pilules affichées dans le notch, leur ordre et leurs couleurs."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच में दिखने वाली पिल्स, उनका क्रम और रंग।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pil di notch, urutan dan warnanya."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As pílulas do notch, sua ordem e suas cores."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пилюли в чёлке, их порядок и цвета."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刘海中显示的胶囊、顺序和颜色。"
+          }
+        }
+      }
+    },
+    "hub.notch.shortcuts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المفاتيح التي تفتح النوتش وإجراءاته."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচ আর তার কাজ খোলার কী।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The keys that open the notch and its actions."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las teclas que abren el notch y sus acciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les touches qui ouvrent le notch et ses actions."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच और उसकी क्रियाएँ खोलने वाली कुंजियाँ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tombol untuk membuka notch dan aksinya."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As teclas que abrem o notch e suas ações."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиши, открывающие чёлку и её действия."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开刘海及其操作的按键。"
+          }
+        }
+      }
+    },
+    "hub.notch.voice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«OK Coucou» وصوت موتشي ومفتاح الإملاء."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“OK Coucou”, মোচির কণ্ঠ আর ডিক্টেশন কী।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« OK Coucou », Mochi's voice and the dictation key."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«OK Coucou», la voz de Mochi y la tecla de dictado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« OK Coucou », la voix de Mochi et la touche de dictée."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“OK Coucou”, मोची की आवाज़ और डिक्टेशन कुंजी।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“OK Coucou”, suara Mochi, dan tombol dikte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“OK Coucou”, a voz do Mochi e a tecla de ditado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«OK Coucou», голос Мочи и клавиша диктовки."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“OK Coucou”、Mochi 的声音和听写按键。"
+          }
+        }
+      }
+    },
     "hub.notes-promo" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4690,6 +5145,136 @@
         }
       }
     },
+    "hub.section.notch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "النوتش"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নচ"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नॉच"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刘海"
+          }
+        }
+      }
+    },
+    "hub.settings.app" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "التطبيق"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অ্যাপ"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ऐप"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplikasi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        }
+      }
+    },
     "hub.settings.cancel" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4946,6 +5531,136 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除历史记录"
+          }
+        }
+      }
+    },
+    "hub.settings.dock" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إظهار Coucou في Dock"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dock-এ Coucou দেখান"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Coucou in the Dock"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar Coucou en el Dock"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher Coucou dans le Dock"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou को Dock में दिखाएँ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tampilkan Coucou di Dock"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar o Coucou no Dock"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать Coucou в Dock"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在程序坞中显示 Coucou"
+          }
+        }
+      }
+    },
+    "hub.settings.dock-detail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "افتح Coucou كأي تطبيق؛ والنقر على أيقونته يعيد هذه النافذة. عند الإيقاف يبقى Coucou في شريط القوائم فقط."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "যেকোনো অ্যাপের মতো Coucou খুলুন; এর আইকনে ক্লিক করলে এই উইন্ডো ফিরে আসে। বন্ধ থাকলে Coucou শুধু মেনু বারে থাকে।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Coucou like any app; a click on its icon brings this window back. Off, Coucou lives in the menu bar only."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre Coucou como cualquier app; un clic en su icono trae esta ventana. Desactivado, Coucou solo está en la barra de menús."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre Coucou comme n'importe quelle app ; un clic sur son icône ramène cette fenêtre. Désactivé, Coucou vit seulement dans la barre des menus."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou को किसी भी ऐप की तरह खोलें; इसके आइकन पर क्लिक करने से यह विंडो वापस आती है। बंद होने पर Coucou सिर्फ़ मेनू बार में रहता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka Coucou seperti aplikasi lain; klik ikonnya untuk memunculkan jendela ini. Jika mati, Coucou hanya ada di bar menu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra o Coucou como qualquer app; um clique no ícone traz esta janela de volta. Desligado, o Coucou fica só na barra de menus."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывайте Coucou как обычное приложение; щелчок по значку возвращает это окно. Если выключено, Coucou живёт только в строке меню."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "像其他 App 一样打开 Coucou；点按其图标即可回到此窗口。关闭后，Coucou 只在菜单栏中。"
           }
         }
       }
@@ -5401,6 +6116,71 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按键"
+          }
+        }
+      }
+    },
+    "hub.settings.open-at-launch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح هذه النافذة عند فتح Coucou"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou খুললে এই উইন্ডো খুলুন"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open this window when you open Coucou"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir esta ventana al abrir Coucou"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir cette fenêtre quand tu lances Coucou"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou खोलने पर यह विंडो खोलें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buka jendela ini saat membuka Coucou"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir esta janela ao abrir o Coucou"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывать это окно при запуске Coucou"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Coucou 时打开此窗口"
           }
         }
       }

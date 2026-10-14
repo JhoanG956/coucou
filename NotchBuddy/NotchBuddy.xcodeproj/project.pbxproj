@@ -328,6 +328,7 @@
 		D34D31C27D97D23C0441D1BE /* MochiActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE18399D1CD69468CCF57966 /* MochiActivityState.swift */; };
 		D45D9C8EAF67FC2F46E9F352 /* CloudProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28323DC20034A281F6829884 /* CloudProbe.swift */; };
 		D4E60449D7E33D93016192EC /* FlowSettingsBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8436291D94C826F1D9DA3130 /* FlowSettingsBox.swift */; };
+		D62CFFA91DA4BC5755E55186 /* FlowHubMochis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E7E2106BCE86A472ED8051 /* FlowHubMochis.swift */; };
 		D6559770BBFB06FD4E90187B /* OpenLeadMochiIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D96E57E8DADE6B82628E3E /* OpenLeadMochiIntent.swift */; };
 		D69E561062D9358837380ABD /* CryptoController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73DF398C822D98F541B62F89 /* CryptoController.swift */; };
 		D7FD1948C7F97D6A2904CDBE /* ElevenLabsTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046F9CD91704C34AE5BE9393 /* ElevenLabsTTS.swift */; };
@@ -373,6 +374,7 @@
 		F1EE04000665E204E02DC5AC /* DenyApprovalIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D849B1A27AD17AEE1C7FFD1A /* DenyApprovalIntent.swift */; };
 		F25EB7EF3662AFF99AA1C8A1 /* TeamConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C1BB0DF7770A6B263995E6 /* TeamConfiguration.swift */; };
 		F28275101D83F121E582B1B1 /* LiveActivityRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136626568FF0C3EAB1D08067 /* LiveActivityRelay.swift */; };
+		F558DBB511DF88077B8A6159 /* FlowHubMochis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E7E2106BCE86A472ED8051 /* FlowHubMochis.swift */; };
 		F5D6F8E2CA65AB16B487DDD0 /* IslandScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9466FDE02C9B3FB4EF01DFF8 /* IslandScreenGeometry.swift */; };
 		F6CA56F362902839EF9A3E2E /* PhoneAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60401D1023D17C3FD30D7113 /* PhoneAssets.xcassets */; };
 		F6D57EEBD7E937EFD2B715CF /* ClaudeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F0D0F67E7C56B9E37E7648 /* ClaudeHost.swift */; };
@@ -508,6 +510,7 @@
 		78FB882D49084DEA6A10DB4D /* RecapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecapStore.swift; sourceTree = "<group>"; };
 		79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiWardrobe.swift; sourceTree = "<group>"; };
 		79D8DD79C3DD9BBC584B3CB2 /* HookServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookServer.swift; sourceTree = "<group>"; };
+		79E7E2106BCE86A472ED8051 /* FlowHubMochis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowHubMochis.swift; sourceTree = "<group>"; };
 		7A666A5E3F809301028F0DF8 /* NoteTaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTaker.swift; sourceTree = "<group>"; };
 		7C1A7D5CBE2AC084A10C5FF3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7C432FE1286945E42D3E11D7 /* VoiceResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceResultView.swift; sourceTree = "<group>"; };
@@ -668,6 +671,7 @@
 				0BFB4C9E1BBD89E2E6319DCC /* FlowHub.swift */,
 				982CBB722685931BB8958162 /* FlowHubHome.swift */,
 				35CE2B25C51E1F2186416192 /* FlowHubInsights.swift */,
+				79E7E2106BCE86A472ED8051 /* FlowHubMochis.swift */,
 				CC2669CBBE5BDF9C775132D1 /* FlowHubNotes.swift */,
 				B249C39EA29E941BC52A6126 /* FlowHubSettings.swift */,
 				1A1A34DE2886E394C879CF64 /* FlowHubWords.swift */,
@@ -1158,6 +1162,7 @@
 				6ABDBE19E95D661216B8DE13 /* FlowHub.swift in Sources */,
 				56E12FFCAAB2C4F31600B0F8 /* FlowHubHome.swift in Sources */,
 				1EE6D325934B60A16520ECA1 /* FlowHubInsights.swift in Sources */,
+				D62CFFA91DA4BC5755E55186 /* FlowHubMochis.swift in Sources */,
 				14869F429444B31D072A75B8 /* FlowHubNotes.swift in Sources */,
 				4804DA9B3008C5C477E2818C /* FlowHubSettings.swift in Sources */,
 				7B7CBFAADFF687004012609D /* FlowHubWords.swift in Sources */,
@@ -1382,6 +1387,7 @@
 				B595A51BC53F255F055798FF /* FlowHub.swift in Sources */,
 				67B768A8B9395BC6AC32AD54 /* FlowHubHome.swift in Sources */,
 				B957D76CBE6A0DF91E918C57 /* FlowHubInsights.swift in Sources */,
+				F558DBB511DF88077B8A6159 /* FlowHubMochis.swift in Sources */,
 				BEC3D806C75A6D6DDE9CCFDC /* FlowHubNotes.swift in Sources */,
 				0EB57943A58F60AF72906BB1 /* FlowHubSettings.swift in Sources */,
 				66069F348A37AE19806376A7 /* FlowHubWords.swift in Sources */,

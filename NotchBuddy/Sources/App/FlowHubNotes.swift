@@ -15,6 +15,11 @@ struct HubNotesPage: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+        HubHero(page: .notes, title: String(localized: "hub.page.notes"),
+                subtitle: String(localized: "hub.notes-promo"), compact: true)
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
         HStack(spacing: 0) {
             HubNotesList(selected: $selected)
                 .frame(width: 280)
@@ -34,6 +39,7 @@ struct HubNotesPage: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        }
     }
 }
 
@@ -49,7 +55,7 @@ private struct HubNotesList: View {
             HubRecordButton {
                 selected = nil
             }
-            .padding(.top, 34)
+            .padding(.top, 16)
             if let error = taker.startError {
                 Text(error)
                     .font(.system(size: 12))
@@ -198,12 +204,8 @@ private struct HubNotesSetup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("hub.page.notes")
-                .font(.system(size: 28, weight: .bold))
-            Text("hub.notes-promo")
-                .font(.system(size: 14))
-                .foregroundColor(HubTheme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            HubLiveMochi(color: "#3B9EFF", size: 54, outfit: .roundGlasses)
+                .frame(height: 50)
             HubCard(padding: 20) {
                 Text("notes.setup-title")
                     .font(.system(size: 15, weight: .bold))
@@ -227,24 +229,15 @@ private struct HubNotesSetup: View {
             }
             .frame(maxWidth: 560)
         }
-        .padding(.horizontal, 40)
-        .padding(.top, 38)
+        .padding(.horizontal, 32)
+        .padding(.top, 20)
     }
 }
 
 private struct HubNotesEmpty: View {
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "waveform")
-                .font(.system(size: 30))
-                .foregroundColor(HubTheme.muted)
-            Text("notes.empty")
-                .font(.system(size: 14))
-                .foregroundColor(HubTheme.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 360)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        HubEmptyState(text: String(localized: "notes.empty"), state: .idle, color: "#3B9EFF")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -292,8 +285,8 @@ private struct HubLiveNote: View {
                 }
             }
         }
-        .padding(.horizontal, 36)
-        .padding(.top, 38)
+        .padding(.horizontal, 32)
+        .padding(.top, 20)
     }
 }
 
@@ -390,8 +383,8 @@ private struct HubNoteDetail: View {
                     if tab == 0 { summary } else { transcript }
                 }
             }
-            .padding(.horizontal, 36)
-            .padding(.top, 38)
+            .padding(.horizontal, 32)
+            .padding(.top, 20)
             .padding(.bottom, 30)
             .frame(maxWidth: 980, alignment: .leading)
         }
