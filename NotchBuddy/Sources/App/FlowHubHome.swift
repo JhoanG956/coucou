@@ -212,6 +212,7 @@ private struct HubTotalsCard: View {
 
 private struct HubNotesPromo: View {
     @ObservedObject var router: HubRouter
+    @StateObject private var light = HubHeroLight()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -231,15 +232,22 @@ private struct HubNotesPromo: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(LinearGradient(colors: [Color(hex: "#1D1410"), HubTheme.card], startPoint: .top, endPoint: .bottom)))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(HubTheme.accent.opacity(0.25)))
+        .background(HubHeroBackdrop(color: HubTheme.accent, light: light, cornerRadius: 14).allowsHitTesting(false))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(HubTheme.accent.opacity(0.2)))
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let point): light.target = point
+            case .ended:             light.target = nil
+            }
+        }
     }
 }
 
 /// Shown while the dictation is off, or cannot paste yet.
 struct HubSetupCard: View {
     @ObservedObject private var flow = FlowDictation.shared
+    @StateObject private var light = HubHeroLight()
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -266,8 +274,15 @@ struct HubSetupCard: View {
             Spacer(minLength: 0)
         }
         .padding(18)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(HubTheme.accent.opacity(0.08)))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(HubTheme.accent.opacity(0.25)))
+        .background(HubHeroBackdrop(color: HubTheme.accent, light: light, cornerRadius: 14).allowsHitTesting(false))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(HubTheme.accent.opacity(0.2)))
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let point): light.target = point
+            case .ended:             light.target = nil
+            }
+        }
         .onAppear { flow.recheckTrust() }
     }
 }

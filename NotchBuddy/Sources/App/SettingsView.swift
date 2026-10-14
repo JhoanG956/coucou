@@ -223,7 +223,7 @@ struct SettingsView: View {
                     .padding(.horizontal, embeddedSection == nil ? 20 : 28)
                     .padding(.top, embeddedSection == nil ? 0 : 20)
                     .padding(.bottom, 16)
-                    .frame(maxWidth: embeddedSection == nil ? .infinity : 760, alignment: .leading)
+                    .frame(maxWidth: embeddedSection == nil ? .infinity : 1100, alignment: .leading)
                 }
                 if !statusMessage.isEmpty {
                     Divider()

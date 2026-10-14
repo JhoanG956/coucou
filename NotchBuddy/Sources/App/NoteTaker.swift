@@ -84,6 +84,25 @@ final class NoteTaker: ObservableObject {
 
     var isRecording: Bool { recording != nil }
 
+    /// The pill's record button: starts or stops, and says what is missing.
+    func toggleFromPill() {
+        if isRecording { stop(); return }
+        guard Parakeet.shared.isReady else {
+            FlowDictation.shared.pill.announce(
+                FlowAnnouncement(symbol: "arrow.down.circle.fill", tint: "#3B9EFF", text: String(localized: "notes.error.models"),
+                                 action: String(localized: "hub.open-settings"))) {
+                FlowHubController.shared.show(.settings)
+            }
+            return
+        }
+        Task { @MainActor in
+            await self.start()
+            if let error = self.startError {
+                FlowDictation.shared.pill.announce(FlowAnnouncement(symbol: "exclamationmark.circle.fill", tint: "#FF6B6B", text: error))
+            }
+        }
+    }
+
     // MARK: - Recording
 
     func start() async {
@@ -262,6 +281,14 @@ final class NoteTaker: ObservableObject {
         }
         if summaryEngine != .off, !note.lines.isEmpty {
             await summarize(id)
+        }
+        // The notes are ready: the pill says so, with a way to open them.
+        let title = self.note(id)?.title ?? note.title
+        FlowDictation.shared.pill.announce(
+            FlowAnnouncement(symbol: "checkmark.circle.fill", tint: "#34D399",
+                             text: String(format: String(localized: "notes.ann.ready %@"), title),
+                             action: String(localized: "notes.ann.open")), for: 12) {
+            FlowHubController.shared.show(.notes)
         }
     }
 

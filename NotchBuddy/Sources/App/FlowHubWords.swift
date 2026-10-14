@@ -303,7 +303,7 @@ struct HubStylesPage: View {
             ForEach(FlowStyle.allCases) { Text($0.label).tag($0) }
         }
         .labelsHidden()
-        .frame(width: 150)
+        .fixedSize()
     }
 
     /// Running apps with windows that have no style of their own yet.

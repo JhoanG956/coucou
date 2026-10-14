@@ -73,7 +73,15 @@ final class FlowDictation: ObservableObject {
     @Published var key: FlowKey = FlowKey(rawValue: UserDefaults.standard.string(forKey: FlowDictation.keyKey) ?? "") ?? .rightOption {
         didSet {
             UserDefaults.standard.set(key.rawValue, forKey: Self.keyKey)
+            pill.model.keyLabel = key.label
             cancelAll()
+        }
+    }
+    /// Where the pill lives: centred along the bottom, or on the left or right edge.
+    @Published var pillEdge: FlowPillEdge = FlowPillEdge(rawValue: UserDefaults.standard.string(forKey: "flowPillEdge") ?? "") ?? .bottom {
+        didSet {
+            UserDefaults.standard.set(pillEdge.rawValue, forKey: "flowPillEdge")
+            pill.setEdge(pillEdge)
         }
     }
     /// Whether macOS lets Coucou watch the key and paste (System Settings → Privacy & Security → Accessibility).
@@ -94,6 +102,29 @@ final class FlowDictation: ObservableObject {
         let bands = FlowAudioBands()
         self.bands = bands
         pill = FlowPillController(bands: bands)
+        // The pill's buttons, under the pointer.
+        pill.setEdge(pillEdge)
+        pill.model.keyLabel = key.label
+        pill.model.dictate = { [weak self] in self?.startHandsFree() }
+        pill.model.finishDictation = { [weak self] in self?.finishFromPill() }
+        pill.model.cancelDictation = { [weak self] in self?.cancelAll() }
+        pill.model.toggleNote = { NoteTaker.shared.toggleFromPill() }
+        pill.model.openHub = { FlowHubController.shared.show() }
+    }
+
+    /// The pill's microphone: hands-free, as after a double tap, until ✓ or the key.
+    func startHandsFree() {
+        guard isEnabled, logic.phase == .idle, current == nil else { return }
+        logic.lock()
+        begin()
+        pill.model.phase = .locked
+    }
+
+    /// The pill's ✓: stop listening and paste.
+    func finishFromPill() {
+        guard logic.phase == .locked else { return }
+        logic.reset()
+        finish()
     }
 
     /// At launch: listens for the key if Flow dictation is on.
@@ -187,7 +218,11 @@ final class FlowDictation: ObservableObject {
     /// Pastes the last dictation again (⌃⌘V, or the button of the history).
     func pasteAgain(_ text: String? = nil) {
         guard let text = text ?? FlowStore.shared.lastText, !text.isEmpty else { return }
-        if FlowPaste.insert(text) { pill.flash(.pastedAgain) } else { pill.flash(.copied) }
+        switch FlowPaste.insert(text) {
+        case .pasted:   pill.flash(.pastedAgain)
+        case .noAccess: announceNoAccess()
+        case .noField:  announceNoField()
+        }
     }
 
     private func handle(type: NSEvent.EventType, keyCode: UInt16, flags: NSEvent.ModifierFlags, characters: String?) {
@@ -286,6 +321,12 @@ final class FlowDictation: ObservableObject {
                 self.logic.reset()
                 self.current = nil
                 self.pill.flash(.failed)
+                self.pill.announce(FlowAnnouncement(symbol: "mic.slash.fill", tint: "#FF6B6B", text: String(localized: "flow.ann.mic"),
+                                                    action: String(localized: "flow.ann.settings"))) {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
             }
         }
     }
@@ -322,16 +363,33 @@ final class FlowDictation: ObservableObject {
             let latest = self.current === listen
             if latest { self.current = nil }
             guard !text.isEmpty else { if latest { self.pill.rest() }; return }
-            let pasted = FlowPaste.insert(text)
-            if !pasted {
+            let result = FlowPaste.insert(text)
+            if latest { self.pill.rest() }
+            switch result {
+            case .pasted:
+                break
+            case .noAccess:
                 // No Accessibility: the words wait on the clipboard, and macOS is asked once.
                 self.trusted = false
                 if !self.promptedThisRun { self.promptedThisRun = true; self.askForAccessibility() }
                 self.waitForTrust()
+                self.announceNoAccess()
+            case .noField:
+                self.announceNoField()
             }
-            guard latest else { return }
-            if pasted { self.pill.rest() } else { self.pill.flash(.copied) }
         }
+    }
+
+    /// The words could not be pasted: they are on the clipboard, and the pill says how to get them in.
+    private func announceNoAccess() {
+        pill.announce(FlowAnnouncement(symbol: "lock.fill", text: String(localized: "flow.ann.no-access"),
+                                       action: String(localized: "flow.ann.allow"))) { [weak self] in
+            self?.openAccessibilitySettings()
+        }
+    }
+
+    private func announceNoField() {
+        pill.announce(FlowAnnouncement(symbol: "doc.on.clipboard.fill", text: String(localized: "flow.ann.no-field")))
     }
 
     private func abort() {
@@ -359,7 +417,17 @@ enum FlowPaste {
     static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
     static let autoGeneratedType = NSPasteboard.PasteboardType("org.nspasteboard.AutoGeneratedType")
 
-    @MainActor static func insert(_ text: String) -> Bool {
+    enum Result {
+        /// ⌘V was sent where you type.
+        case pasted
+        /// No Accessibility permission: the words are only on the clipboard.
+        case noAccess
+        /// Nothing seems to take text where the focus is: ⌘V was sent anyway, and the words stay on
+        /// the clipboard for you to paste.
+        case noField
+    }
+
+    @MainActor static func insert(_ text: String) -> Result {
         let board = NSPasteboard.general
         let saved = snapshot(board)
         board.clearContents()
@@ -367,7 +435,8 @@ enum FlowPaste {
         board.setString(text, forType: .string)
         board.setData(Data(), forType: transientType)
         board.setData(Data(), forType: autoGeneratedType)
-        guard AXIsProcessTrusted() else { return false }
+        guard AXIsProcessTrusted() else { return .noAccess }
+        let field = focusTakesText()
 
         let source = CGEventSource(stateID: .combinedSessionState)
         let v = vKeyCode()
@@ -378,6 +447,8 @@ enum FlowPaste {
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
 
+        // No text field: the words stay on the clipboard.
+        if field == false { return .noField }
         // Give the app time to read the clipboard, then put back what was there, unless something
         // else was copied meanwhile.
         let count = board.changeCount
@@ -386,7 +457,30 @@ enum FlowPaste {
             guard board.changeCount == count else { return }
             restore(saved, to: board)
         }
-        return true
+        return .pasted
+    }
+
+    /// Whether the focused element takes text: true for a text field, false when the focus is on
+    /// something else (the desktop, a list…) or nowhere, nil when the app does not say (then the
+    /// paste is trusted).
+    @MainActor static func focusTakesText() -> Bool? {
+        let system = AXUIElementCreateSystemWide()
+        var value: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &value)
+        if status == .noValue { return false }
+        guard status == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        let element = value as! AXUIElement
+        var role: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea"]
+        if let role = role as? String, textRoles.contains(role) { return true }
+        var settable: DarwinBoolean = false
+        if AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success, settable.boolValue {
+            return true
+        }
+        var range: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &range) == .success { return true }
+        return role == nil ? nil : false
     }
 
     /// The key that types "v" with ⌘ held in the current keyboard layout: the same key on QWERTY

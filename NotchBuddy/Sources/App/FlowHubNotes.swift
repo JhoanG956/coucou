@@ -18,8 +18,8 @@ struct HubNotesPage: View {
         VStack(spacing: 0) {
         HubHero(page: .notes, title: String(localized: "hub.page.notes"),
                 subtitle: String(localized: "hub.notes-promo"), compact: true)
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
+            .padding(.horizontal, 28)
+            .padding(.top, 24)
         HStack(spacing: 0) {
             HubNotesList(selected: $selected)
                 .frame(width: 280)
@@ -379,7 +379,7 @@ private struct HubNoteDetail: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 280)
+                    .fixedSize()
                     if tab == 0 { summary } else { transcript }
                 }
             }
@@ -645,7 +645,7 @@ struct HubSummaryEnginePicker: View {
                 }
             }
             .labelsHidden()
-            .frame(width: 190)
+            .fixedSize()
         }
     }
 }

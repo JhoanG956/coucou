@@ -73,10 +73,11 @@ enum HubPage: String, CaseIterable, Identifiable {
 
 /// The colors of the Coucou Flow window: the island's dark, with Coucou's orange.
 enum HubTheme {
-    static let window = Color(hex: "#0A0B0D")
-    static let sidebar = Color(hex: "#0A0B0D")
+    /// OLED black: the window and the sidebar.
+    static let window = Color.black
+    static let sidebar = Color.black
     /// The big card on the right, where the pages are.
-    static let panel = Color(hex: "#111215")
+    static let panel = Color(hex: "#0E0F11")
     static let card = Color(hex: "#18191C")
     static let field = Color(hex: "#1F2024")
     static let line = Color.white.opacity(0.07)
@@ -180,7 +181,7 @@ final class FlowHubController {
         win.titlebarAppearsTransparent = true
         win.titleVisibility = .hidden
         win.appearance = NSAppearance(named: .darkAqua)
-        win.backgroundColor = NSColor(red: 0x0A / 255, green: 0x0B / 255, blue: 0x0D / 255, alpha: 1)
+        win.backgroundColor = .black
         win.contentView = NSHostingView(rootView: FlowHubView(router: router, windowState: windowState))
         windowState.watch(win)
         win.contentMinSize = NSSize(width: 940, height: 600)
@@ -205,8 +206,7 @@ struct FlowHubView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(LinearGradient(colors: [Color(hex: "#141518"), HubTheme.panel],
-                                             startPoint: .top, endPoint: .bottom))
+                        .fill(HubTheme.panel)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.white.opacity(0.07)))
@@ -284,7 +284,6 @@ private struct HubSidebar: View {
         .frame(width: 228)
         .frame(maxHeight: .infinity)
         .background(HubTheme.sidebar)
-        .overlay(alignment: .trailing) { Rectangle().fill(Color.white.opacity(0.06)).frame(width: 1) }
     }
 
     @ViewBuilder private var status: some View {

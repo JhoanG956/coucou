@@ -37,7 +37,7 @@ struct HubInsightsPage: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 250)
+            .fixedSize()
         } content: {
             HStack(spacing: 14) {
                 HubStatCard(label: String(localized: "hub.stat.words"),

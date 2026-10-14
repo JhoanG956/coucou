@@ -276,17 +276,12 @@ struct HubHero<Trailing: View>: View {
     var subtitle: String?
     var compact = false
     @ViewBuilder var trailing: () -> Trailing
+    @StateObject private var light = HubHeroLight()
 
     var body: some View {
         let theme = HubHeroTheme.of(page)
         ZStack(alignment: .bottomTrailing) {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(LinearGradient(colors: [theme.color.opacity(0.20), theme.color.opacity(0.05), Color.white.opacity(0.015)],
-                                     startPoint: .topTrailing, endPoint: .bottomLeading))
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(RadialGradient(colors: [theme.color.opacity(0.28), .clear], center: .topTrailing,
-                                     startRadius: 0, endRadius: 320))
-            HubSparkles(color: theme.color)
+            HubHeroBackdrop(color: theme.color, light: light)
                 .allowsHitTesting(false)
             HubMochiScene(cast: theme.cast, range: 0...1)
                 .id(page)
@@ -315,7 +310,14 @@ struct HubHero<Trailing: View>: View {
         }
         .frame(height: compact ? 116 : 170)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(theme.color.opacity(0.22)))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(theme.color.opacity(0.16)))
+        // The light follows the pointer over the band.
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let point): light.target = point
+            case .ended:             light.target = nil
+            }
+        }
     }
 }
 
@@ -329,32 +331,163 @@ extension HubHero where Trailing == EmptyView {
     }
 }
 
-/// A few still sparkles in the band's colour.
-private struct HubSparkles: View {
+/// The light and the particles of a band, moved frame by frame without redrawing the page: the
+/// pointer is written here by the hover handler and read by the canvas.
+@MainActor
+final class HubHeroLight: ObservableObject {
+    struct Particle {
+        var x: CGFloat, y: CGFloat
+        /// Drift, in points per second.
+        var vx: CGFloat, vy: CGFloat
+        /// Push from the pointer, fading.
+        var px: CGFloat = 0, py: CGFloat = 0
+        var radius: CGFloat
+        var phase: CGFloat
+        /// 0.4 (far, slow, dim) to 1 (near, fast, bright).
+        var depth: CGFloat
+        var white: Bool
+    }
+
+    /// The pointer over the band, nil when it is elsewhere.
+    var target: CGPoint?
+    private(set) var position: CGPoint?
+    /// 0 → 1 while the pointer is over the band.
+    private(set) var strength: CGFloat = 0
+    private(set) var particles: [Particle] = []
+    private var size: CGSize = .zero
+    private var last = CACurrentMediaTime()
+    let start = CACurrentMediaTime()
+
+    func step(size: CGSize) {
+        let now = CACurrentMediaTime()
+        let dt = CGFloat(min(0.05, max(0, now - last)))
+        last = now
+        if size != self.size { reset(size) }
+
+        if let target {
+            let from = position ?? target
+            let k = min(1, dt * 9)
+            position = CGPoint(x: from.x + (target.x - from.x) * k, y: from.y + (target.y - from.y) * k)
+            strength = min(1, strength + dt * 3.5)
+        } else {
+            strength = max(0, strength - dt * 1.6)
+        }
+
+        let t = CGFloat(now - start)
+        for i in particles.indices {
+            var p = particles[i]
+            // The pointer pushes the particles near it away.
+            if let pos = position, strength > 0.01 {
+                let dx = p.x - pos.x, dy = p.y - pos.y
+                let d = max(1, hypot(dx, dy))
+                if d < 120 {
+                    let push = pow(1 - d / 120, 2) * 220 * strength * p.depth
+                    p.px += dx / d * push * dt
+                    p.py += dy / d * push * dt
+                }
+            }
+            p.px *= max(0, 1 - dt * 2.2)
+            p.py *= max(0, 1 - dt * 2.2)
+            p.x += (p.vx + sin(t * 0.7 + p.phase) * 5 * p.depth) * dt + p.px * dt * 6
+            p.y += p.vy * dt + p.py * dt * 6
+            // Out of the band: back in on the other side.
+            if p.y < -6 { p.y = size.height + 6; p.x = CGFloat.random(in: 0...max(1, size.width)) }
+            if p.y > size.height + 8 { p.y = -4 }
+            if p.x < -8 { p.x = size.width + 6 }
+            if p.x > size.width + 8 { p.x = -6 }
+            particles[i] = p
+        }
+    }
+
+    private func reset(_ size: CGSize) {
+        self.size = size
+        let count = Int(min(110, max(18, size.width * size.height / 3600)))
+        particles = (0..<count).map { _ in
+            let depth = CGFloat.random(in: 0.4...1)
+            return Particle(x: .random(in: 0...max(1, size.width)), y: .random(in: 0...max(1, size.height)),
+                            vx: CGFloat.random(in: -3...3) * depth, vy: CGFloat.random(in: -13 ... -3) * depth,
+                            radius: .random(in: 0.5...1.5) * (0.6 + depth * 0.7),
+                            phase: .random(in: 0...(2 * .pi)), depth: depth, white: Int.random(in: 0..<9) == 0)
+        }
+    }
+}
+
+/// A band's background: an ultra deep black, the page's colour as a glow that breathes in a
+/// corner, and particles drifting up all the time, pushed away by the pointer and brighter near it.
+struct HubHeroBackdrop: View {
     let color: Color
+    let light: HubHeroLight
+    var cornerRadius: CGFloat = 18
+    @Environment(\.hubVisible) private var visible
 
     var body: some View {
-        Canvas { context, size in
-            var rng = SeededRandom(seed: 7)
-            for _ in 0..<26 {
-                let x = rng.next() * size.width
-                let y = rng.next() * size.height
-                let r = 0.6 + rng.next() * 1.6
-                let alpha = 0.10 + rng.next() * 0.35
-                context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: r * 2, height: r * 2)),
-                             with: .color(color.opacity(alpha)))
+        TimelineView(.animation(paused: !visible)) { timeline in
+            let frame = timeline.date
+            Canvas { context, size in
+                _ = frame
+                light.step(size: size)
+                let rect = CGRect(origin: .zero, size: size)
+                let t = CGFloat(CACurrentMediaTime() - light.start)
+
+                // The black, deeper than the card around it.
+                context.fill(Path(rect), with: .color(Color(hex: "#020203")))
+                // The page's colour, low in the opposite corner and breathing in the top one.
+                context.fill(Path(rect), with: .linearGradient(
+                    Gradient(colors: [color.opacity(0.10), .clear]),
+                    startPoint: CGPoint(x: size.width, y: 0), endPoint: CGPoint(x: size.width * 0.35, y: size.height)))
+                let breath = 0.85 + 0.15 * sin(t * 0.9)
+                context.fill(Path(rect), with: .radialGradient(
+                    Gradient(colors: [color.opacity(0.30 * breath), color.opacity(0.08), .clear]),
+                    center: CGPoint(x: size.width * 0.92, y: -size.height * 0.15),
+                    startRadius: 0, endRadius: max(size.width, size.height) * 0.55 * breath))
+
+                // The particles.
+                for p in light.particles {
+                    var alpha = (0.22 + 0.5 * (0.5 + 0.5 * sin(t * (1.2 + p.depth) + p.phase))) * p.depth
+                    var radius = p.radius
+                    if let pos = light.position, light.strength > 0.01 {
+                        let d = hypot(p.x - pos.x, p.y - pos.y)
+                        if d < 200 {
+                            let near = (1 - d / 200) * light.strength
+                            alpha += near * 0.6
+                            radius *= 1 + near * 0.8
+                        }
+                    }
+                    let tint = p.white ? Color.white : color
+                    let dot = CGRect(x: p.x - radius, y: p.y - radius, width: radius * 2, height: radius * 2)
+                    if radius > 1.1 {
+                        // A soft halo around the bigger ones.
+                        context.fill(Path(ellipseIn: dot.insetBy(dx: -radius * 1.6, dy: -radius * 1.6)),
+                                     with: .color(tint.opacity(min(1, alpha) * 0.12)))
+                    }
+                    context.fill(Path(ellipseIn: dot), with: .color(tint.opacity(min(1, alpha))))
+                }
             }
         }
     }
 }
 
-/// Always the same sparkles, so they do not move when the page redraws.
-private struct SeededRandom {
-    var state: UInt64
-    init(seed: UInt64) { state = seed }
-    mutating func next() -> CGFloat {
-        state = state &* 6364136223846793005 &+ 1442695040888963407
-        return CGFloat((state >> 33) % 10_000) / 10_000
+/// A card in a colour (the Notetaker's, a setup to do): the bands' deep black, their particles
+/// and their light following the pointer.
+struct HubGlowCard<Content: View>: View {
+    let color: Color
+    var padding: CGFloat = 20
+    @ViewBuilder var content: () -> Content
+    @StateObject private var light = HubHeroLight()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) { content() }
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(HubHeroBackdrop(color: color, light: light, cornerRadius: 14).allowsHitTesting(false))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(color.opacity(0.18)))
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let point): light.target = point
+                case .ended:             light.target = nil
+                }
+            }
     }
 }
 
