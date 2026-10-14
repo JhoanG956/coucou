@@ -97,7 +97,10 @@ final class FlowDictation: ObservableObject {
     }
 
     /// At launch: listens for the key if Flow dictation is on.
-    func start() { refresh() }
+    func start() {
+        refresh()
+        if isEnabled, FlowStore.shared.engine == .parakeet { Parakeet.shared.preload() }
+    }
 
     func refresh() {
         removeMonitors()
@@ -227,28 +230,58 @@ final class FlowDictation: ObservableObject {
 
     /// One listen, from the key press to the paste. Cancelling it drops its words.
     @MainActor private final class Listen {
-        let dictation = MacDictation()
+        /// The Mac's recognizer, or Parakeet when it is chosen and downloaded.
+        let apple: MacDictation?
+        let parakeet: ParakeetDictation?
         var cancelled = false
         /// The app the words go to, seen when the key went down.
         let app = NSWorkspace.shared.frontmostApplication
         let startedAt = Date()
         var stoppedAt: Date?
+
+        init(useParakeet: Bool) {
+            apple = useParakeet ? nil : MacDictation()
+            parakeet = useParakeet ? ParakeetDictation() : nil
+        }
+
+        var isRecording: Bool { apple?.isRecording ?? parakeet?.isRecording ?? false }
+
+        func start(bands: FlowAudioBands) async {
+            if let apple {
+                apple.bands = bands
+                await apple.start(from: "")
+            } else if let parakeet {
+                parakeet.bands = bands
+                await parakeet.start()
+            }
+        }
+
+        func finish() async -> String {
+            if let apple { return await apple.finish() }
+            if let parakeet { return await parakeet.finish() }
+            return ""
+        }
+
+        func stop() {
+            apple?.stop()
+            parakeet?.stop()
+        }
     }
 
     private func begin() {
         // After this key event is handled: a permission granted meanwhile reinstalls the monitors.
         Task { @MainActor [weak self] in self?.recheckTrust() }
-        let listen = Listen()
+        let listen = Listen(useParakeet: FlowStore.shared.engine == .parakeet && Parakeet.shared.isReady)
         current = listen
         bands.reset()
-        listen.dictation.bands = bands
         pill.listen()
         SoundEngine.shared.play("blip")
+        let bands = self.bands
         startTask = Task { @MainActor [weak self] in
-            await listen.dictation.start(from: "")
+            await listen.start(bands: bands)
             guard let self else { return }
-            if listen.cancelled { listen.dictation.stop(); return }      // cancelled while the mic opened
-            if !listen.dictation.isRecording, self.current === listen {
+            if listen.cancelled { listen.stop(); return }      // cancelled while the mic opened
+            if !listen.isRecording, self.current === listen {
                 // No permission, no recognizer for these languages, or no microphone.
                 self.logic.reset()
                 self.current = nil
@@ -268,7 +301,7 @@ final class FlowDictation: ObservableObject {
             // moment so it makes it in.
             try? await Task.sleep(for: .milliseconds(Self.tailMilliseconds))
             guard !listen.cancelled else { return }
-            let heard = await listen.dictation.finish().trimmingCharacters(in: .whitespacesAndNewlines)
+            let heard = await listen.finish().trimmingCharacters(in: .whitespacesAndNewlines)
             guard let self, !listen.cancelled else { return }
             // Replacements and the dictionary, then Claude's clean-up when it is on, then the snippets.
             let store = FlowStore.shared
@@ -305,7 +338,7 @@ final class FlowDictation: ObservableObject {
         tickTask?.cancel()
         if let listen = current {
             listen.cancelled = true
-            listen.dictation.stop()
+            listen.stop()
         }
         current = nil
         pill.rest()

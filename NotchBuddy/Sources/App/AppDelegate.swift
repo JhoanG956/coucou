@@ -8,6 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var demoMenuItem: NSMenuItem?
 
     func applicationWillTerminate(_ notification: Notification) {
+        #if !APPSTORE
+        NoteTaker.shared.shutdown()
+        #endif
         DemoEngine.shared.stop()
         HotKeyCenter.shared.unregisterAll()
     }

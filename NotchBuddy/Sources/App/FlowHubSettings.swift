@@ -62,6 +62,20 @@ struct HubSettingsPage: View {
                 HubRecognitionSettings(language: $language)
             }
 
+            HubLabel(String(localized: "hub.page.notes"))
+            HubCard {
+                HubSummaryEnginePicker()
+                Text("notes.engine-detail")
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HubDivider()
+                Text("notes.legal")
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             HubLabel(String(localized: "hub.settings.privacy"))
             HubCard {
                 HubRow(title: String(localized: "hub.settings.keep")) {
@@ -109,25 +123,113 @@ struct HubKeyCap: View {
     }
 }
 
-/// How the voice becomes text: the Mac's recognizer and its language.
+/// How the voice becomes text: Parakeet on the Mac (once downloaded) or the Mac's recognizer.
 struct HubRecognitionSettings: View {
     @Binding var language: String
+    @ObservedObject private var store = FlowStore.shared
+    @ObservedObject private var parakeet = Parakeet.shared
 
     var body: some View {
-        HubRow(title: String(localized: "hub.settings.engine-apple"),
-               detail: String(localized: "hub.settings.engine-apple-detail")) {
-            EmptyView()
+        HubEngineRow(selected: store.engine == .parakeet,
+                     title: String(localized: "hub.engine.parakeet"),
+                     detail: String(localized: "hub.engine.parakeet-detail")) {
+            store.engine = .parakeet
+        } trailing: {
+            parakeetStatus
         }
         HubDivider()
-        HubRow(title: String(localized: "Dictation language")) {
-            Picker("", selection: $language) {
-                Text("Automatic").tag(MacDictation.automatic)
-                ForEach(MacDictation.allLanguages, id: \.self) { id in
-                    Text(MacDictation.name(of: id)).tag(id)
+        HubEngineRow(selected: store.engine == .apple,
+                     title: String(localized: "hub.settings.engine-apple"),
+                     detail: String(localized: "hub.settings.engine-apple-detail")) {
+            store.engine = .apple
+        } trailing: {
+            EmptyView()
+        }
+        if store.engine == .apple {
+            HubDivider()
+            HubRow(title: String(localized: "Dictation language")) {
+                Picker("", selection: $language) {
+                    Text("Automatic").tag(MacDictation.automatic)
+                    ForEach(MacDictation.allLanguages, id: \.self) { id in
+                        Text(MacDictation.name(of: id)).tag(id)
+                    }
                 }
+                .labelsHidden()
+                .frame(width: 220)
             }
-            .labelsHidden()
-            .frame(width: 220)
+        } else if !parakeet.isReady {
+            Text("hub.engine.fallback")
+                .font(.system(size: 12))
+                .foregroundColor(HubTheme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private var parakeetStatus: some View {
+        switch parakeet.state {
+        case .unsupported:
+            Text("hub.engine.unsupported")
+                .font(.system(size: 12))
+                .foregroundColor(HubTheme.secondary)
+        case .missing:
+            Button(String(localized: "hub.engine.download")) { parakeet.download() }
+                .buttonStyle(HubButtonStyle(primary: true))
+        case .downloading(let fraction):
+            HStack(spacing: 8) {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+                    .frame(width: 110)
+                Text(fraction.formatted(.percent.precision(.fractionLength(0))))
+                    .font(.system(size: 12))
+                    .foregroundColor(HubTheme.secondary)
+                    .monospacedDigit()
+            }
+        case .ready:
+            Menu {
+                Button(String(localized: "hub.engine.remove"), role: .destructive) { parakeet.remove() }
+            } label: {
+                Label(String(localized: "hub.engine.installed"), systemImage: "checkmark.circle.fill")
+                    .foregroundColor(HubTheme.green)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        case .failed:
+            Button(String(localized: "hub.engine.retry")) { parakeet.download() }
+                .buttonStyle(HubButtonStyle())
+        }
+    }
+}
+
+/// A recognizer to choose: a round mark, its name and what it does, and its status on the right.
+private struct HubEngineRow<Trailing: View>: View {
+    let selected: Bool
+    let title: String
+    let detail: String
+    let choose: () -> Void
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: choose) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().strokeBorder(selected ? HubTheme.accent : Color(hex: "#5A5F68"),
+                                              lineWidth: selected ? 5 : 1.5)
+                    }
+                    .frame(width: 17, height: 17)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title).font(.system(size: 13.5, weight: .semibold))
+                        Text(detail)
+                            .font(.system(size: 12))
+                            .foregroundColor(HubTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            trailing()
         }
     }
 }

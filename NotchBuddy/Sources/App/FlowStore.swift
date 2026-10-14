@@ -94,6 +94,15 @@ final class FlowStore: ObservableObject {
         didSet { UserDefaults.standard.set(defaultStyle.rawValue, forKey: Self.defaultStyleKey) }
     }
 
+    /// Parakeet (once downloaded) or the Mac's recognizer.
+    @Published var engine: FlowEngine = FlowEngine(rawValue: UserDefaults.standard.string(forKey: FlowStore.engineKey) ?? "") ?? .parakeet {
+        didSet {
+            UserDefaults.standard.set(engine.rawValue, forKey: Self.engineKey)
+            if engine == .parakeet { Parakeet.shared.preload() }
+        }
+    }
+
+    static let engineKey = "flowEngine"
     static let keepDaysKey = "flowKeepDays"
     static let cleanupKey = "flowCleanup"
     static let defaultStyleKey = "flowDefaultStyle"
