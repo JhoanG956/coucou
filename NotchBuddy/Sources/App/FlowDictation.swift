@@ -85,12 +85,16 @@ final class FlowDictation: ObservableObject {
     private var startTask: Task<Void, Never>?
     private var tickTask: Task<Void, Never>?
     private var trustTask: Task<Void, Never>?
-    private let bands = FlowAudioBands()
+    private let bands: FlowAudioBands
     /// The system's Accessibility prompt is shown at most once per launch, when a paste could not happen.
     private var promptedThisRun = false
-    let pill = FlowPillController()
+    let pill: FlowPillController
 
-    private init() {}
+    private init() {
+        let bands = FlowAudioBands()
+        self.bands = bands
+        pill = FlowPillController(bands: bands)
+    }
 
     /// At launch: listens for the key if Flow dictation is on.
     func start() { refresh() }
@@ -98,6 +102,7 @@ final class FlowDictation: ObservableObject {
     func refresh() {
         removeMonitors()
         trusted = AXIsProcessTrusted()
+        pill.setEnabled(isEnabled)
         guard isEnabled else {
             cancelAll()
             trustTask?.cancel(); trustTask = nil
@@ -218,7 +223,7 @@ final class FlowDictation: ObservableObject {
         current = listen
         bands.reset()
         listen.dictation.bands = bands
-        pill.show(bands: bands)
+        pill.listen()
         SoundEngine.shared.play("blip")
         startTask = Task { @MainActor [weak self] in
             await listen.dictation.start(from: "")
@@ -234,7 +239,7 @@ final class FlowDictation: ObservableObject {
     }
 
     private func finish() {
-        guard let listen = current else { pill.hide(); return }
+        guard let listen = current else { pill.rest(); return }
         pill.model.phase = .thinking
         let opening = startTask
         Task { @MainActor [weak self] in
@@ -248,7 +253,7 @@ final class FlowDictation: ObservableObject {
             // A new listen may have begun meanwhile: its pill is left alone, but these words still go in.
             let latest = self.current === listen
             if latest { self.current = nil }
-            guard !text.isEmpty else { if latest { self.pill.hide() }; return }
+            guard !text.isEmpty else { if latest { self.pill.rest() }; return }
             let pasted = FlowPaste.insert(text)
             if !pasted {
                 // No Accessibility: the words wait on the clipboard, and macOS is asked once.
@@ -257,7 +262,7 @@ final class FlowDictation: ObservableObject {
                 self.waitForTrust()
             }
             guard latest else { return }
-            if pasted { self.pill.hide() } else { self.pill.flash(.copied) }
+            if pasted { self.pill.rest() } else { self.pill.flash(.copied) }
         }
     }
 
@@ -268,7 +273,7 @@ final class FlowDictation: ObservableObject {
             listen.dictation.stop()
         }
         current = nil
-        pill.hide()
+        pill.rest()
     }
 
     private func cancelAll() {

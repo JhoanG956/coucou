@@ -6,8 +6,9 @@ import SwiftUI
 @MainActor
 final class FlowPillModel: ObservableObject {
     enum Phase: Equatable {
-        case hidden
-        /// The key is held: the dots follow the voice.
+        /// Resting: a small pill at the bottom of the screen, there as long as Flow dictation is on.
+        case idle
+        /// The key is held: the pill opens, Mochi on the left, the dots follow the voice.
         case listening
         /// Hands-free (double tap): same, with an orange ring.
         case locked
@@ -18,7 +19,7 @@ final class FlowPillModel: ObservableObject {
         /// The microphone or speech recognition could not start.
         case failed
     }
-    @Published var phase: Phase = .hidden
+    @Published var phase: Phase = .idle
 }
 
 /// Eases the dots toward the microphone's levels, frame by frame (fast up, slower down), and
@@ -57,28 +58,64 @@ private extension Array {
     subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
 }
 
-/// The pill at the bottom of the screen, like Wispr Flow's bar: a black capsule, a small Mochi,
-/// and nine dots that rise and fall with the graves (left) and the aigus (right) of the voice.
+/// The pill at the bottom of the screen, like Wispr Flow's bar. Resting, it is a small black pill
+/// with a light outline; when you speak it opens from there into a capsule with a tiny Mochi on
+/// the left and nine dots on the right that rise and fall with the graves and the aigus of the voice.
 struct FlowPillView: View {
     @ObservedObject var model: FlowPillModel
     let bands: FlowAudioBands
     let smoother: FlowLevelSmoother
 
-    private var visible: Bool { model.phase != .hidden }
+    static let restingSize = CGSize(width: 44, height: 8)
+    static let openHeight: CGFloat = 34
+
+    private var open: Bool { model.phase != .idle }
 
     var body: some View {
-        VStack {
-            Spacer(minLength: 0)
+        ZStack(alignment: .bottom) {
+            Color.clear
             capsule
-                .scaleEffect(visible ? 1 : 0.55, anchor: .bottom)
-                .opacity(visible ? 1 : 0)
-                .offset(y: visible ? 0 : 6)
-                .animation(.spring(response: 0.32, dampingFraction: 0.72), value: model.phase)
         }
         .frame(width: FlowPillController.size.width, height: FlowPillController.size.height)
     }
 
+    /// The width the open pill needs for what it shows.
+    private var openWidth: CGFloat {
+        switch model.phase {
+        case .copied: return Self.messageWidth(String(localized: "flow.copied-noaccess"))
+        case .failed: return Self.messageWidth(String(localized: "flow.failed"))
+        default:      return 112
+        }
+    }
+
+    static func messageWidth(_ text: String) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        let w = (text as NSString).size(withAttributes: [.font: font]).width
+        return ceil(w) + 19 + 9 + 26 + 2
+    }
+
     private var capsule: some View {
+        ZStack {
+            Capsule()
+                .fill(Color.black.opacity(open ? 0.94 : 0.86))
+            Capsule()
+                .strokeBorder(Color.white.opacity(open ? 0.16 : 0.55), lineWidth: open ? 1 : 1.2)
+            Capsule()
+                .strokeBorder(Color(hex: "#F97316").opacity(model.phase == .locked ? 0.85 : 0), lineWidth: 1.5)
+            content
+                .opacity(open ? 1 : 0)
+                .scaleEffect(open ? 1 : 0.5)
+                .animation(open ? .easeOut(duration: 0.2).delay(0.07) : .easeIn(duration: 0.1), value: open)
+        }
+        .frame(width: open ? openWidth : Self.restingSize.width,
+               height: open ? Self.openHeight : Self.restingSize.height)
+        .clipShape(Capsule())          // the content stays inside while the pill opens
+        .shadow(color: .black.opacity(open ? 0.35 : 0.2), radius: open ? 10 : 4, y: open ? 4 : 1)
+        .animation(.spring(response: 0.36, dampingFraction: 0.74), value: model.phase)
+        .padding(.bottom, 2)
+    }
+
+    private var content: some View {
         HStack(spacing: 9) {
             mochi
             switch model.phase {
@@ -97,14 +134,7 @@ struct FlowPillView: View {
             }
         }
         .padding(.horizontal, 13)
-        .frame(height: 34)
-        .background(
-            Capsule()
-                .fill(Color.black.opacity(0.94))
-                .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 1))
-                .overlay(Capsule().strokeBorder(Color(hex: "#F97316").opacity(model.phase == .locked ? 0.85 : 0), lineWidth: 1.5))
-        )
-        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
+        .fixedSize()
     }
 
     /// Mochi's face, tiny: two eyes that squint while he works out the words.
@@ -145,51 +175,76 @@ struct FlowPillView: View {
 }
 
 /// The pill's window: borderless, never takes the focus (the words go to the app you type in),
-/// lets clicks through, on every Space and over full-screen apps, at the bottom centre of the
-/// screen the mouse is on.
+/// lets clicks through, on every Space and over full-screen apps. It stays at the bottom centre of
+/// a screen while Flow dictation is on, and moves to the screen the mouse is on when you speak.
 @MainActor
 final class FlowPillController {
-    static let size = NSSize(width: 380, height: 80)
+    static let size = NSSize(width: 380, height: 60)
 
     let model = FlowPillModel()
     private let smoother = FlowLevelSmoother()
+    private let bands: FlowAudioBands
     private var panel: NSPanel?
-    private var hideTask: Task<Void, Never>?
-    private var bands: FlowAudioBands?
+    private var restTask: Task<Void, Never>?
+    private var screenObserver: NSObjectProtocol?
 
-    func show(bands: FlowAudioBands) {
-        hideTask?.cancel()
-        if panel == nil || self.bands !== bands { build(bands) }
-        guard let panel else { return }
-        place(panel)
-        smoother.reset()
-        panel.orderFrontRegardless()
-        model.phase = .listening
+    init(bands: FlowAudioBands) {
+        self.bands = bands
     }
 
-    /// A short message, then the pill goes away.
-    func flash(_ phase: FlowPillModel.Phase) {
-        guard let panel else { return }
-        hideTask?.cancel()
-        if !panel.isVisible { place(panel); panel.orderFrontRegardless() }
-        model.phase = phase
-        hide(after: 1.8)
-    }
-
-    func hide(after delay: TimeInterval = 0) {
-        hideTask?.cancel()
-        hideTask = Task { @MainActor [weak self] in
-            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-            guard !Task.isCancelled, let self else { return }
-            self.model.phase = .hidden
-            try? await Task.sleep(for: .milliseconds(350))
-            guard !Task.isCancelled, self.model.phase == .hidden else { return }
-            self.panel?.orderOut(nil)
+    /// Flow dictation on: the resting pill shows. Off: it goes away.
+    func setEnabled(_ on: Bool) {
+        restTask?.cancel()
+        model.phase = .idle
+        if on {
+            if panel == nil { build() }
+            if let panel { place(panel, onMouseScreen: false); panel.orderFrontRegardless() }
+            if screenObserver == nil {
+                screenObserver = NotificationCenter.default.addObserver(
+                    forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        guard let self, let panel = self.panel, panel.isVisible else { return }
+                        self.place(panel, onMouseScreen: false)
+                    }
+                }
+            }
+        } else {
+            panel?.orderOut(nil)
+            if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+            screenObserver = nil
         }
     }
 
-    private func build(_ bands: FlowAudioBands) {
-        self.bands = bands
+    /// The key is down: open on the screen the mouse is on.
+    func listen() {
+        restTask?.cancel()
+        if panel == nil { build() }
+        guard let panel else { return }
+        place(panel, onMouseScreen: true)
+        panel.orderFrontRegardless()
+        smoother.reset()
+        model.phase = .listening
+    }
+
+    /// A short message, then back to rest.
+    func flash(_ phase: FlowPillModel.Phase) {
+        restTask?.cancel()
+        model.phase = phase
+        rest(after: 1.8)
+    }
+
+    /// Back to the small resting pill.
+    func rest(after delay: TimeInterval = 0) {
+        restTask?.cancel()
+        restTask = Task { @MainActor [weak self] in
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            guard !Task.isCancelled, let self else { return }
+            self.model.phase = .idle
+        }
+    }
+
+    private func build() {
         let view = NSHostingView(rootView: FlowPillView(model: model, bands: bands, smoother: smoother))
         view.frame = NSRect(origin: .zero, size: Self.size)
         let p = NSPanel(contentRect: NSRect(origin: .zero, size: Self.size),
@@ -206,12 +261,14 @@ final class FlowPillController {
         panel = p
     }
 
-    private func place(_ panel: NSPanel) {
+    private func place(_ panel: NSPanel, onMouseScreen: Bool) {
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+        let screen = onMouseScreen
+            ? (NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main)
+            : (panel.screen ?? NSScreen.main)
         guard let area = screen?.visibleFrame else { return }
         // Just above the Dock (or the bottom edge when the Dock hides).
-        panel.setFrameOrigin(NSPoint(x: area.midX - Self.size.width / 2, y: area.minY + 6))
+        panel.setFrameOrigin(NSPoint(x: area.midX - Self.size.width / 2, y: area.minY + 4))
     }
 }
 #endif
