@@ -7,6 +7,20 @@
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
 - Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
 
+## Windows and Linux 0.5.0 — October 15, 2026
+
+Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
+
+- **Coucou, the app** — Coucou now has its own window and sits in the taskbar. On the left, **Flow** (Dictation, Notetaker, Statistics, Dictionary, Snippets, Styles, Settings), then **Notch** (General, Active pills, Agents, Chat, OK Coucou, Integrations, Android phone, Shortcuts): the settings you had, in the same place as on the Mac, with the little Mochis walking around each page. It opens when you launch Coucou yourself, not when it starts with your computer (Flow → Settings → App)
+- **Flow dictation** — hold a key anywhere (right Ctrl by default, or right Alt, right Shift, Ctrl + Win / Ctrl + Super), speak, let go: your words are pasted where you type. Two quick taps keep it listening hands-free until the next tap; Esc cancels; the pill's toolbar pastes the last dictation again. Clipboard history managers leave the dictation out and the clipboard gets back what it held. Off by default. On Linux it works on X11 and on Wayland: there the desktop holds the key for Coucou through its shortcuts portal (Ctrl+Alt+V unless you pick others) and the first paste asks once to let Coucou type for you
+- **Parakeet, on your computer** — dictation, the Notetaker and « OK Coucou » run on NVIDIA's Parakeet through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), on the CPU: accurate, offline, 25 languages. Nothing is downloaded until you click Download (about 700 MB, once, checked against its SHA-256)
+- **The pill** — the same see-through pill as on the Mac, at the bottom of the screen or on its left or right edge: hover it for the toolbar (dictate, record a call, open Coucou), Mochi and nine dots that follow your voice while you speak, messages in a bubble next to it
+- **Your words, your way** — Dictionary, Snippets, Styles per app (an optional clean-up by Claude with your own key) and Statistics, as on the Mac. The history stays on your computer, kept as long as you choose
+- **Notetaker** — click Record a call: Coucou records your microphone and what the computer plays (WASAPI loopback on Windows, the PulseAudio or PipeWire monitor on Linux; no bot joins the call), shows the words live, then writes the transcript person by person — you, Person 2, Person 3… which you can rename — with a summary, key points and to-dos by Claude with your key. Copy it as Markdown or export it. The audio is deleted once the transcript is written; tell the people in the call that you record
+- **« OK Coucou »** — say it, then ask anything, in any of Parakeet's languages: add or swap pills, play, pause or search on Spotify, how much you made on Stripe today, what your agents are doing, the weather or the news (web search), open an app, prepare an email that opens in your mail app for you to send. Claude is the brain, with your own key; only the words after « OK Coucou » leave the computer, never audio. Coucou answers in the pill and out loud, with the system's voice or ElevenLabs with your key. Off by default: Notch → OK Coucou
+- **Spotify on Windows** — the Spotify pill and card, read from the system media controls, and Mochi dances to it (#493 by @alexisrja)
+- The island's size follows the webview's zoom, so it no longer comes up cut on scaled displays (#467 by @Ohualtex); pill labels leave room for Mochi (#522 by @Ohualtex); the Claude Desktop pill opens the Microsoft Store app through its link (#417 by @Ohualtex); the Claude Code pill has the same name everywhere (#409 by @Ohualtex); the OpenCode plugin works with OpenCode 2 (#530 by @Ohualtex)
+
 ## 0.4.0 — October 14, 2026
 
 Coucou becomes a real app: a window in the Dock, dictation everywhere on the Mac, and notes of your calls. All of it free and open source.
