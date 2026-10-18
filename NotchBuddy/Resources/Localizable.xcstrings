@@ -1,6 +1,981 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "whatsapp.advanced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "متقدم: بوابتك الخاصة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অ্যাডভান্সড: নিজের গেটওয়ে"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced: your own gateway"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avanzado: tu propia pasarela"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avancé : ta propre passerelle"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "एडवांस्ड: अपना गेटवे"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lanjutan: gateway sendiri"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avançado: seu próprio gateway"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дополнительно: свой шлюз"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高级：你自己的网关"
+          }
+        }
+      }
+    },
+    "whatsapp.install" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تثبيت واتساب"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WhatsApp ইনস্টল করো"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install WhatsApp"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalar WhatsApp"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer WhatsApp"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WhatsApp इंस्टॉल करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasang WhatsApp"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalar o WhatsApp"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить WhatsApp"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装 WhatsApp"
+          }
+        }
+      }
+    },
+    "whatsapp.install.bad-checksum" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "التنزيل لا يطابق الملف الذي نشره GOWA: حُذف ولم يُثبَّت شيء."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডাউনলোড GOWA-র প্রকাশিত ফাইলের সঙ্গে মেলে না: মুছে ফেলা হয়েছে, কিছু ইনস্টল হয়নি।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download doesn't match the file GOWA published: it was deleted, nothing was installed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La descarga no coincide con el archivo publicado por GOWA: se eliminó y no se instaló nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le téléchargement ne correspond pas au fichier publié par GOWA : il a été supprimé, rien n'a été installé."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डाउनलोड GOWA की फ़ाइल से मेल नहीं खाता: हटा दिया गया, कुछ इंस्टॉल नहीं हुआ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unduhan tidak cocok dengan file dari GOWA: sudah dihapus, tidak ada yang dipasang."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O download não corresponde ao arquivo publicado pelo GOWA: foi apagado, nada foi instalado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка не совпадает с файлом, опубликованным GOWA: она удалена, ничего не установлено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载内容与 GOWA 发布的文件不符：已删除，未安装任何内容。"
+          }
+        }
+      }
+    },
+    "whatsapp.install.checking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "البحث عن أحدث إصدار من GOWA…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA-র সর্বশেষ সংস্করণ খোঁজা হচ্ছে…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking for the latest GOWA…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando la última versión de GOWA…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche de la dernière version de GOWA…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA का नया वर्शन ढूँढ रहा है…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mencari versi GOWA terbaru…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procurando a versão mais recente do GOWA…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск последней версии GOWA…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在查找最新版 GOWA…"
+          }
+        }
+      }
+    },
+    "whatsapp.install.download-failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم يكتمل التنزيل. تحقق من اتصالك وأعد المحاولة."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডাউনলোড সম্পূর্ণ হয়নি। সংযোগ দেখে আবার চেষ্টা করুন।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download didn't go through. Check your connection and try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La descarga no se completó. Revisa tu conexión e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le téléchargement n'a pas abouti. Vérifie ta connexion et réessaie."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डाउनलोड पूरा नहीं हुआ। कनेक्शन जाँचकर फिर कोशिश करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unduhan gagal. Periksa koneksimu lalu coba lagi."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O download não foi concluído. Verifique sua conexão e tente de novo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка не удалась. Проверьте подключение и попробуйте снова."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载未完成。请检查网络后重试。"
+          }
+        }
+      }
+    },
+    "whatsapp.install.downloading %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ التنزيل (%lld ميغابايت)…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডাউনলোড হচ্ছে (%lld MB)…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading (%lld MB)…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargando (%lld MB)…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargement (%lld Mo)…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डाउनलोड हो रहा है (%lld MB)…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mengunduh (%lld MB)…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baixando (%lld MB)…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка (%lld МБ)…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载（%lld MB）…"
+          }
+        }
+      }
+    },
+    "whatsapp.install.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يُنزّل Coucou بوابة GOWA مفتوحة المصدر من صفحتها على GitHub (نحو 15 ميغابايت، مرة واحدة)، ويتحقق منها ويشغّلها. ثم امسح رمز QR بهاتفك. لا حاجة إلى الطرفية."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ওপেন-সোর্স গেটওয়ে GOWA তার GitHub পেজ থেকে ডাউনলোড করে (প্রায় ১৫ MB, একবারই), যাচাই করে চালু করে। তারপর ফোন দিয়ে QR কোড স্ক্যান করুন। টার্মিনাল লাগবে না।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou downloads GOWA, the open-source gateway, from its GitHub page (about 15 MB, once), checks it and starts it. Then scan the QR code with your phone. No Terminal needed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou descarga GOWA, la pasarela de código abierto, desde su página de GitHub (unos 15 MB, una sola vez), la comprueba y la inicia. Luego escanea el código QR con tu teléfono. Sin Terminal."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou télécharge GOWA, la passerelle open source, depuis sa page GitHub (environ 15 Mo, une seule fois), la vérifie et la lance. Ensuite, scanne le QR code avec ton téléphone. Pas besoin du Terminal."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ओपन-सोर्स गेटवे GOWA को उसके GitHub पेज से डाउनलोड करता है (लगभग 15 MB, सिर्फ़ एक बार), जाँचता है और चालू करता है। फिर फ़ोन से QR कोड स्कैन करें। टर्मिनल की ज़रूरत नहीं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou mengunduh GOWA, gateway open source, dari halaman GitHub-nya (sekitar 15 MB, sekali saja), memeriksanya lalu menjalankannya. Lalu pindai kode QR dengan ponselmu. Tanpa Terminal."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Coucou baixa o GOWA, o gateway de código aberto, da página dele no GitHub (cerca de 15 MB, uma única vez), verifica e inicia. Depois, escaneie o QR code com o celular. Sem Terminal."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou скачивает GOWA, шлюз с открытым кодом, с его страницы на GitHub (около 15 МБ, один раз), проверяет и запускает. Затем отсканируйте QR-код телефоном. Терминал не нужен."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou 会从 GitHub 页面下载开源网关 GOWA（约 15 MB，仅一次），校验后启动。然后用手机扫描二维码即可。无需终端。"
+          }
+        }
+      }
+    },
+    "whatsapp.install.installing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ التثبيت والتشغيل…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ইনস্টল ও চালু হচ্ছে…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installing and starting…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalando e iniciando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installation et démarrage…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इंस्टॉल और चालू हो रहा है…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memasang dan menjalankan…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instalando e iniciando…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установка и запуск…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在安装并启动…"
+          }
+        }
+      }
+    },
+    "whatsapp.install.no-build" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يوجد إصدار من GOWA لهذا الـMac على GitHub. أعد المحاولة لاحقًا أو اضبط بوابتك في «متقدم»."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub-এ এই Mac-এর জন্য GOWA পাওয়া যায়নি। পরে আবার চেষ্টা করুন, বা অ্যাডভান্সডে নিজের গেটওয়ে সেট করুন।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No GOWA build for this Mac was found on GitHub. Try again later, or set your own gateway under Advanced."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna versión de GOWA para este Mac en GitHub. Inténtalo más tarde o configura tu propia pasarela en Avanzado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune version de GOWA pour ce Mac sur GitHub. Réessaie plus tard, ou configure ta propre passerelle dans Avancé."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub पर इस Mac के लिए GOWA नहीं मिला। बाद में फिर कोशिश करें, या एडवांस्ड में अपना गेटवे सेट करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tidak ada versi GOWA untuk Mac ini di GitHub. Coba lagi nanti, atau atur gateway sendiri di Lanjutan."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma versão do GOWA para este Mac no GitHub. Tente mais tarde ou configure seu próprio gateway em Avançado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На GitHub нет сборки GOWA для этого Mac. Попробуйте позже или укажите свой шлюз в разделе «Дополнительно»."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 上没有适用于此 Mac 的 GOWA 版本。请稍后重试，或在“高级”中设置你自己的网关。"
+          }
+        }
+      }
+    },
+    "whatsapp.install.no-checksum" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يحتوي إصدار GOWA على بصمة للتحقق من التنزيل: لم يُثبَّت شيء."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA রিলিজে ডাউনলোড যাচাইয়ের চেকসাম নেই: কিছু ইনস্টল হয়নি।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA's release has no checksum to check the download against: nothing was installed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La versión de GOWA no tiene suma de comprobación para verificar la descarga: no se instaló nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La version de GOWA n'a pas d'empreinte pour vérifier le téléchargement : rien n'a été installé."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA रिलीज़ में डाउनलोड जाँचने के लिए चेकसम नहीं है: कुछ इंस्टॉल नहीं हुआ।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rilis GOWA tidak punya checksum untuk memeriksa unduhan: tidak ada yang dipasang."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A versão do GOWA não tem checksum para verificar o download: nada foi instalado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У выпуска GOWA нет контрольной суммы для проверки: ничего не установлено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA 版本没有可用于校验的校验和：未安装任何内容。"
+          }
+        }
+      }
+    },
+    "whatsapp.install.ready %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بوابة GOWA %@ مثبّتة ويشغّلها Coucou"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA %@ গেটওয়ে ইনস্টল, Coucou চালায়"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway GOWA %@ installed, started by Coucou"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasarela GOWA %@ instalada, iniciada por Coucou"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passerelle GOWA %@ installée, lancée par Coucou"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA %@ गेटवे इंस्टॉल है, Coucou इसे चलाता है"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway GOWA %@ terpasang, dijalankan oleh Coucou"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway GOWA %@ instalado, iniciado pelo Coucou"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шлюз GOWA %@ установлен, запускается Coucou"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GOWA %@ 网关已安装，由 Coucou 启动"
+          }
+        }
+      }
+    },
+    "whatsapp.install.ready-custom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بوابة GOWA الخاصة بك مُعدّة"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আপনার GOWA গেটওয়ে সেট করা আছে"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your GOWA gateway is set up"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu pasarela GOWA está configurada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta passerelle GOWA est configurée"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आपका GOWA गेटवे सेट है"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway GOWA-mu sudah diatur"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu gateway GOWA está configurado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш шлюз GOWA настроен"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的 GOWA 网关已设置"
+          }
+        }
+      }
+    },
+    "whatsapp.install.unzip-failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر فك ضغط التنزيل. أعد المحاولة."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডাউনলোড আনজিপ করা যায়নি। আবার চেষ্টা করুন।"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download couldn't be unzipped. Try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo descomprimir la descarga. Inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le téléchargement n'a pas pu être décompressé. Réessaie."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डाउनलोड अनज़िप नहीं हो सका। फिर कोशिश करें।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unduhan tidak bisa diekstrak. Coba lagi."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível descompactar o download. Tente de novo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось распаковать загрузку. Попробуйте снова."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法解压下载内容。请重试。"
+          }
+        }
+      }
+    },
+    "whatsapp.install.update" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تحديث"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "আপডেট করো"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mettre à jour"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अपडेट करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perbarui"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualizar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新"
+          }
+        }
+      }
+    },
+    "whatsapp.install.verifying" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "جارٍ التحقق من التنزيل…"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ডাউনলোড যাচাই হচ্ছে…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking the download…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando la descarga…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification du téléchargement…"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डाउनलोड जाँचा जा रहा है…"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memeriksa unduhan…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificando o download…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка загрузки…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在校验下载内容…"
+          }
+        }
+      }
+    },
     "whatsapp.save" : {
       "extractionState" : "manual",
       "localizations" : {

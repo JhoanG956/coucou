@@ -28,7 +28,7 @@ final class WhatsAppGOWAProcess {
 
     /// Where GOWA keeps its own WhatsApp session (its database, not Coucou's): one folder in
     /// Application Support, so the link survives restarts.
-    static var workingDirectory: URL {
+    nonisolated static var workingDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Coucou/GOWA", isDirectory: true)
     }
@@ -69,6 +69,9 @@ final class WhatsAppGOWAProcess {
         var env = ProcessInfo.processInfo.environment
         // The credential goes through the environment, not the command line (`ps` shows that).
         if credential.contains(":") { env["APP_BASIC_AUTH"] = credential }
+        // GOWA's own web dashboard is not needed (Coucou is the interface): it would fetch
+        // itself from GitHub at each start.
+        env["APP_UI_ENABLED"] = "false"
         p.environment = env
         // GOWA's own output may name contacts or quote messages: it goes nowhere.
         p.standardOutput = FileHandle.nullDevice

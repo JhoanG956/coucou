@@ -148,6 +148,7 @@ macOS releases are published as `v*` tags. See [CHANGELOG.md](CHANGELOG.md) for 
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [0.5.1](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.1) | Oct 18, 2026 | WhatsApp in one click: Coucou installs and starts the gateway, no Terminal |
 | [0.5.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.5.0) | Oct 18, 2026 | WhatsApp in the notch (experimental), Mochi feels your Mac, a screen capture for Claude, dictation that writes prompts or translates |
 | [0.4.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.4.0) | Oct 14, 2026 | Coucou becomes an app: Flow dictation anywhere, Parakeet offline, the Notetaker, a window in the Dock |
 | [0.3.0](https://github.com/Louis-CFM/coucou/releases/tag/v0.3.0) | Oct 11, 2026 | « OK Coucou »: talk to Mochi, powered by Claude — pills, music, your services, web search, emails |
@@ -327,31 +328,44 @@ If Coucou isn't running, the hook exits immediately: **Claude Code is never bloc
 
 > **Unofficial.** Use it on your own account only. WhatsApp may restrict an account that abuses it (bulk messages, automation). Coucou only replies in a conversation that wrote to you, a few messages a minute at most.
 
-**1. Install GOWA.** Download the macOS build from the [latest release](https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/latest), unzip it, and let macOS run it (it isn't signed):
+**Set it up in three steps, no Terminal:**
 
-```bash
-xattr -d com.apple.quarantine ./whatsapp
-```
+1. **Turn it on.** In Coucou: Settings → Integrations → WhatsApp (experimental) → **Show my WhatsApp messages**.
+2. **Click Install WhatsApp.** Coucou downloads [GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice), the open-source gateway, from its GitHub releases (the build for your Mac, about 15 MB, once), checks it against the SHA-256 GOWA publishes, and starts it. It starts and stops with Coucou from then on.
+3. **Scan the QR code** that shows right there: on your phone, WhatsApp → Settings → Linked devices → Link a device. The dot turns green and the pill fills in as messages arrive.
 
-**2. Start it on your Mac only**, without downloading media (Coucou shows a label, never the file):
-
-```bash
-./whatsapp rest --host=127.0.0.1 --port=3000 --auto-download-media=false
-```
-
-Add `--basic-auth=user:password` to protect it with a password. Or let Coucou start it for you: Settings → Integrations → WhatsApp → **Start GOWA automatically**, then pick the binary. Coucou runs it as its own child process and stops it when Coucou quits.
-
-**3. Set up Coucou.** Settings → Integrations → WhatsApp (experimental): turn it on, pick **GOWA**, keep `http://127.0.0.1:3000` (and `user:password` if you set one), **Save**, then **Test connection**. The address and the password go to the Keychain.
-
-**4. Scan the QR code** that shows right there in Settings: on your phone, WhatsApp → Settings → Linked devices → Link a device. The dot turns green and the pill fills in as messages arrive.
+The gateway lives in `~/Library/Application Support/Coucou/GOWA`, next to the WhatsApp session it keeps, so you scan once. **Update** in the same place gets GOWA's latest version. That download is the only time Coucou goes online for WhatsApp, and only when you click.
 
 Coucou tells the gateway where to post new messages (a small server on `127.0.0.1`, port 47823 by default, never reachable from another machine), with a random secret kept in the Keychain; every delivery is checked against its HMAC-SHA256 signature. If no message comes that way, Coucou checks every 20 seconds instead.
 
-**OpenWA instead.** Start it with the Baileys engine and allow its webhook to reach your Mac, then pick **OpenWA** in Settings with `http://127.0.0.1:2785` and its API key (`data/.api-key` on first start):
+<details>
+<summary><b>Advanced: run the gateway yourself (GOWA by hand, or OpenWA)</b></summary>
+
+Everything below is under **Advanced: your own gateway** in the same Settings section.
+
+**GOWA by hand.** Download `whatsapp_<version>_darwin_arm64.zip` (Apple silicon) or `…_darwin_amd64.zip` (Intel) from the [latest release](https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/latest). The zip holds one binary, `darwin-arm64` or `darwin-amd64`. In the folder it unzipped to:
+
+```bash
+xattr -d com.apple.quarantine ./darwin-arm64
+```
+
+```bash
+chmod +x ./darwin-arm64
+```
+
+```bash
+./darwin-arm64 rest --host=127.0.0.1 --port=3000 --auto-download-media=false
+```
+
+Add `--basic-auth=user:password` to protect it with a password, and put the same `user:password` in Coucou. Keep `http://127.0.0.1:3000`, **Save**, then **Test connection**. The address and the password go to the Keychain.
+
+**OpenWA instead.** Start it with the Baileys engine and allow its webhook to reach your Mac, then pick **OpenWA** with `http://127.0.0.1:2785` and its API key (`data/.api-key` on first start):
 
 ```bash
 ENGINE_TYPE=baileys SSRF_ALLOWED_HOSTS=127.0.0.1 npm run start:prod
 ```
+
+</details>
 
 **What it does**
 - One row per conversation: initials, name, the last message cut short, the unread count. Photos, voice messages and documents show as a label (« Photo », « Voice message », « Document »); nothing is downloaded.
@@ -360,7 +374,7 @@ ENGINE_TYPE=baileys SSRF_ALLOWED_HOSTS=127.0.0.1 npm run start:prod
 - Read receipts only when you open a conversation (or, if you turn that off, only when you reply). Never when a message just arrives.
 - Groups stay quiet unless you're mentioned; chats you ignore never show (right-click a row, or Settings); quiet during a macOS Focus when the system lets Coucou read it.
 
-**Privacy.** Coucou talks only to the gateway on your Mac. Messages stay in memory, are never written to disk or to a log, and are forgotten when Coucou quits or WhatsApp is turned off. No profile photo is fetched: they live on WhatsApp's servers, so the pill shows initials.
+**Privacy.** Coucou talks only to the gateway on your Mac (and to GitHub when you click Install or Update, to fetch GOWA itself). Messages stay in memory, are never written to disk or to a log, and are forgotten when Coucou quits or WhatsApp is turned off. No profile photo is fetched: they live on WhatsApp's servers, so the pill shows initials.
 
 **Limits.** No profile photos, no voice-message duration (neither gateway gives it), no new conversations from Coucou, no media sending. The gateway must run for messages to arrive. Following a Focus needs Coucou to be signed with Apple's Communication Notifications capability; until then that setting says it's unavailable.
 

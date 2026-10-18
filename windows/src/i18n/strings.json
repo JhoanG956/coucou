@@ -255,6 +255,17 @@
    "ru": "Сначала добавь ключ Anthropic API в Настройки → Чат.",
    "id": "Tambahkan dulu kunci API Anthropic-mu di Pengaturan → Chat."
   },
+  "Advanced: your own gateway": {
+   "zh-Hans": "高级：你自己的网关",
+   "hi": "एडवांस्ड: अपना गेटवे",
+   "es": "Avanzado: tu propia pasarela",
+   "ar": "متقدم: بوابتك الخاصة",
+   "fr": "Avancé : ta propre passerelle",
+   "bn": "অ্যাডভান্সড: নিজের গেটওয়ে",
+   "pt-BR": "Avançado: seu próprio gateway",
+   "ru": "Дополнительно: свой шлюз",
+   "id": "Lanjutan: gateway sendiri"
+  },
   "Advertisement": {
    "zh-Hans": "广告",
    "hi": "विज्ञापन",
@@ -826,6 +837,17 @@
    "pt-BR": "Verificando novas mensagens a cada 20 s.",
    "ru": "Проверка новых сообщений каждые 20 с.",
    "id": "Memeriksa pesan baru setiap 20 dtk."
+  },
+  "Checking the download…": {
+   "zh-Hans": "正在校验下载内容…",
+   "hi": "डाउनलोड जाँचा जा रहा है…",
+   "es": "Comprobando la descarga…",
+   "ar": "جارٍ التحقق من التنزيل…",
+   "fr": "Vérification du téléchargement…",
+   "bn": "ডাউনলোড যাচাই হচ্ছে…",
+   "pt-BR": "Verificando o download…",
+   "ru": "Проверка загрузки…",
+   "id": "Memeriksa unduhan…"
   },
   "Choose the tools you use. Coucou only shows what you declare here.": {
    "zh-Hans": "选择你使用的工具。Coucou 只显示你在这里声明的内容。",
@@ -1410,6 +1432,17 @@
    "ru": "Coucou не смог вставить: слова скопированы. Нажмите ⌘V и разрешите Универсальный доступ, чтобы он вставлял сам.",
    "id": "Coucou tidak bisa menempel: kata-katamu sudah disalin. Tekan ⌘V, dan izinkan Aksesibilitas agar ia menempel sendiri."
   },
+  "Coucou downloads GOWA, the open-source gateway, from its GitHub page (about 15 MB, once), checks it and starts it. Then scan the QR code with your phone. No Terminal needed.": {
+   "zh-Hans": "Coucou 会从 GitHub 页面下载开源网关 GOWA（约 15 MB，仅一次），校验后启动。然后用手机扫描二维码即可。无需终端。",
+   "hi": "Coucou ओपन-सोर्स गेटवे GOWA को उसके GitHub पेज से डाउनलोड करता है (लगभग 15 MB, सिर्फ़ एक बार), जाँचता है और चालू करता है। फिर फ़ोन से QR कोड स्कैन करें। टर्मिनल की ज़रूरत नहीं।",
+   "es": "Coucou descarga GOWA, la pasarela de código abierto, desde su página de GitHub (unos 15 MB, una sola vez), la comprueba y la inicia. Luego escanea el código QR con tu teléfono. Sin Terminal.",
+   "ar": "يُنزّل Coucou بوابة GOWA مفتوحة المصدر من صفحتها على GitHub (نحو 15 ميغابايت، مرة واحدة)، ويتحقق منها ويشغّلها. ثم امسح رمز QR بهاتفك. لا حاجة إلى الطرفية.",
+   "fr": "Coucou télécharge GOWA, la passerelle open source, depuis sa page GitHub (environ 15 Mo, une seule fois), la vérifie et la lance. Ensuite, scanne le QR code avec ton téléphone. Pas besoin du Terminal.",
+   "bn": "Coucou ওপেন-সোর্স গেটওয়ে GOWA তার GitHub পেজ থেকে ডাউনলোড করে (প্রায় ১৫ MB, একবারই), যাচাই করে চালু করে। তারপর ফোন দিয়ে QR কোড স্ক্যান করুন। টার্মিনাল লাগবে না।",
+   "pt-BR": "O Coucou baixa o GOWA, o gateway de código aberto, da página dele no GitHub (cerca de 15 MB, uma única vez), verifica e inicia. Depois, escaneie o QR code com o celular. Sem Terminal.",
+   "ru": "Coucou скачивает GOWA, шлюз с открытым кодом, с его страницы на GitHub (около 15 МБ, один раз), проверяет и запускает. Затем отсканируйте QR-код телефоном. Терминал не нужен.",
+   "id": "Coucou mengunduh GOWA, gateway open source, dari halaman GitHub-nya (sekitar 15 MB, sekali saja), memeriksanya lalu menjalankannya. Lalu pindai kode QR dengan ponselmu. Tanpa Terminal."
+  },
   "Coucou is writing the transcript, person by person…": {
    "zh-Hans": "Coucou 正在按人逐句写转写…",
    "hi": "Coucou हर व्यक्ति के हिसाब से ट्रांसक्रिप्ट लिख रहा है…",
@@ -1784,6 +1817,17 @@
    "ru": "Сначала скачайте модели в Coucou Flow → Настройки.",
    "id": "Unduh dulu modelnya di Coucou Flow → Pengaturan."
   },
+  "Downloading ({0} MB)…": {
+   "zh-Hans": "正在下载（{0} MB）…",
+   "hi": "डाउनलोड हो रहा है ({0} MB)…",
+   "es": "Descargando ({0} MB)…",
+   "ar": "جارٍ التنزيل ({0} ميغابايت)…",
+   "fr": "Téléchargement ({0} Mo)…",
+   "bn": "ডাউনলোড হচ্ছে ({0} MB)…",
+   "pt-BR": "Baixando ({0} MB)…",
+   "ru": "Загрузка ({0} МБ)…",
+   "id": "Mengunduh ({0} MB)…"
+  },
   "Draft": {
    "zh-Hans": "草稿",
    "hi": "ड्राफ्ट",
@@ -2114,6 +2158,17 @@
    "ru": "Полные предложения и абзацы — для писем.",
    "id": "Kalimat lengkap dan paragraf, untuk email."
   },
+  "GOWA's release has no checksum to check the download against: nothing was installed.": {
+   "zh-Hans": "GOWA 版本没有可用于校验的校验和：未安装任何内容。",
+   "hi": "GOWA रिलीज़ में डाउनलोड जाँचने के लिए चेकसम नहीं है: कुछ इंस्टॉल नहीं हुआ।",
+   "es": "La versión de GOWA no tiene suma de comprobación para verificar la descarga: no se instaló nada.",
+   "ar": "لا يحتوي إصدار GOWA على بصمة للتحقق من التنزيل: لم يُثبَّت شيء.",
+   "fr": "La version de GOWA n'a pas d'empreinte pour vérifier le téléchargement : rien n'a été installé.",
+   "bn": "GOWA রিলিজে ডাউনলোড যাচাইয়ের চেকসাম নেই: কিছু ইনস্টল হয়নি।",
+   "pt-BR": "A versão do GOWA não tem checksum para verificar o download: nada foi instalado.",
+   "ru": "У выпуска GOWA нет контрольной суммы для проверки: ничего не установлено.",
+   "id": "Rilis GOWA tidak punya checksum untuk memeriksa unduhan: tidak ada yang dipasang."
+  },
   "Gateway": {
    "zh-Hans": "网关",
    "hi": "गेटवे",
@@ -2124,6 +2179,17 @@
    "pt-BR": "Gateway",
    "ru": "Шлюз",
    "id": "Gateway"
+  },
+  "Gateway GOWA {0} installed, started by Coucou": {
+   "zh-Hans": "GOWA {0} 网关已安装，由 Coucou 启动",
+   "hi": "GOWA {0} गेटवे इंस्टॉल है, Coucou इसे चलाता है",
+   "es": "Pasarela GOWA {0} instalada, iniciada por Coucou",
+   "ar": "بوابة GOWA {0} مثبّتة ويشغّلها Coucou",
+   "fr": "Passerelle GOWA {0} installée, lancée par Coucou",
+   "bn": "GOWA {0} গেটওয়ে ইনস্টল, Coucou চালায়",
+   "pt-BR": "Gateway GOWA {0} instalado, iniciado pelo Coucou",
+   "ru": "Шлюз GOWA {0} установлен, запускается Coucou",
+   "id": "Gateway GOWA {0} terpasang, dijalankan oleh Coucou"
   },
   "Gemini CLI hooks": {
    "zh-Hans": "Gemini CLI 钩子",
@@ -2598,6 +2664,17 @@
    "ru": "Установить хуки Coucou в ~/.claude?",
    "id": "Pasang hooks Coucou di ~/.claude?"
   },
+  "Install WhatsApp": {
+   "zh-Hans": "安装 WhatsApp",
+   "hi": "WhatsApp इंस्टॉल करें",
+   "es": "Instalar WhatsApp",
+   "ar": "تثبيت واتساب",
+   "fr": "Installer WhatsApp",
+   "bn": "WhatsApp ইনস্টল করো",
+   "pt-BR": "Instalar o WhatsApp",
+   "ru": "Установить WhatsApp",
+   "id": "Pasang WhatsApp"
+  },
   "Install hooks": {
    "zh-Hans": "安装 Hooks",
    "hi": "हुक इंस्टॉल करें",
@@ -2641,6 +2718,17 @@
    "pt-BR": "Instalado",
    "ru": "Установлен",
    "id": "Terpasang"
+  },
+  "Installing and starting…": {
+   "zh-Hans": "正在安装并启动…",
+   "hi": "इंस्टॉल और चालू हो रहा है…",
+   "es": "Instalando e iniciando…",
+   "ar": "جارٍ التثبيت والتشغيل…",
+   "fr": "Installation et démarrage…",
+   "bn": "ইনস্টল ও চালু হচ্ছে…",
+   "pt-BR": "Instalando e iniciando…",
+   "ru": "Установка и запуск…",
+   "id": "Memasang dan menjalankan…"
   },
   "Integrations": {
    "zh-Hans": "集成",
@@ -2960,6 +3048,17 @@
    "pt-BR": "Sessão mais longa",
    "ru": "Самая долгая сессия",
    "id": "Sesi terpanjang"
+  },
+  "Looking for the latest GOWA…": {
+   "zh-Hans": "正在查找最新版 GOWA…",
+   "hi": "GOWA का नया वर्शन ढूँढ रहा है…",
+   "es": "Buscando la última versión de GOWA…",
+   "ar": "البحث عن أحدث إصدار من GOWA…",
+   "fr": "Recherche de la dernière version de GOWA…",
+   "bn": "GOWA-র সর্বশেষ সংস্করণ খোঁজা হচ্ছে…",
+   "pt-BR": "Procurando a versão mais recente do GOWA…",
+   "ru": "Поиск последней версии GOWA…",
+   "id": "Mencari versi GOWA terbaru…"
   },
   "Mac voice": {
    "zh-Hans": "Mac 语音",
@@ -3400,6 +3499,17 @@
    "pt-BR": "Próxima faixa",
    "ru": "Следующий трек",
    "id": "Lagu berikutnya"
+  },
+  "No GOWA build for this Mac was found on GitHub. Try again later, or set your own gateway under Advanced.": {
+   "zh-Hans": "GitHub 上没有适用于此 Mac 的 GOWA 版本。请稍后重试，或在“高级”中设置你自己的网关。",
+   "hi": "GitHub पर इस Mac के लिए GOWA नहीं मिला। बाद में फिर कोशिश करें, या एडवांस्ड में अपना गेटवे सेट करें।",
+   "es": "No hay ninguna versión de GOWA para este Mac en GitHub. Inténtalo más tarde o configura tu propia pasarela en Avanzado.",
+   "ar": "لا يوجد إصدار من GOWA لهذا الـMac على GitHub. أعد المحاولة لاحقًا أو اضبط بوابتك في «متقدم».",
+   "fr": "Aucune version de GOWA pour ce Mac sur GitHub. Réessaie plus tard, ou configure ta propre passerelle dans Avancé.",
+   "bn": "GitHub-এ এই Mac-এর জন্য GOWA পাওয়া যায়নি। পরে আবার চেষ্টা করুন, বা অ্যাডভান্সডে নিজের গেটওয়ে সেট করুন।",
+   "pt-BR": "Nenhuma versão do GOWA para este Mac no GitHub. Tente mais tarde ou configure seu próprio gateway em Avançado.",
+   "ru": "На GitHub нет сборки GOWA для этого Mac. Попробуйте позже или укажите свой шлюз в разделе «Дополнительно».",
+   "id": "Tidak ada versi GOWA untuk Mac ini di GitHub. Coba lagi nanti, atau atur gateway sendiri di Lanjutan."
   },
   "No activity last week": {
    "zh-Hans": "上周无活动",
@@ -5865,6 +5975,39 @@
    "ru": "Для чистки нужен ваш ключ Claude. Добавьте его в Настройки → Чат.",
    "id": "Perapian memakai kunci Claude-mu. Tambahkan di Pengaturan → Obrolan."
   },
+  "The download couldn't be unzipped. Try again.": {
+   "zh-Hans": "无法解压下载内容。请重试。",
+   "hi": "डाउनलोड अनज़िप नहीं हो सका। फिर कोशिश करें।",
+   "es": "No se pudo descomprimir la descarga. Inténtalo de nuevo.",
+   "ar": "تعذّر فك ضغط التنزيل. أعد المحاولة.",
+   "fr": "Le téléchargement n'a pas pu être décompressé. Réessaie.",
+   "bn": "ডাউনলোড আনজিপ করা যায়নি। আবার চেষ্টা করুন।",
+   "pt-BR": "Não foi possível descompactar o download. Tente de novo.",
+   "ru": "Не удалось распаковать загрузку. Попробуйте снова.",
+   "id": "Unduhan tidak bisa diekstrak. Coba lagi."
+  },
+  "The download didn't go through. Check your connection and try again.": {
+   "zh-Hans": "下载未完成。请检查网络后重试。",
+   "hi": "डाउनलोड पूरा नहीं हुआ। कनेक्शन जाँचकर फिर कोशिश करें।",
+   "es": "La descarga no se completó. Revisa tu conexión e inténtalo de nuevo.",
+   "ar": "لم يكتمل التنزيل. تحقق من اتصالك وأعد المحاولة.",
+   "fr": "Le téléchargement n'a pas abouti. Vérifie ta connexion et réessaie.",
+   "bn": "ডাউনলোড সম্পূর্ণ হয়নি। সংযোগ দেখে আবার চেষ্টা করুন।",
+   "pt-BR": "O download não foi concluído. Verifique sua conexão e tente de novo.",
+   "ru": "Загрузка не удалась. Проверьте подключение и попробуйте снова.",
+   "id": "Unduhan gagal. Periksa koneksimu lalu coba lagi."
+  },
+  "The download doesn't match the file GOWA published: it was deleted, nothing was installed.": {
+   "zh-Hans": "下载内容与 GOWA 发布的文件不符：已删除，未安装任何内容。",
+   "hi": "डाउनलोड GOWA की फ़ाइल से मेल नहीं खाता: हटा दिया गया, कुछ इंस्टॉल नहीं हुआ।",
+   "es": "La descarga no coincide con el archivo publicado por GOWA: se eliminó y no se instaló nada.",
+   "ar": "التنزيل لا يطابق الملف الذي نشره GOWA: حُذف ولم يُثبَّت شيء.",
+   "fr": "Le téléchargement ne correspond pas au fichier publié par GOWA : il a été supprimé, rien n'a été installé.",
+   "bn": "ডাউনলোড GOWA-র প্রকাশিত ফাইলের সঙ্গে মেলে না: মুছে ফেলা হয়েছে, কিছু ইনস্টল হয়নি।",
+   "pt-BR": "O download não corresponde ao arquivo publicado pelo GOWA: foi apagado, nada foi instalado.",
+   "ru": "Загрузка не совпадает с файлом, опубликованным GOWA: она удалена, ничего не установлено.",
+   "id": "Unduhan tidak cocok dengan file dari GOWA: sudah dihapus, tidak ada yang dipasang."
+  },
   "The gateway URL isn’t valid (http://…)": {
    "zh-Hans": "网关地址无效（http://…）",
    "hi": "गेटवे URL मान्य नहीं है (http://…)",
@@ -6293,6 +6436,17 @@
    "pt-BR": "Até o Parakeet ser baixado, o Coucou usa o reconhecimento de fala do Mac.",
    "ru": "Пока Parakeet не скачан, Coucou использует распознавание речи Mac.",
    "id": "Sampai Parakeet diunduh, Coucou memakai pengenalan suara Mac."
+  },
+  "Update": {
+   "zh-Hans": "更新",
+   "hi": "अपडेट करें",
+   "es": "Actualizar",
+   "ar": "تحديث",
+   "fr": "Mettre à jour",
+   "bn": "আপডেট করো",
+   "pt-BR": "Atualizar",
+   "ru": "Обновить",
+   "id": "Perbarui"
   },
   "Update hooks": {
    "zh-Hans": "更新 Hooks",
@@ -6865,6 +7019,17 @@
    "pt-BR": "Você fala",
    "ru": "Ты говоришь",
    "id": "Kamu berbicara"
+  },
+  "Your GOWA gateway is set up": {
+   "zh-Hans": "你的 GOWA 网关已设置",
+   "hi": "आपका GOWA गेटवे सेट है",
+   "es": "Tu pasarela GOWA está configurada",
+   "ar": "بوابة GOWA الخاصة بك مُعدّة",
+   "fr": "Ta passerelle GOWA est configurée",
+   "bn": "আপনার GOWA গেটওয়ে সেট করা আছে",
+   "pt-BR": "Seu gateway GOWA está configurado",
+   "ru": "Ваш шлюз GOWA настроен",
+   "id": "Gateway GOWA-mu sudah diatur"
   },
   "Your Mac is hot": {
    "zh-Hans": "你的 Mac 很热",

@@ -235,6 +235,61 @@ enum WAGOWA {
     }
 }
 
+/// GOWA's own releases on GitHub, for "Install WhatsApp" (one click, no Terminal): which zip
+/// fits this Mac and the SHA-256 GOWA publishes for it. The release workflow (GoReleaser,
+/// .github/workflows/release.yml in GOWA's repo) names them `whatsapp_<version>_darwin_<arch>.zip`
+/// (the binary inside is `darwin-<arch>`) next to `checksums-macos.txt`.
+enum WAGOWARelease {
+    static let latestURL = URL(string: "https://api.github.com/repos/aldinokemal/go-whatsapp-web-multidevice/releases/latest")!
+
+    struct Asset: Equatable, Sendable {
+        let name: String
+        let url: URL
+        let size: Int
+        /// "sha256:<hex>" when GitHub gives it.
+        let digest: String?
+    }
+
+    /// `GET /releases/latest` → `{tag_name, assets: [{name, browser_download_url, size, digest?}]}`.
+    static func parse(_ data: Data) -> (version: String, assets: [Asset])? {
+        guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let tag = obj["tag_name"] as? String, let list = obj["assets"] as? [[String: Any]] else { return nil }
+        let assets: [Asset] = list.compactMap { a in
+            guard let name = a["name"] as? String, let s = a["browser_download_url"] as? String,
+                  let url = URL(string: s) else { return nil }
+            return Asset(name: name, url: url, size: (a["size"] as? Int) ?? 0, digest: a["digest"] as? String)
+        }
+        let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        return (version, assets)
+    }
+
+    /// The zip for this Mac ("arm64" or "amd64") and the macOS checksums file.
+    static func pick(_ assets: [Asset], arch: String) -> (zip: Asset, checksums: Asset?)? {
+        guard let zip = assets.first(where: { $0.name.hasPrefix("whatsapp_") && $0.name.hasSuffix("_darwin_\(arch).zip") }) else { return nil }
+        return (zip, assets.first { $0.name == "checksums-macos.txt" })
+    }
+
+    /// The binary's name inside the zip.
+    static func binaryName(arch: String) -> String { "darwin-\(arch)" }
+
+    /// The SHA-256 (lowercase hex) of `name` in a GoReleaser checksums file ("<hex>  <name>" per line),
+    /// else from GitHub's own "sha256:<hex>" digest.
+    static func expectedSHA256(for asset: Asset, checksums: String?) -> String? {
+        for line in (checksums ?? "").split(whereSeparator: \.isNewline) {
+            let parts = line.split(separator: " ", omittingEmptySubsequences: true)
+            if parts.count == 2, parts[1] == Substring(asset.name), parts[0].count == 64 { return parts[0].lowercased() }
+        }
+        if let d = asset.digest, d.hasPrefix("sha256:"), d.count == 71 { return String(d.dropFirst(7)).lowercased() }
+        return nil
+    }
+
+    /// Only GitHub serves the download (its assets redirect to githubusercontent.com).
+    static func allowedHost(_ host: String?) -> Bool {
+        guard let h = host?.lowercased() else { return false }
+        return h == "github.com" || h == "api.github.com" || h.hasSuffix(".githubusercontent.com")
+    }
+}
+
 enum WAOpenWA {
     /// A session: `{id (uuid), name, status, phone, pushName, …}`.
     /// status: created|initializing|qr_ready|authenticating|ready|disconnected|action_required|failed.

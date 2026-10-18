@@ -7,6 +7,11 @@
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
 - Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
 
+## 0.5.1 — October 18, 2026
+
+- **WhatsApp in one click** *(macOS, GitHub build)* — no more GitHub, zip or Terminal: Settings → Integrations → WhatsApp → **Install WhatsApp**. Coucou downloads GOWA, the open-source gateway, for your Mac (about 15 MB, once), checks it against the SHA-256 GOWA publishes, starts it, and shows the QR code to scan. It starts and stops with Coucou, and **Update** fetches GOWA's latest version. Your own gateway (GOWA by hand, OpenWA, another address) moves under **Advanced**
+- GOWA started by Coucou no longer fetches its own web dashboard from GitHub at each start (Coucou is the interface)
+
 ## 0.5.0 — October 18, 2026
 
 WhatsApp in the notch, Mochi who feels your Mac, a screen capture for Claude, and dictation that writes prompts or translates. All of it free and open source.

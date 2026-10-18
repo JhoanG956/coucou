@@ -432,6 +432,8 @@ func waTimeAgo(_ date: Date) -> String {
 struct WhatsAppSettingsSection: View {
     @ObservedObject private var wa = WhatsAppController.shared
     @ObservedObject private var appState = AppState.shared
+    @ObservedObject private var installer = WhatsAppGOWAInstaller.shared
+    @State private var showAdvanced = false
     @State private var enabled = WhatsAppSettings.enabled
     @State private var gateway = WhatsAppSettings.gateway
     @State private var url = KeychainStore.shared.get(WhatsAppSettings.urlKey) ?? ""
@@ -467,50 +469,10 @@ struct WhatsAppSettingsSection: View {
                         .foregroundColor(Color(hex: "#F4505E"))
                 }
 
-                Picker("whatsapp.gateway", selection: $gateway) {
-                    ForEach(WAGatewayKind.allCases, id: \.self) { kind in
-                        Text(verbatim: kind == .gowa ? "GOWA" : "OpenWA").tag(kind)
-                    }
-                }
-                .pickerStyle(.segmented)
+                // One click: Coucou downloads GOWA, checks it and starts it. No Terminal.
+                if gateway == .gowa { installBlock }
 
-                TextField(gateway.defaultURL, text: $url)
-                    .textFieldStyle(.roundedBorder)
-                SecureField(gateway == .gowa ? String(localized: "whatsapp.credential.gowa")
-                                             : String(localized: "whatsapp.credential.openwa"),
-                            text: $credential)
-                    .textFieldStyle(.roundedBorder)
-                if gateway == .gowa { autoStartRow }
-                HStack(spacing: 6) {
-                    Text("whatsapp.port").font(.system(size: 11))
-                    TextField(String(WhatsAppSettings.defaultPort), text: $port)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                    Spacer()
-                }
-
-                HStack(spacing: 8) {
-                    Button("whatsapp.save") { save() }
-                        .buttonStyle(.borderedProminent)
-                    Button("whatsapp.test") {
-                        save()
-                        testing = true
-                        Task {
-                            testResult = await wa.testConnection()
-                            testing = false
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(testing)
-                    if testing { ProgressView().controlSize(.small) }
-                }
-                if let testResult {
-                    Text(verbatim: testResult)
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "#8E939C"))
-                }
-
-                linkState
+                if showsLinkState { linkState }
 
                 // Filters
                 Toggle("whatsapp.mute-groups", isOn: Binding(
@@ -541,11 +503,130 @@ struct WhatsAppSettingsSection: View {
                     .font(.system(size: 10))
                     .foregroundColor(Color(hex: "#8E939C"))
                     .fixedSize(horizontal: false, vertical: true)
+
+                // Your own gateway (OpenWA, another address, a password, the port): folded away.
+                DisclosureGroup(isExpanded: $showAdvanced) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Picker("whatsapp.gateway", selection: $gateway) {
+                            ForEach(WAGatewayKind.allCases, id: \.self) { kind in
+                                Text(verbatim: kind == .gowa ? "GOWA" : "OpenWA").tag(kind)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        TextField(gateway.defaultURL, text: $url)
+                            .textFieldStyle(.roundedBorder)
+                        SecureField(gateway == .gowa ? String(localized: "whatsapp.credential.gowa")
+                                                     : String(localized: "whatsapp.credential.openwa"),
+                                    text: $credential)
+                            .textFieldStyle(.roundedBorder)
+                        if gateway == .gowa { autoStartRow }
+                        HStack(spacing: 6) {
+                            Text("whatsapp.port").font(.system(size: 11))
+                            TextField(String(WhatsAppSettings.defaultPort), text: $port)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+                            Spacer()
+                        }
+
+                        HStack(spacing: 8) {
+                            Button("whatsapp.save") { save() }
+                                .buttonStyle(.borderedProminent)
+                            Button("whatsapp.test") {
+                                save()
+                                testing = true
+                                Task {
+                                    testResult = await wa.testConnection()
+                                    testing = false
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(testing)
+                            if testing { ProgressView().controlSize(.small) }
+                        }
+                        if let testResult {
+                            Text(verbatim: testResult)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "#8E939C"))
+                        }
+                    }
+                    .padding(.top, 4)
+                } label: {
+                    Text("whatsapp.advanced").font(.system(size: 11, weight: .medium))
+                }
+            }
+        }
+        .onChange(of: installer.step) { _, step in
+            // Installed by Coucou: the fields follow what it set.
+            if case .done = step {
+                gateway = .gowa
+                url = ""
+                autoStart = true
+                gowaPath = WhatsAppGOWAProcess.binaryPath
             }
         }
         .onChange(of: gateway) { old, new in
             // Still on the other gateway's default address: follow the switch.
             if url.isEmpty || url == old.defaultURL { url = new.defaultURL }
+        }
+    }
+
+    /// The status and QR once there is a gateway to talk to (before the install, "the gateway
+    /// doesn't answer" would only confuse).
+    private var showsLinkState: Bool {
+        if gateway != .gowa || WhatsAppGOWAInstaller.isInstalled || !url.isEmpty { return true }
+        return wa.link == .connected || wa.link == .needsQR
+    }
+
+    /// Install WhatsApp (GOWA) in one click, or its state once installed.
+    @ViewBuilder private var installBlock: some View {
+        switch installer.step {
+        case .checking, .downloading, .verifying, .installing:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(verbatim: installStepLabel).font(.system(size: 11))
+            }
+        default:
+            if WhatsAppGOWAInstaller.isInstalled {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(Color(hex: whatsAppAccent))
+                    Text(verbatim: WhatsAppGOWAInstaller.installedVersion.map { String(format: String(localized: "whatsapp.install.ready %@"), $0) }
+                         ?? String(localized: "whatsapp.install.ready-custom"))
+                        .font(.system(size: 11))
+                    Spacer()
+                    Button("whatsapp.install.update") { installer.install() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            } else {
+                Button { installer.install() } label: {
+                    Label("whatsapp.install", systemImage: "arrow.down.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(hex: whatsAppAccent))
+                Text("whatsapp.install.hint")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#8E939C"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if case .failed(let why) = installer.step {
+                Text(verbatim: why)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "#F4505E"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var installStepLabel: String {
+        switch installer.step {
+        case .checking:                  return String(localized: "whatsapp.install.checking")
+        case .downloading(let mb):       return String(format: String(localized: "whatsapp.install.downloading %lld"), Int64(mb))
+        case .verifying:                 return String(localized: "whatsapp.install.verifying")
+        case .installing:                return String(localized: "whatsapp.install.installing")
+        default:                         return ""
         }
     }
 

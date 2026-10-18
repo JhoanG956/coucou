@@ -69,6 +69,7 @@
 		2405F4EC8C89EE56F612BE2B /* CryptoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B59DD402B4D54D4A7DD36AB2 /* CryptoViews.swift */; };
 		244EC9B77D1903C8DD505D04 /* MochiLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA6A002ABEC0CC57667FBE0 /* MochiLiveActivity.swift */; };
 		2540E4198492CC2B9237ED99 /* SpotifyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9E6EB7C8468A8339CF6A5C /* SpotifyController.swift */; };
+		25C48FFCCCBBD66DFDAF2DB1 /* WhatsAppGOWAInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1B680E79F7E7C05EA7E15B /* WhatsAppGOWAInstaller.swift */; };
 		25F66E99460D62478899A292 /* MochiWardrobe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A7807ADD0963FF260D1FAD /* MochiWardrobe.swift */; };
 		26D933FDB84F83D33BE6B91B /* FlowPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD88FB0222D3F8893AF1D33D /* FlowPill.swift */; };
 		26E35C79CCD09FEBA04A3EF6 /* LinkTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6762C38A8952A90F394EDFE4 /* LinkTestView.swift */; };
@@ -259,6 +260,7 @@
 		9EA178EA395B116336C1FA10 /* TerminalTarget+AppKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 244A7909EEDA4BFF4C2EA9B5 /* TerminalTarget+AppKit.swift */; };
 		9ECEE890D4486B6E83BD5B7F /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACB4350729C6513824D1ADF /* ColorHex.swift */; };
 		9F43BE6E77E371FCEB7FE8BA /* ServiceDetailRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6AAC67875F84A862BC2A9AF /* ServiceDetailRunner.swift */; };
+		A048CDED45A2E27E50057245 /* WhatsAppGOWAInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1B680E79F7E7C05EA7E15B /* WhatsAppGOWAInstaller.swift */; };
 		A0ED41FB1AC8845BE1E30A66 /* WakeWindowBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C3405BCC9BF5F378094BFB /* WakeWindowBackoff.swift */; };
 		A225E8D82794DEDCAE672058 /* FlowCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF7FA8DEA10FA889A60447B /* FlowCleanup.swift */; };
 		A5AC7A40E65A47174367DBC9 /* NoteModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74146BD3F4B9884F6A43936F /* NoteModels.swift */; };
@@ -597,6 +599,7 @@
 		B59DD402B4D54D4A7DD36AB2 /* CryptoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoViews.swift; sourceTree = "<group>"; };
 		B6723392BE01AF210E484316 /* CoucouWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoucouWidgets.swift; sourceTree = "<group>"; };
 		B89DA1A0C21AE3535A1760BB /* N8nPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = N8nPoller.swift; sourceTree = "<group>"; };
+		BB1B680E79F7E7C05EA7E15B /* WhatsAppGOWAInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppGOWAInstaller.swift; sourceTree = "<group>"; };
 		BC1DE3225F5239394398E6B6 /* WakeSpotter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeSpotter.swift; sourceTree = "<group>"; };
 		BE03E03D1804B0B92C5C2DAD /* NotionPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionPoller.swift; sourceTree = "<group>"; };
 		BE096F3D7C3CD989EEBA55C4 /* MochiMood.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MochiMood.swift; sourceTree = "<group>"; };
@@ -782,6 +785,7 @@
 				888B3E1420BCB6292BDC8117 /* WeeklyRecapView.swift */,
 				77A7538E542C7A0696EB3FF2 /* WhatsAppController.swift */,
 				9D4F560E1BEFB7B9D5865101 /* WhatsAppGateway.swift */,
+				BB1B680E79F7E7C05EA7E15B /* WhatsAppGOWAInstaller.swift */,
 				94AA2388D0E7690653E62BBB /* WhatsAppGOWAProcess.swift */,
 				EADD0D8C37F00BF1877153D8 /* WhatsAppModels.swift */,
 				D59FE9B117259A7B1E44FC75 /* WhatsAppProvider.swift */,
@@ -1328,6 +1332,7 @@
 				4CA7948E8518229C04C6BE5A /* WakeWindowBackoff.swift in Sources */,
 				01B96F947DF2BDC352E8526D /* WeeklyRecapView.swift in Sources */,
 				7CF0E28C3C049624200FFB36 /* WhatsAppController.swift in Sources */,
+				25C48FFCCCBBD66DFDAF2DB1 /* WhatsAppGOWAInstaller.swift in Sources */,
 				4C142089AC68774050AB551B /* WhatsAppGOWAProcess.swift in Sources */,
 				968D08C757C0DD1CB593DC89 /* WhatsAppGateway.swift in Sources */,
 				B1FB8C566645AC0A2AB34B24 /* WhatsAppModels.swift in Sources */,
@@ -1569,6 +1574,7 @@
 				A0ED41FB1AC8845BE1E30A66 /* WakeWindowBackoff.swift in Sources */,
 				FB58020A389126865363C342 /* WeeklyRecapView.swift in Sources */,
 				AA1BFE6FE3A8BD1D5E3C2E81 /* WhatsAppController.swift in Sources */,
+				A048CDED45A2E27E50057245 /* WhatsAppGOWAInstaller.swift in Sources */,
 				E9342A768208D5054F6A74AD /* WhatsAppGOWAProcess.swift in Sources */,
 				4C3CCE6691BBDB4F5FD4B49D /* WhatsAppGateway.swift in Sources */,
 				2E0DC1F3BCD0D894C8B94E7C /* WhatsAppModels.swift in Sources */,

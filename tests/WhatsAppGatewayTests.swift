@@ -263,6 +263,26 @@ extension WhatsAppTests {
             check("OpenWA error, string or list", WAOpenWA.errorMessage(Data(#"{"statusCode":400,"message":["a","b"],"error":"Bad Request"}"#.utf8)) == "a, b")
         }
 
+        print("\nGOWA's GitHub release (Install WhatsApp)")
+        do {
+            // Shape of GET /repos/aldinokemal/go-whatsapp-web-multidevice/releases/latest, asset names
+            // as GOWA's GoReleaser workflow writes them.
+            let json = #"{"tag_name":"v9.6.0","assets":[{"name":"checksums-macos.txt","size":228,"browser_download_url":"https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/download/v9.6.0/checksums-macos.txt"},{"name":"whatsapp_9.6.0_darwin_amd64.zip","size":13900000,"browser_download_url":"https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/download/v9.6.0/whatsapp_9.6.0_darwin_amd64.zip"},{"name":"whatsapp_9.6.0_darwin_arm64.zip","size":13100000,"digest":"sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","browser_download_url":"https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/download/v9.6.0/whatsapp_9.6.0_darwin_arm64.zip"},{"name":"whatsapp_9.6.0_linux_arm64.zip","size":1,"browser_download_url":"https://github.com/x"}]}"#
+            let r = WAGOWARelease.parse(Data(json.utf8))
+            check("version without the v", r?.version == "9.6.0")
+            let arm = r.flatMap { WAGOWARelease.pick($0.assets, arch: "arm64") }
+            check("the Apple silicon zip", arm?.zip.name == "whatsapp_9.6.0_darwin_arm64.zip" && arm?.checksums?.name == "checksums-macos.txt")
+            check("the Intel zip", r.flatMap { WAGOWARelease.pick($0.assets, arch: "amd64") }?.zip.name == "whatsapp_9.6.0_darwin_amd64.zip")
+            check("never a Linux one", r.flatMap { WAGOWARelease.pick($0.assets.filter { !$0.name.contains("darwin") }, arch: "arm64") } == nil)
+            let sums = "1111111111111111111111111111111111111111111111111111111111111111  whatsapp_9.6.0_darwin_amd64.zip\n2222222222222222222222222222222222222222222222222222222222222222  whatsapp_9.6.0_darwin_arm64.zip\n"
+            check("checksum from GOWA's file", arm.flatMap { WAGOWARelease.expectedSHA256(for: $0.zip, checksums: sums) } == String(repeating: "2", count: 64))
+            check("else GitHub's digest", arm.flatMap { WAGOWARelease.expectedSHA256(for: $0.zip, checksums: nil) } == String(repeating: "a", count: 64))
+            check("no checksum at all → nil", WAGOWARelease.expectedSHA256(for: .init(name: "x.zip", url: URL(string: "https://github.com")!, size: 1, digest: nil), checksums: sums) == nil)
+            check("binary name", WAGOWARelease.binaryName(arch: "arm64") == "darwin-arm64")
+            check("GitHub hosts only", WAGOWARelease.allowedHost("objects.githubusercontent.com") && WAGOWARelease.allowedHost("github.com")
+                  && !WAGOWARelease.allowedHost("github.com.evil.io") && !WAGOWARelease.allowedHost(nil))
+        }
+
         print("\nMentions and ids")
         do {
             check("same user across forms", WAJID.sameUser("628@c.us", "628:4@s.whatsapp.net") && !WAJID.sameUser("1@c.us", "2@c.us"))
