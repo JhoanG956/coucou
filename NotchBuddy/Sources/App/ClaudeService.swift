@@ -78,6 +78,8 @@ final class KeychainStore: @unchecked Sendable {
         // token Google returns once they have consented.
         "gcal-client-id", "gcal-client-secret", "gcal-refresh-token",
         "elevenlabs-api-key",
+        // WhatsApp (local gateway): its address, credentials and the webhook's signing secret
+        "whatsapp-url", "whatsapp-api-key", "whatsapp-webhook-secret",
         // Portfolio exchange credentials
         "portfolio-binance-key",  "portfolio-binance-secret",
         "portfolio-okx-key",      "portfolio-okx-secret",      "portfolio-okx-passphrase",

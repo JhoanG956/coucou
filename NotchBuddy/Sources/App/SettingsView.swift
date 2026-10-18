@@ -391,6 +391,19 @@ struct SettingsView: View {
             }
         }
 
+        GroupBox(String(localized: "vitals.title")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(String(localized: "vitals.toggle"), isOn: Binding(
+                    get: { MachineVitals.shared.enabled },
+                    set: { MachineVitals.shared.enabled = $0 }))
+                Text("vitals.about")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(6)
+        }
+
         GroupBox("Hotkey") {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Show island with shortcut", isOn: $state.hotkeyEnabled)
@@ -1364,6 +1377,12 @@ struct SettingsView: View {
                 // Portfolio: exchange accounts + wallets.
                 PortfolioSettingsSection()
                     .padding(.top, 4)
+
+                #if !APPSTORE
+                // WhatsApp through a local gateway: its own fields, saved by its own button.
+                WhatsAppSettingsSection()
+                    .padding(.top, 4)
+                #endif
 
                 Button(String(localized: "integrations.save")) {
                     saveIntegrations()

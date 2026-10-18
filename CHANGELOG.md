@@ -7,6 +7,18 @@
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
 - Shell steps in the ticker drop the `cd <project> &&` prefix, so the command itself shows — thanks @JhoanG956
 
+## 0.5.0 — October 18, 2026
+
+WhatsApp in the notch, Mochi who feels your Mac, a screen capture for Claude, and dictation that writes prompts or translates. All of it free and open source.
+
+- **WhatsApp in the notch** *(macOS, GitHub build, experimental)* — your incoming WhatsApp messages in a new green pill, one row per conversation with initials, name, the last message and the unread count; photos, voice messages and documents show as a label. Click a conversation to see its last ten messages and reply: Return sends, Shift-Return starts a new line, Esc goes back. Mochi smiles at a new message (with a sound if sounds are on). Groups stay quiet unless you're mentioned, chats you ignore never show, and read receipts go only when you open a conversation or reply. It goes through an unofficial gateway that runs on your Mac ([GOWA](https://github.com/aldinokemal/go-whatsapp-web-multidevice), or [OpenWA](https://github.com/rmyndharis/OpenWA)), which Coucou can start and stop for you; scan its QR code right in Settings → Integrations → WhatsApp. Nothing leaves your Mac: messages stay in memory, are never logged or saved, and are forgotten when Coucou quits. Use it on your own account only: WhatsApp may restrict accounts that abuse it. Off by default; see [WhatsApp (experimental)](README.md#whatsapp-experimental)
+- **Mochi feels your Mac** — under full processor load he panics (hops, trembling eyes, sweat), he flushes when the Mac is warm, puffs up when memory is short, gets heavy eyelids under 20 % battery and falls asleep under 10 %; plugging in wakes him. Point at Mochi to see why ("CPU 94 % · node, Google Chrome"). Read only while Mochi is on screen. Settings → General → Mochi and your Mac
+- **Screen capture for Claude** *(macOS, GitHub build)* — ⌃⌥X: select part of the screen, Mochi swallows the image, then Paste (⌘V, or ⌃V in a terminal where Claude Code takes images), Copy, Annotate (arrows, boxes, pen) or Ask Claude. With a capture on the island, holding the Flow key pastes the image, then your words
+- **Flow: prompt mode and translation** *(macOS, GitHub build)* — what you say can become a structured prompt for an agent (goal, context, steps, constraints), or be pasted in another language: about 70 languages and regional variants. One Claude call with your key; if it's late, your words are pasted as heard. Coucou → Flow → Settings
+- **Notetaker** — the other person's voice coming back through your speakers is no longer written as yours, one voice is no longer split into two persons, and Claude fixes misheard words and keeps the names it learns for your next calls. Any line can be edited or given to another person
+- **iPhone** — a request you open from a notification now says whether it expired or was already answered on your Mac
+- The island's error view shows the real error and who stopped (Claude Code, an agent or n8n), with buttons that work; no false "your words are copied" after dictating into Electron apps; the Coucou window's sidebar is centred
+
 ## Windows and Linux 0.5.0 — October 15, 2026
 
 Windows and Linux catch up with the Mac's 0.3.0 and 0.4.0: the Coucou window, Flow dictation, the Notetaker and « OK Coucou ». All of it free and open source.
