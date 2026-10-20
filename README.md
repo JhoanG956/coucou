@@ -88,7 +88,7 @@ Flow dictation and the Notetaker are on the Mac for now; Windows and Linux are n
 - 📱 **Coucou on iPhone** — your sessions, approvals and services in your pocket, with Live Activities, widgets and Siri. See [Coucou on iPhone](#coucou-on-iphone).
 - 🤖 **Coucou for Android** — your agents, approvals with your fingerprint, questions, chat and home-screen widgets on an Android phone, linked to Coucou on Windows or Linux over your Wi-Fi. By [@Rhytam23](https://github.com/Rhytam23). See [Coucou for Android](#coucou-for-android).
 - 📅 **Weekly recap** *(macOS)* — every Monday morning Coucou shows a summary of the past week: time coding, sessions, files, lines changed, commands, permissions, top agent and project, busiest day and longest session. Share it as a 1080 × 1920 image with Mochi — project names optional. All local, no sync.
-- 🌍 **10 languages** — English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, Bahasa Indonesia. Pick one in Settings → General → Language; community translations welcome.
+- 🌍 **14 languages** — English, 简体中文, 繁體中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, Bahasa Indonesia, Deutsch, Türkçe, ไทย. Pick one in Settings → General → Language; Traditional Chinese and Thai are on the Mac only for now. Community translations welcome.
 - 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain, Windows Credential Manager or Linux Secret Service (GNOME Keyring, KWallet). The app only talks to the services you plug in.
 
 ## Coucou on iPhone
@@ -215,6 +215,15 @@ Everything else, troubleshooting included, is in [docs/IPHONE.md](docs/IPHONE.md
 3. **Show pairing code** and scan it with the app. The phone and the computer must be on the same Wi-Fi.
 
 Everything else, troubleshooting included, is in [`android/README.md`](android/README.md).
+
+### Homebrew (macOS)
+
+```bash
+brew tap louis-cfm/coucou https://github.com/Louis-CFM/coucou
+brew install --cask coucou
+```
+
+It installs the same signed and notarized GitHub build as the download below. Coucou then updates itself from the notch; `brew upgrade --cask --greedy coucou` works too.
 
 ### Download for macOS
 
