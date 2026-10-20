@@ -34,6 +34,7 @@ mod sounds;
 mod speech;
 mod spotify;
 mod tray;
+mod update;
 mod voice;
 #[cfg(windows)]
 mod webview_drop;
@@ -889,6 +890,15 @@ pub fn run() {
             notes::notes_export,
             voice::voice_done,
             voice::voice_say_native,
+            update::update_status,
+            update::update_set_consent,
+            update::update_check,
+            update::update_shown,
+            update::update_show,
+            update::update_later,
+            update::update_dismiss,
+            update::update_install,
+            update::update_open_page,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -931,6 +941,8 @@ pub fn run() {
             integrations::start(handle.clone());
             spotify::sync(&handle, &loaded.active_integrations);
             shortcuts::apply(&handle, &loaded.shortcuts);
+            // New versions: nothing goes to GitHub until the user agrees (update.rs).
+            update::start(handle.clone());
             if loaded.autostart {
                 // Login items written before 0.5 start Coucou without --autostart:
                 // writing it again adds it, so the window stays hidden at login.

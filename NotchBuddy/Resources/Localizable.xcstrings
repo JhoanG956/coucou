@@ -995,6 +995,12 @@
             "value" : "Mochi দিনে কয়েকবার GitHub-এ Coucou-র রিলিজ দেখে এবং নতুন এলে জানায়। আপনার সম্পর্কে কিছুই পাঠানো হয় না।"
           }
         },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi schaut ein paar Mal am Tag nach Coucous Releases auf GitHub und sagt dir, wenn eine neue da ist. Über dich wird nichts gesendet."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1037,6 +1043,18 @@
             "value" : "Mochi несколько раз в день проверяет релизы Coucou на GitHub и сообщает о новых. О вас ничего не отправляется."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi จะดูรีลีสของ Coucou บน GitHub วันละไม่กี่ครั้ง และบอกคุณเมื่อมีเวอร์ชันใหม่ ไม่มีการส่งข้อมูลใดเกี่ยวกับคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mochi, Coucou'nun GitHub'daki sürümlerine günde birkaç kez bakar ve yenisi çıkınca sana söyler. Seninle ilgili hiçbir şey gönderilmez."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1064,6 +1082,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "না, ধন্যবাদ"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nein danke"
           }
         },
         "en" : {
@@ -1108,6 +1132,18 @@
             "value" : "Нет, спасибо"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่ ขอบคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hayır, teşekkürler"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1135,6 +1171,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "নতুন সংস্করণ নচে পেতে চান?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Versionen direkt in der Notch?"
           }
         },
         "en" : {
@@ -1179,6 +1221,18 @@
             "value" : "Получать новые версии прямо в вырезе?"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รับเวอร์ชันใหม่จากรอยบากไหม?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni sürümler çentikte görünsün mü?"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1206,6 +1260,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "হ্যাঁ, জানাও"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ja, sag Bescheid"
           }
         },
         "en" : {
@@ -1250,6 +1310,18 @@
             "value" : "Да, сообщать"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใช่ บอกฉันด้วย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evet, haber ver"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1277,6 +1349,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub থেকে ডাউনলোড হচ্ছে…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird von GitHub geladen…"
           }
         },
         "en" : {
@@ -1321,6 +1399,18 @@
             "value" : "Загрузка с GitHub…"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังดาวน์โหลดจาก GitHub…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub'dan indiriliyor…"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1348,6 +1438,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ডাউনলোড ব্যর্থ। আবার চেষ্টা করুন, অথবা GitHub থেকে নিন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Download ist fehlgeschlagen. Versuch es noch mal oder hol es dir auf GitHub."
           }
         },
         "en" : {
@@ -1392,6 +1488,18 @@
             "value" : "Загрузка не удалась. Попробуйте снова или скачайте на GitHub."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดาวน์โหลดไม่สำเร็จ ลองอีกครั้ง หรือดาวน์โหลดจาก GitHub"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İndirme başarısız oldu. Tekrar dene ya da GitHub'dan al."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1419,6 +1527,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ডাউনলোডটি ঘোষিত Coucou সংস্করণ নয়। কিছুই বদলানো হয়নি।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Download ist nicht die angekündigte Coucou-Version. Nichts wurde geändert."
           }
         },
         "en" : {
@@ -1463,6 +1577,18 @@
             "value" : "Загрузка — не объявленная версия Coucou. Ничего не изменено."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไฟล์ที่ดาวน์โหลดไม่ใช่ Coucou เวอร์ชันที่ประกาศ ไม่มีอะไรถูกเปลี่ยน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İndirilen dosya duyurulan Coucou sürümü değil. Hiçbir şey değiştirilmedi."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1490,6 +1616,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ইনস্টল হয়েছে: নতুন সংস্করণ ব্যবহার করতে Coucou বন্ধ করে আবার খুলুন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installiert: Beende Coucou und öffne es wieder, um die neue Version zu nutzen."
           }
         },
         "en" : {
@@ -1534,6 +1666,18 @@
             "value" : "Установлено: перезапустите Coucou, чтобы использовать новую версию."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดตั้งแล้ว: ปิดแล้วเปิด Coucou ใหม่เพื่อใช้เวอร์ชันใหม่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yüklendi: yeni sürümü kullanmak için Coucou'yu kapatıp yeniden aç."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1561,6 +1705,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ডাউনলোডটি Coucou-র ডেভেলপারের স্বাক্ষরিত ও নোটারাইজড নয়, তাই ইনস্টল করা হয়নি।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Download ist nicht vom Entwickler von Coucou signiert und beglaubigt und wurde daher nicht installiert."
           }
         },
         "en" : {
@@ -1605,6 +1755,18 @@
             "value" : "Загрузка не подписана и не нотаризована разработчиком Coucou, поэтому не установлена."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไฟล์ที่ดาวน์โหลดไม่ได้ลงนามและรับรองโดยผู้พัฒนา Coucou จึงไม่ได้ติดตั้ง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İndirilen dosya Coucou geliştiricisi tarafından imzalanmamış ve onaylanmamış, bu yüzden yüklenmedi."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1632,6 +1794,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ডাউনলোড খোলা যায়নি। কিছুই বদলানো হয়নি।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Download ließ sich nicht öffnen. Nichts wurde geändert."
           }
         },
         "en" : {
@@ -1676,6 +1844,18 @@
             "value" : "Не удалось открыть загрузку. Ничего не изменено."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดไฟล์ที่ดาวน์โหลดไม่ได้ ไม่มีอะไรถูกเปลี่ยน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İndirilen dosya açılamadı. Hiçbir şey değiştirilmedi."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1703,6 +1883,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "আপডেট সম্পন্ন হয়নি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Update hat nicht geklappt"
           }
         },
         "en" : {
@@ -1747,6 +1933,18 @@
             "value" : "Обновление не удалось"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อัปเดตไม่สำเร็จ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güncelleme tamamlanamadı"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1774,6 +1972,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ইনস্টল হচ্ছে…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird installiert…"
           }
         },
         "en" : {
@@ -1818,6 +2022,18 @@
             "value" : "Установка…"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังติดตั้ง…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yükleniyor…"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1845,6 +2061,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "পরে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Später"
           }
         },
         "en" : {
@@ -1889,6 +2111,18 @@
             "value" : "Позже"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ภายหลัง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonra"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1916,6 +2150,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou আপনার Applications ফোল্ডারে নেই, তাই নিজেকে বদলাতে পারে না: নতুন সংস্করণ GitHub থেকে নিন।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou liegt nicht in deinem Programme-Ordner und kann sich daher nicht selbst ersetzen: Hol dir die neue Version auf GitHub."
           }
         },
         "en" : {
@@ -1960,6 +2200,18 @@
             "value" : "Coucou не в папке «Программы», поэтому не может заменить себя: скачайте новую версию на GitHub."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ไม่ได้อยู่ในโฟลเดอร์แอปพลิเคชัน จึงแทนที่ตัวเองไม่ได้ ดาวน์โหลดเวอร์ชันใหม่จาก GitHub แทน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou Uygulamalar klasöründe değil, bu yüzden kendini değiştiremiyor: yeni sürümü GitHub'dan al."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1987,6 +2239,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou %@-এ আপডেট করুন…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou auf %@ aktualisieren…"
           }
         },
         "en" : {
@@ -2031,6 +2289,18 @@
             "value" : "Обновить Coucou до %@…"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อัปเดต Coucou เป็น %@…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou'yu %@ sürümüne güncelle…"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2058,6 +2328,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "এখনই আপডেট"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt aktualisieren"
           }
         },
         "en" : {
@@ -2102,6 +2378,18 @@
             "value" : "Обновить"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อัปเดตเลย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Şimdi güncelle"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2129,6 +2417,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub খুলুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf GitHub holen"
           }
         },
         "en" : {
@@ -2173,6 +2467,18 @@
             "value" : "Открыть GitHub"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดาวน์โหลดจาก GitHub"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub'dan al"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2200,6 +2506,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou আবার চালু হচ্ছে…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou startet neu…"
           }
         },
         "en" : {
@@ -2244,6 +2556,18 @@
             "value" : "Перезапуск Coucou…"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังเริ่ม Coucou ใหม่…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou yeniden başlatılıyor…"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2271,6 +2595,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "এখনই দেখুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt prüfen"
           }
         },
         "en" : {
@@ -2315,6 +2645,18 @@
             "value" : "Проверить сейчас"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตรวจสอบตอนนี้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Şimdi kontrol et"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2342,6 +2684,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou দিনে কয়েকবার GitHub-এ নিজের রিলিজ দেখে। আপনার ক্লিকের পরে, Apple-এর স্বাক্ষর ও নোটারাইজেশন যাচাই করেই কেবল আপডেট ইনস্টল হয়।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou schaut ein paar Mal am Tag nach seinen eigenen Releases auf GitHub. Ein Update wird erst nach deinem Klick installiert, wenn Apples Signatur und Beglaubigung stimmen."
           }
         },
         "en" : {
@@ -2386,6 +2734,18 @@
             "value" : "Coucou несколько раз в день проверяет свои релизы на GitHub. Обновление устанавливается только после вашего нажатия и проверки подписи и нотаризации Apple."
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou จะดูรีลีสของตัวเองบน GitHub วันละไม่กี่ครั้ง การอัปเดตจะติดตั้งหลังจากคุณคลิกเท่านั้น เมื่อตรวจสอบลายเซ็นและการรับรองของ Apple แล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou günde birkaç kez GitHub'daki kendi sürümlerine bakar. Güncelleme yalnızca sen tıkladıktan sonra, Apple imzası ve onayı doğrulandığında yüklenir."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2413,6 +2773,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ ইনস্টল করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ installieren"
           }
         },
         "en" : {
@@ -2457,6 +2823,18 @@
             "value" : "Установить %@"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดตั้ง %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sürümünü yükle"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2484,6 +2862,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "আপডেট"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updates"
           }
         },
         "en" : {
@@ -2528,6 +2912,18 @@
             "value" : "Обновления"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อัปเดต"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güncellemeler"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2555,6 +2951,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "নতুন সংস্করণ এলে জানাও"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sag mir, wenn eine neue Version da ist"
           }
         },
         "en" : {
@@ -2599,6 +3001,18 @@
             "value" : "Сообщать о выходе новой версии"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บอกฉันเมื่อมีเวอร์ชันใหม่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni sürüm çıkınca bana haber ver"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2626,6 +3040,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub-এ পৌঁছানো যায়নি"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub nicht erreichbar"
           }
         },
         "en" : {
@@ -2670,6 +3090,18 @@
             "value" : "Не удалось связаться с GitHub"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดต่อ GitHub ไม่ได้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub'a ulaşılamadı"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2697,6 +3129,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou %@ এসে গেছে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou %@ ist da"
           }
         },
         "en" : {
@@ -2741,6 +3179,18 @@
             "value" : "Вышел Coucou %@"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou %@ มาแล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou %@ çıktı"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2768,6 +3218,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou হালনাগাদ আছে"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou ist aktuell"
           }
         },
         "en" : {
@@ -2812,6 +3268,18 @@
             "value" : "Coucou обновлён"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou เป็นเวอร์ชันล่าสุดแล้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coucou güncel"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2839,6 +3307,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "স্বাক্ষর যাচাই হচ্ছে…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signatur wird geprüft…"
           }
         },
         "en" : {
@@ -2883,6 +3357,18 @@
             "value" : "Проверка подписи…"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังตรวจสอบลายเซ็น…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İmza kontrol ediliyor…"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2910,6 +3396,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "নতুন কী"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was ist neu"
           }
         },
         "en" : {
@@ -2954,6 +3446,18 @@
             "value" : "Что нового"
           }
         },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มีอะไรใหม่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yenilikler"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2981,6 +3485,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "আপনার কাছে %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast %@"
           }
         },
         "en" : {
@@ -3023,6 +3533,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "У вас %@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณใช้ %@"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sende %@ var"
           }
         },
         "zh-Hans" : {
@@ -4048,6 +4570,12 @@
             "value" : "ডাউনলোড যাচাই হচ্ছে…"
           }
         },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download wird geprüft…"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4088,6 +4616,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверка загрузки…"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังตรวจสอบไฟล์ที่ดาวน์โหลด…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İndirme kontrol ediliyor…"
           }
         },
         "zh-Hans" : {
