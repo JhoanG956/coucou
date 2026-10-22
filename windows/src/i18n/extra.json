@@ -1730,6 +1730,19 @@
    "de": "Zahlung",
    "tr": "Ödeme"
   },
+  "Personal access token with read_api and read_user scopes.": {
+   "zh-Hans": "具有 read_api 和 read_user 权限的个人访问令牌。",
+   "hi": "read_api और read_user स्कोप वाला व्यक्तिगत एक्सेस टोकन।",
+   "es": "Token de acceso personal con los permisos read_api y read_user.",
+   "ar": "رمز وصول شخصي بصلاحيتي read_api وread_user.",
+   "fr": "Jeton d’accès personnel avec les autorisations read_api et read_user.",
+   "bn": "read_api ও read_user অনুমতিসহ ব্যক্তিগত অ্যাক্সেস টোকেন।",
+   "pt-BR": "Token de acesso pessoal com os escopos read_api e read_user.",
+   "ru": "Личный токен доступа с правами read_api и read_user.",
+   "id": "Token akses pribadi dengan cakupan read_api dan read_user.",
+   "de": "Persönliches Zugriffstoken mit den Berechtigungen read_api und read_user.",
+   "tr": "read_api ve read_user kapsamlarına sahip kişisel erişim belirteci."
+  },
   "Pick a model above the chat box first.": {
    "zh-Hans": "请先在聊天框上方选择一个模型。",
    "hi": "पहले चैट बॉक्स के ऊपर एक मॉडल चुनें।",
@@ -3959,6 +3972,32 @@
    "id": "Ponsel menampilkan seberapa banyak paket Claude dan Codex Anda terpakai dan kapan direset: persentase yang sama dengan pil di sini, tidak ada yang lain.",
    "de": "Das Telefon zeigt die Nutzung deiner Claude- und Codex-Pläne und wann sie zurückgesetzt werden: dieselben Prozentwerte wie in den Kapseln hier, sonst nichts.",
    "tr": "Telefon, Claude ve Codex planlarını ne kadar kullandığını ve ne zaman sıfırlandıklarını gösterir: buradaki araçlarla aynı yüzdeler, başka hiçbir şey."
+  },
+  "Show my weekly recap on the phone": {
+   "zh-Hans": "在手机上显示我的每周回顾",
+   "hi": "फ़ोन पर मेरा साप्ताहिक सारांश दिखाएँ",
+   "es": "Mostrar en el teléfono mi resumen semanal",
+   "ar": "عرض ملخصي الأسبوعي على الهاتف",
+   "fr": "Afficher sur le téléphone mon récap de la semaine",
+   "bn": "ফোনে আমার সাপ্তাহিক সারাংশ দেখান",
+   "pt-BR": "Mostrar no celular meu resumo semanal",
+   "ru": "Показывать на телефоне мой итог недели",
+   "id": "Tampilkan rekap mingguan saya di ponsel",
+   "de": "Meine Wochenübersicht auf dem Telefon anzeigen",
+   "tr": "Haftalık özetimi telefonda göster"
+  },
+  "The phone shows last week's recap: time coding, sessions, files, lines, commands, permissions and the agent you used most. Counts only. The project's name is added only if you also show session details.": {
+   "zh-Hans": "手机会显示上周的回顾：编程时长、会话、文件、行数、命令、权限，以及您用得最多的代理。只有数字。只有在您同时开启会话详情时，才会加上项目名称。",
+   "hi": "फ़ोन पिछले सप्ताह का सारांश दिखाता है: कोडिंग का समय, सत्र, फ़ाइलें, लाइनें, कमांड, अनुमतियाँ और वह एजेंट जिसे आपने सबसे ज़्यादा इस्तेमाल किया। सिर्फ़ गिनती। प्रोजेक्ट का नाम तभी जुड़ता है जब आप सत्र का विवरण भी दिखाते हैं।",
+   "es": "El teléfono muestra el resumen de la semana pasada: tiempo programando, sesiones, archivos, líneas, comandos, permisos y el agente que más usaste. Solo cifras. El nombre del proyecto se añade únicamente si también muestras los detalles de las sesiones.",
+   "ar": "يعرض الهاتف ملخص الأسبوع الماضي: وقت البرمجة والجلسات والملفات والأسطر والأوامر والأذونات والوكيل الأكثر استخدامًا. أعداد فقط. لا يُضاف اسم المشروع إلا إذا كنت تعرض تفاصيل الجلسات أيضًا.",
+   "fr": "Le téléphone montre le récap de la semaine dernière : temps passé à coder, sessions, fichiers, lignes, commandes, autorisations et l'agent le plus utilisé. Des chiffres uniquement. Le nom du projet n'est ajouté que si vous affichez aussi les détails des sessions.",
+   "bn": "ফোন গত সপ্তাহের সারাংশ দেখায়: কোডিংয়ের সময়, সেশন, ফাইল, লাইন, কমান্ড, অনুমতি এবং আপনি যে এজেন্ট সবচেয়ে বেশি ব্যবহার করেছেন। শুধু সংখ্যা। সেশনের বিবরণও দেখালে তবেই প্রজেক্টের নাম যোগ হয়।",
+   "pt-BR": "O celular mostra o resumo da semana passada: tempo programando, sessões, arquivos, linhas, comandos, permissões e o agente que você mais usou. Só números. O nome do projeto só é incluído se você também mostrar os detalhes das sessões.",
+   "ru": "Телефон показывает итог прошлой недели: время за кодом, сессии, файлы, строки, команды, разрешения и самого частого агента. Только числа. Название проекта добавляется, только если вы также показываете сведения о сессиях.",
+   "id": "Ponsel menampilkan rekap minggu lalu: waktu coding, sesi, berkas, baris, perintah, izin, dan agen yang paling sering dipakai. Hanya angka. Nama proyek baru ditambahkan jika Anda juga menampilkan detail sesi.",
+   "de": "Das Telefon zeigt die Übersicht der letzten Woche: Zeit zum Programmieren, Sitzungen, Dateien, Zeilen, Befehle, Berechtigungen und den Agenten, den du am meisten genutzt hast. Nur Zahlen. Der Projektname wird nur hinzugefügt, wenn du auch die Sitzungsdetails anzeigst.",
+   "tr": "Telefon geçen haftanın özetini gösterir: kodlama süresi, oturumlar, dosyalar, satırlar, komutlar, izinler ve en çok kullandığın ajan. Yalnızca sayılar. Proje adı, yalnızca oturum ayrıntılarını da gösterirsen eklenir."
   },
   "Payment failed": {
    "zh-Hans": "付款失败",

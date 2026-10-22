@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Coucou for Android 0.3.0**, by @Rhytam23 — a bigger release (versionCode 3). It works with Coucou 0.5.0 on Windows and Linux; the weekly recap needs the next Windows and Linux build.
+  - **Clearer link** — Home names the likely cause when the computer is out of reach (computer closed, other network, phone link off); predictive back; the ongoing notification is updated only when its text changes.
+  - **Permission requests** — choose the vibration (default, short, off) and whether a request wakes the screen (off by default). Allow still needs your fingerprint or screen lock, and approvals are never muted or hidden.
+  - **Look** — a light theme (System, Light, Dark) and the phone's own colours on Android 12 and later; Reduce motion, TalkBack in words, large text and 48 dp touch targets.
+  - **Nine more languages** — French, Spanish, Brazilian Portuguese, Simplified Chinese, Hindi, Bengali, Russian, Indonesian and Arabic (right to left), with a language picker.
+  - **Quick actions** — launcher shortcuts (Chat, Recent decisions, Pair again), a Team widget, and Share to Coucou (the text lands in the chat box and is never sent).
+  - **Weekly recap and history** — last week's counts on Home (optional, off by default, behind its own switch on the computer), search and export of recent decisions as text, and a per-agent mute for finished, failed and limit notices (requests and questions are never muted).
+  - Fixes #629: the *Away from home Wi-Fi* section only shows when the pairing carries a relay (#682 by @Rhytam23)
 - GitHub: the CI of your Claude Code session's branch, read from its .git folder. It takes the CI row of the GitHub card (macOS, GitHub build) and the CI detail lists it first. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
 - Google Calendar (macOS): a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956

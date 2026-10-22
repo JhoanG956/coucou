@@ -137,6 +137,25 @@ export interface PhoneLinkUsage {
   codex: PhoneLinkPlan | null;
 }
 
+/**
+ * Last week's recap as the phone gets it: counts, the week's Monday and the busiest agent's name (cap `recap`). The project is a folder name that
+ * Rust sends only to a phone that also may see session details. A week with no session is not sent: all zero clears the phone's card.
+ */
+export interface PhoneLinkRecap {
+  /** The Monday that starts the week, YYYY-MM-DD (local). */
+  week: string;
+  minutes: number;
+  sessions: number;
+  files: number;
+  linesAdded: number;
+  linesRemoved: number;
+  commands: number;
+  allowed: number;
+  denied: number;
+  topAgent?: string;
+  topProject?: string;
+}
+
 /** What one service pill says, for a phone whose user allowed it (Rust cuts every text to size). */
 export interface PhoneLinkService {
   id: string;
@@ -152,6 +171,10 @@ export interface PhoneServicesStatus {
 }
 
 export interface PhoneUsageStatus {
+  enabled: boolean;
+}
+
+export interface PhoneRecapStatus {
   enabled: boolean;
 }
 
@@ -206,6 +229,12 @@ export const Bridge = {
   listMonitors: () => call<{ key: string; label: string }[]>("list_monitors"),
 
   openUrl: (url: string) => call<void>("open_url", { url }),
+  /** Opens a GitLab link only when it belongs to the configured instance. */
+  openGitLabUrl: (url: string) => call<void>("open_gitlab_url", { url }),
+  /** Opens the configured Gitea instance without exposing its URL to the page. */
+  openGitea: () => call<void>("open_gitea"),
+  /** Opens a Gitea link only if it belongs to the configured instance. */
+  openGiteaUrl: (url: string) => call<void>("open_gitea_url", { url }),
 
   /** Which of these sounds have a file of the user's own in the sounds folder. */
   customSounds: (names: readonly string[]) => call<string[]>("custom_sounds", { names }),
@@ -317,6 +346,9 @@ export const Bridge = {
   /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
   phoneUsageSetEnabled: (enabled: boolean) => callOrThrow<PhoneUsageStatus>("phone_usage_set_enabled", { enabled }),
   phoneLinkPublishUsage: (usage: PhoneLinkUsage) => call<void>("phone_link_publish_usage", { usage }),
+  phoneRecapStatus: () => call<PhoneRecapStatus>("phone_recap_status"),
+  phoneRecapSetEnabled: (enabled: boolean) => callOrThrow<PhoneRecapStatus>("phone_recap_set_enabled", { enabled }),
+  phoneLinkPublishRecap: (recap: PhoneLinkRecap | null) => call<void>("phone_link_publish_recap", { recap: recap ?? {} }),
   phoneChatStatus: () => call<PhoneChatStatus>("phone_chat_status"),
   /** Off by default; only from the switch in Settings. Phones are reconnected so they learn about it. */
   phoneChatSetEnabled: (enabled: boolean) => callOrThrow<PhoneChatStatus>("phone_chat_set_enabled", { enabled }),
