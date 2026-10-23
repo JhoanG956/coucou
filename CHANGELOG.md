@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Mac: WhatsApp statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the WhatsApp pill (#901, same fix as #910)
 - GitHub: the CI of your Claude Code session's branch, read from its .git folder. It takes the CI row of the GitHub card (macOS, GitHub build) and the CI detail lists it first. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
 - Google Calendar (macOS): a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956
@@ -13,6 +14,8 @@ WhatsApp comes to Windows and Linux, as on the Mac.
 
 - **WhatsApp in the island** *(experimental)* — your incoming WhatsApp messages in a green pill, one row per conversation with initials, name, the last message and the unread count; photos, voice messages and documents show as a label. Click a conversation to read its last ten messages and reply: Enter sends, Shift+Enter starts a new line, Esc goes back. Mochi smiles at a new message. Groups stay quiet unless you're mentioned, chats you ignore never show, and read receipts go only when you open a conversation or reply. Off by default: Settings → Integrations → WhatsApp
 - **Install WhatsApp in one click** — Coucou downloads GOWA, the open-source gateway, from its GitHub page, checks it against the SHA-256 GOWA publishes, starts it on this computer only and shows the QR code to scan; **Update** fetches GOWA's latest version, and your own GOWA or OpenWA goes under **Advanced**. Messages stay in memory, are never logged or saved, and are forgotten when Coucou quits. Use it on your own account only: WhatsApp may restrict accounts that abuse it
+- **Statuses aren't chats** — a contact's WhatsApp Status and channel posts no longer show up as a conversation in the pill (#910 by @afpruivo, reported by @orphic07 in #901)
+- **Mochi stays whole on another monitor** — moving the island or Mochi on the desktop to a screen with another scale no longer cuts him off or blurs him; the mini Mochis and the wardrobe follow too (#892 by @ZouaouiB, tested on two monitors by @afpruivo; fixes #344)
 
 ## Android 0.3.0 — October 22, 2026
 
