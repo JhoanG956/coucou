@@ -1052,6 +1052,13 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
+                if apiKey.isEmpty && ClaudeCodeRelay.isAvailable {
+                    Text(String(localized: "chat.relay.no-key"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Divider().padding(.vertical, 2)
 
                 Picker(String(localized: "chat.model"), selection: $modelChoice) {

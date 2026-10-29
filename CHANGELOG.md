@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Chat on your Claude plan, no API key** — with no Anthropic key saved, the chat is answered by your own Claude Code (`claude -p`), signed in with your account: on Windows and Linux the chat, Flow's clean-up and the notes of a call (#903 by @RomainBrocheton), on the Mac the chat (GitHub build). Each run loads none of your settings or hooks, no MCP server, saves no session, and may only search the web or, with no web at all, read the file you dropped. Saving a key switches back to the API
 - GitHub: the CI of your Claude Code session's branch, read from its .git folder. It takes the CI row of the GitHub card (macOS, GitHub build) and the CI detail lists it first. Mochi speaks up when a run on that branch finishes or someone reviews one of your pull requests, and pull requests untouched for a month drop off the list — thanks @JhoanG956
 - Google Calendar (macOS): a new pill with your next events and Join for the meeting that's on, and a reminder card when Google Calendar would ring; signs in with your own read-only OAuth client — thanks @JhoanG956
 - Dragging a file onto the island and dropping it elsewhere (or pressing Escape) puts the island back the way it was, instead of leaving the drop zone open — thanks @JhoanG956

@@ -75095,178 +75095,91 @@
         }
       }
     },
-    "Google account not connected" : {
+    "chat.relay.no-key" : {
+      "extractionState" : "manual",
       "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "حساب Google غير متصل"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google অ্যাকাউন্ট সংযুক্ত নয়"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google-Konto nicht verbunden"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Google account not connected"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuenta de Google no conectada"
+            "value" : "No key: your Claude Code answers instead, with your account."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Compte Google non connecté"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google खाता कनेक्ट नहीं है"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Akun Google belum terhubung"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conta do Google não conectada"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Аккаунт Google не подключён"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ยังไม่ได้เชื่อมต่อบัญชี Google"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google hesabı bağlı değil"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未连接 Google 账号"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未連接 Google 帳號"
-          }
-        }
-      }
-    },
-    "integrations.github.ci-hint.appstore" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Die CI des Branches deiner Claude-Code-Sitzung braucht die Version zum direkten Download: Die App-Store-Sandbox kann den .git-Ordner deines Projekts nicht lesen.)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
+            "value" : "Pas de clé : ton Claude Code répond à la place, avec ton compte."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
+            "value" : "Sin clave: responde tu Claude Code, con tu cuenta."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
+            "value" : "Sem chave: o seu Claude Code responde no lugar, com a sua conta."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(CI ของ branch ในเซสชัน Claude Code ต้องใช้เวอร์ชันดาวน์โหลดโดยตรง: แซนด์บ็อกซ์ของ App Store อ่านโฟลเดอร์ .git ของโปรเจกต์ไม่ได้)"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Claude Code oturumunun dalının CI'ı için doğrudan indirilen sürüm gerekir: App Store korumalı alanı projenin .git klasörünü okuyamaz.)"
+            "value" : "Нет ключа: вместо него отвечает ваш Claude Code с вашей учётной записью."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
+            "value" : "没有密钥：改由你的 Claude Code 用你的账户回答。"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कोई कुंजी नहीं: इसके बजाय आपका Claude Code आपके खाते से जवाब देता है।"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يوجد مفتاح: يجيب Claude Code الخاص بك بدلاً من ذلك، بحسابك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কোনো কী নেই: এর বদলে আপনার Claude Code আপনার অ্যাকাউন্ট দিয়ে উত্তর দেয়।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tanpa kunci: Claude Code-mu yang menjawab, dengan akunmu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Schlüssel: Dein Claude Code antwortet stattdessen, mit deinem Konto."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anahtar yok: Bunun yerine Claude Code’un kendi hesabınla yanıtlar."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีคีย์: Claude Code ของคุณจะตอบแทน ด้วยบัญชีของคุณ"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "（Claude Code 工作階段所在分支的 CI 需要直接下載版：App Store 沙盒無法讀取專案的 .git 資料夾。）"
+            "value" : "沒有金鑰：改由你的 Claude Code 用你的帳戶回答。"
           }
         }
       }
@@ -75359,94 +75272,6 @@
         }
       }
     },
-    "integrations.github.ci-hint" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die CI-Zeile folgt dem Branch deiner letzten Claude-Code-Sitzung."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The CI row follows the branch of your last Claude Code session."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La fila de CI sigue la rama de tu última sesión de Claude Code."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La ligne CI suit la branche de ta dernière session Claude Code."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A linha de CI segue a branch da sua última sessão do Claude Code."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Строка CI следует за веткой вашей последней сессии Claude Code."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "แถว CI จะติดตาม branch ของเซสชัน Claude Code ล่าสุดของคุณ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI satırı, son Claude Code oturumunun dalını izler."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CI 列會跟隨你最近一次 Claude Code 工作階段所在的分支。"
-          }
-        }
-      }
-    },
     "integrations.gcal.hint" : {
       "localizations" : {
         "ar" : {
@@ -75531,94 +75356,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Coucou 沒有伺服器，所以會使用你自己的 OAuth 用戶端登入：在 Google Cloud 中啟用 Google Calendar API，建立一個「桌面應用程式」類型的 OAuth 用戶端，並將其 ID 和密鑰貼到這裡。接著發布同意畫面（正式版）：Google 會提示應用程式未經驗證——這是你自己的應用程式，繼續即可。如果保留在「測試」狀態，只有列在其中的測試使用者可以登入，而且 Google 每 7 天會將他們登出。唯讀。Mochi 會在你活動自帶的 Google 提醒時間提醒你。"
-          }
-        }
-      }
-    },
-    "Client ID  (….apps.googleusercontent.com)" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "معرّف العميل  (….apps.googleusercontent.com)"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ক্লায়েন্ট আইডি  (….apps.googleusercontent.com)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Client-ID  (….apps.googleusercontent.com)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Client ID  (….apps.googleusercontent.com)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ID de cliente  (….apps.googleusercontent.com)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ID client  (….apps.googleusercontent.com)"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "क्लाइंट ID  (….apps.googleusercontent.com)"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ID klien  (….apps.googleusercontent.com)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ID do cliente  (….apps.googleusercontent.com)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ID клиента  (….apps.googleusercontent.com)"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "รหัสไคลเอนต์  (….apps.googleusercontent.com)"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İstemci kimliği  (….apps.googleusercontent.com)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "客户端 ID  (….apps.googleusercontent.com)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "用戶端 ID  (….apps.googleusercontent.com)"
           }
         }
       }
@@ -75711,90 +75448,178 @@
         }
       }
     },
-    "Disconnect" : {
+    "Nothing on the calendar this week" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "قطع الاتصال"
+            "value" : "لا شيء في التقويم هذا الأسبوع"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "সংযোগ বিচ্ছিন্ন করুন"
+            "value" : "এই সপ্তাহে ক্যালেন্ডারে কিছু নেই"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trennen"
+            "value" : "Diese Woche steht nichts im Kalender"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disconnect"
+            "value" : "Nothing on the calendar this week"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desconectar"
+            "value" : "Nada en el calendario esta semana"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déconnecter"
+            "value" : "Rien dans l'agenda cette semaine"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "डिस्कनेक्ट करें"
+            "value" : "इस हफ़्ते कैलेंडर में कुछ नहीं"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Putuskan"
+            "value" : "Tidak ada apa pun di kalender minggu ini"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desconectar"
+            "value" : "Nada na agenda esta semana"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отключить"
+            "value" : "На этой неделе в календаре ничего нет"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ยกเลิกการเชื่อมต่อ"
+            "value" : "ไม่มีอะไรในปฏิทินสัปดาห์นี้"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bağlantıyı kes"
+            "value" : "Bu hafta takvimde bir şey yok"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "断开连接"
+            "value" : "本周日历上没有安排"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "中斷連線"
+            "value" : "本週行事曆上沒有安排"
+          }
+        }
+      }
+    },
+    "Google account not connected" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حساب Google غير متصل"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google অ্যাকাউন্ট সংযুক্ত নয়"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google-Konto nicht verbunden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google account not connected"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuenta de Google no conectada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compte Google non connecté"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google खाता कनेक्ट नहीं है"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akun Google belum terhubung"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conta do Google não conectada"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аккаунт Google не подключён"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังไม่ได้เชื่อมต่อบัญชี Google"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google hesabı bağlı değil"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未连接 Google 账号"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未連接 Google 帳號"
           }
         }
       }
@@ -75887,6 +75712,358 @@
         }
       }
     },
+    "Disconnect" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قطع الاتصال"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সংযোগ বিচ্ছিন্ন করুন"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnect"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecter"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "डिस्कनेक्ट करें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Putuskan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отключить"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยกเลิกการเชื่อมต่อ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bağlantıyı kes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "断开连接"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中斷連線"
+          }
+        }
+      }
+    },
+    "integrations.github.ci-hint.appstore" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(تحتاج CI لفرع جلسة Claude Code إلى إصدار التنزيل المباشر: لا يمكن لبيئة App Store المعزولة قراءة مجلد .git في مشروعك.)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(আপনার Claude Code সেশনের ব্রাঞ্চের CI-এর জন্য সরাসরি ডাউনলোড সংস্করণ লাগবে: App Store-এর স্যান্ডবক্স আপনার প্রজেক্টের .git ফোল্ডার পড়তে পারে না।)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Die CI des Branches deiner Claude-Code-Sitzung braucht die Version zum direkten Download: Die App-Store-Sandbox kann den .git-Ordner deines Projekts nicht lesen.)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(The CI of your Claude Code session's branch needs the direct-download version: the App Store sandbox can't read your project's .git folder.)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(La CI de la rama de tu sesión de Claude Code necesita la versión de descarga directa: el sandbox de la App Store no puede leer la carpeta .git de tu proyecto.)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(La CI de la branche de ta session Claude Code demande la version en téléchargement direct : le bac à sable de l'App Store ne peut pas lire le dossier .git de ton projet.)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(आपके Claude Code सत्र की ब्रांच के CI के लिए सीधे डाउनलोड वाला संस्करण चाहिए: App Store का सैंडबॉक्स आपके प्रोजेक्ट का .git फ़ोल्डर नहीं पढ़ सकता।)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(CI untuk branch sesi Claude Code Anda memerlukan versi unduhan langsung: sandbox App Store tidak dapat membaca folder .git proyek Anda.)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(A CI da branch da sua sessão do Claude Code precisa da versão de download direto: o sandbox da App Store não consegue ler a pasta .git do seu projeto.)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Для CI ветки вашей сессии Claude Code нужна версия для прямой загрузки: песочница App Store не может читать папку .git вашего проекта.)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(CI ของ branch ในเซสชัน Claude Code ต้องใช้เวอร์ชันดาวน์โหลดโดยตรง: แซนด์บ็อกซ์ของ App Store อ่านโฟลเดอร์ .git ของโปรเจกต์ไม่ได้)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Claude Code oturumunun dalının CI'ı için doğrudan indirilen sürüm gerekir: App Store korumalı alanı projenin .git klasörünü okuyamaz.)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（Claude Code 会话所在分支的 CI 需要直接下载版：App Store 沙盒无法读取项目的 .git 文件夹。）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（Claude Code 工作階段所在分支的 CI 需要直接下載版：App Store 沙盒無法讀取專案的 .git 資料夾。）"
+          }
+        }
+      }
+    },
+    "Client ID  (….apps.googleusercontent.com)" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "معرّف العميل  (….apps.googleusercontent.com)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ক্লায়েন্ট আইডি  (….apps.googleusercontent.com)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client-ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de cliente  (….apps.googleusercontent.com)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID client  (….apps.googleusercontent.com)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "क्लाइंट ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID klien  (….apps.googleusercontent.com)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID do cliente  (….apps.googleusercontent.com)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID клиента  (….apps.googleusercontent.com)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รหัสไคลเอนต์  (….apps.googleusercontent.com)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İstemci kimliği  (….apps.googleusercontent.com)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "客户端 ID  (….apps.googleusercontent.com)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用戶端 ID  (….apps.googleusercontent.com)"
+          }
+        }
+      }
+    },
+    "integrations.github.ci-hint" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يتبع سطر CI فرع آخر جلسة Claude Code لديك."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI সারিটি আপনার শেষ Claude Code সেশনের ব্রাঞ্চ অনুসরণ করে।"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die CI-Zeile folgt dem Branch deiner letzten Claude-Code-Sitzung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The CI row follows the branch of your last Claude Code session."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La fila de CI sigue la rama de tu última sesión de Claude Code."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La ligne CI suit la branche de ta dernière session Claude Code."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI पंक्ति आपके पिछले Claude Code सत्र की ब्रांच का अनुसरण करती है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baris CI mengikuti branch sesi Claude Code terakhir Anda."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A linha de CI segue a branch da sua última sessão do Claude Code."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка CI следует за веткой вашей последней сессии Claude Code."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แถว CI จะติดตาม branch ของเซสชัน Claude Code ล่าสุดของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI satırı, son Claude Code oturumunun dalını izler."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI 行跟随你最近一次 Claude Code 会话所在的分支。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI 列會跟隨你最近一次 Claude Code 工作階段所在的分支。"
+          }
+        }
+      }
+    },
     "Join" : {
       "localizations" : {
         "ar" : {
@@ -75971,94 +76148,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "加入"
-          }
-        }
-      }
-    },
-    "Nothing on the calendar this week" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "لا شيء في التقويم هذا الأسبوع"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "এই সপ্তাহে ক্যালেন্ডারে কিছু নেই"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Woche steht nichts im Kalender"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing on the calendar this week"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nada en el calendario esta semana"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rien dans l'agenda cette semaine"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "इस हफ़्ते कैलेंडर में कुछ नहीं"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tidak ada apa pun di kalender minggu ini"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nada na agenda esta semana"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "На этой неделе в календаре ничего нет"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ไม่มีอะไรในปฏิทินสัปดาห์นี้"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu hafta takvimde bir şey yok"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本周日历上没有安排"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本週行事曆上沒有安排"
           }
         }
       }

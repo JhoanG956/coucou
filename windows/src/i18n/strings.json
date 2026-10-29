@@ -4487,6 +4487,19 @@
    "de": "Keine Fehlerdetails verfügbar.",
    "tr": "Hata ayrıntısı yok."
   },
+  "No key: your Claude Code answers instead, with your account.": {
+   "zh-Hans": "没有密钥：改由你的 Claude Code 用你的账户回答。",
+   "hi": "कोई कुंजी नहीं: इसके बजाय आपका Claude Code आपके खाते से जवाब देता है।",
+   "es": "Sin clave: responde tu Claude Code, con tu cuenta.",
+   "ar": "لا يوجد مفتاح: يجيب Claude Code الخاص بك بدلاً من ذلك، بحسابك.",
+   "fr": "Pas de clé : ton Claude Code répond à la place, avec ton compte.",
+   "bn": "কোনো কী নেই: এর বদলে আপনার Claude Code আপনার অ্যাকাউন্ট দিয়ে উত্তর দেয়।",
+   "pt-BR": "Sem chave: o seu Claude Code responde no lugar, com a sua conta.",
+   "ru": "Нет ключа: вместо него отвечает ваш Claude Code с вашей учётной записью.",
+   "id": "Tanpa kunci: Claude Code-mu yang menjawab, dengan akunmu.",
+   "de": "Kein Schlüssel: Dein Claude Code antwortet stattdessen, mit deinem Konto.",
+   "tr": "Anahtar yok: Bunun yerine Claude Code’un kendi hesabınla yanıtlar."
+  },
   "No messages": {
    "zh-Hans": "没有邮件",
    "hi": "कोई संदेश नहीं",

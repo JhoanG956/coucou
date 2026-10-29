@@ -218,7 +218,63 @@ final class ClaudeService {
 
     func clearConversation() {
         conversationMessages = []
+        #if !APPSTORE
+        relayHistory = []
+        #endif
     }
+
+    /// Whether the chat can answer with Claude: an API key, or else Claude Code (GitHub build).
+    var canAnswer: Bool {
+        !(apiKey ?? "").isEmpty || ClaudeCodeRelay.isAvailable
+    }
+
+    #if !APPSTORE
+    // MARK: - Chat through Claude Code (no API key)
+
+    /// The relay's turns, as plain text: they never mix with the API's content blocks.
+    private var relayHistory: [(user: String, assistant: String)] = []
+
+    private func chatThroughClaudeCode(query: String, context: PromptContext?, state: AppState) async {
+        var contextLine: String?
+        var readDir: URL?
+        if relayHistory.isEmpty, let context {
+            switch context {
+            case .window(let app, let title, let url):
+                var text = "Context — App: \(app), Window: \(title)"
+                if let url { text += ", URL: \(url)" }
+                contextLine = text
+            case .file(let name, let fileURL):
+                if let fileURL, let dir = try? ClaudeCodeRelay.isolate(fileURL) {
+                    readDir = dir
+                    contextLine = "File: \(name) (read it at \(dir.appendingPathComponent(fileURL.lastPathComponent).path))"
+                } else {
+                    contextLine = "File: \(name)"
+                }
+            }
+        }
+        defer { if let readDir { try? FileManager.default.removeItem(at: readDir) } }
+        let request = ClaudeCodeRelay.Request(
+            model: model,
+            system: systemPrompt,
+            prompt: ClaudeCodeRelay.chatPrompt(history: relayHistory, context: contextLine, query: query),
+            // Reading a dropped file, no web at all: a file written to steer the model
+            // could otherwise send what it reads to a website.
+            tools: readDir == nil ? ["WebSearch", "WebFetch"] : ["Read"],
+            readDir: readDir,
+            timeout: 180
+        )
+        do {
+            let text = try await ClaudeCodeRelay.ask(request)
+            relayHistory.append((user: contextLine.map { "\($0)\n\n\(query)" } ?? query, assistant: text))
+            state.chatHistory.append(ChatMessage(role: .assistant, content: text))
+            state.stateOverride = nil
+            state.view = .prompt
+            NotificationCenter.default.post(name: .triggerEmote, object: BotEmote.happy)
+        } catch {
+            await showError(error.localizedDescription, state: state)
+        }
+    }
+    #endif
 
     /// Resolved once: NSFullUserName() is a system call, and the name cannot change under us
     /// while the app runs.
@@ -258,6 +314,13 @@ final class ClaudeService {
             return
         }
         guard let key = apiKey, !key.isEmpty else {
+            #if !APPSTORE
+            // No key: the user's own Claude Code answers, on their Claude plan.
+            if ClaudeCodeRelay.isAvailable {
+                await chatThroughClaudeCode(query: query, context: context, state: state)
+                return
+            }
+            #endif
             await showError("API key missing. Open settings.", state: state)
             return
         }
