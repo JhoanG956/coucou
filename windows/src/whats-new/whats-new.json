@@ -2,6 +2,73 @@
   "about": "What's new, shown once in the island after Coucou updates itself (src/whats-new/). Every Windows and Linux release adds its entry here, in the 12 languages: 1 to 4 items, a short title and one line each, an icon from scripts/test-whats-new.py. python3 scripts/test-whats-new.py checks it.",
   "releases": [
     {
+      "version": "0.5.4",
+      "items": [
+        {
+          "icon": "shield",
+          "title": {
+            "en": "Coucou keeps listening",
+            "zh-Hans": "Coucou 始终在线",
+            "hi": "Coucou हमेशा सुनता रहे",
+            "es": "Coucou sigue escuchando",
+            "ar": "Coucou يبقى منصتًا",
+            "fr": "Coucou reste à l’écoute",
+            "bn": "Coucou সবসময় শোনে",
+            "pt-BR": "O Coucou continua ouvindo",
+            "ru": "Coucou всегда на связи",
+            "id": "Coucou terus mendengarkan",
+            "de": "Coucou hört weiter zu",
+            "tr": "Coucou dinlemeye devam eder"
+          },
+          "detail": {
+            "en": "One failed connection no longer cuts Claude Code off, and a card goes once the terminal takes over.",
+            "zh-Hans": "一次连接失败不再让 Claude Code 断开；终端接手后卡片会自动消失。",
+            "hi": "एक कनेक्शन फ़ेल होने से अब Claude Code नहीं कटता, और टर्मिनल के संभालते ही कार्ड हट जाता है।",
+            "es": "Una conexión fallida ya no corta Claude Code, y la tarjeta se va cuando la terminal toma el control.",
+            "ar": "لم يعد فشل اتصال واحد يقطع Claude Code، وتختفي البطاقة حين تتولى الطرفية الأمر.",
+            "fr": "Une connexion ratée ne coupe plus Claude Code, et la carte part quand le terminal reprend la main.",
+            "bn": "একটি সংযোগ ব্যর্থ হলে আর Claude Code বিচ্ছিন্ন হয় না, আর টার্মিনাল দায়িত্ব নিলে কার্ডটি সরে যায়।",
+            "pt-BR": "Uma conexão com falha não corta mais o Claude Code, e o cartão some quando o terminal assume.",
+            "ru": "Сбой одного соединения больше не отключает Claude Code, а карточка исчезает, когда управление берёт терминал.",
+            "id": "Satu koneksi gagal tak lagi memutus Claude Code, dan kartu hilang saat terminal mengambil alih.",
+            "de": "Eine fehlgeschlagene Verbindung trennt Claude Code nicht mehr; die Karte geht, wenn das Terminal übernimmt.",
+            "tr": "Tek bir başarısız bağlantı artık Claude Code’u koparmıyor; terminal devraldığında kart kapanır."
+          }
+        },
+        {
+          "icon": "bug",
+          "title": {
+            "en": "25 community fixes",
+            "zh-Hans": "25 项社区修复",
+            "hi": "समुदाय के 25 सुधार",
+            "es": "25 arreglos de la comunidad",
+            "ar": "25 إصلاحًا من المجتمع",
+            "fr": "25 correctifs de la communauté",
+            "bn": "কমিউনিটির ২৫টি সমাধান",
+            "pt-BR": "25 correções da comunidade",
+            "ru": "25 исправлений от сообщества",
+            "id": "25 perbaikan dari komunitas",
+            "de": "25 Fixes aus der Community",
+            "tr": "Topluluktan 25 düzeltme"
+          },
+          "detail": {
+            "en": "The Flow pill takes clicks, WhatsApp groups show their names, and truer service pills.",
+            "zh-Hans": "Flow 胶囊可点击，WhatsApp 群组显示名称，服务胶囊更准确。",
+            "hi": "Flow पिल क्लिक लेती है, WhatsApp ग्रुप अपना नाम दिखाते हैं, और सर्विस पिल्स ज़्यादा सटीक।",
+            "es": "La pill de Flow acepta clics, los grupos de WhatsApp muestran su nombre y pills de servicios más precisas.",
+            "ar": "كبسولة Flow تستجيب للنقر، ومجموعات واتساب تظهر بأسمائها، وكبسولات الخدمات أدق.",
+            "fr": "La pill Flow prend les clics, les groupes WhatsApp ont leur nom, et des pills de services plus justes.",
+            "bn": "Flow পিল ক্লিক নেয়, WhatsApp গ্রুপ নিজের নাম দেখায়, আর সার্ভিস পিল আরও সঠিক।",
+            "pt-BR": "A pill do Flow aceita cliques, grupos do WhatsApp mostram o nome e pills de serviços mais precisas.",
+            "ru": "Пилюля Flow принимает клики, группы WhatsApp показывают названия, а пилюли сервисов точнее.",
+            "id": "Pill Flow menerima klik, grup WhatsApp menampilkan namanya, dan pill layanan lebih akurat.",
+            "de": "Die Flow-Pill nimmt Klicks an, WhatsApp-Gruppen zeigen ihre Namen, und genauere Dienst-Pills.",
+            "tr": "Flow hapı tıklamaları alıyor, WhatsApp grupları adlarını gösteriyor, servis hapları daha doğru."
+          }
+        }
+      ]
+    },
+    {
       "version": "0.5.3",
       "items": [
         {
