@@ -249,15 +249,20 @@ side (tray, errors) embeds the same two files.
 Credential Manager**, never on disk and never in the interface — the island can
 only ask whether a key exists. Same for every integration key.
 
-**No key? Claude Code answers instead.** When no Anthropic key is saved and
-the Claude Code CLI is installed (on PATH, or in the usual install folders),
-the chat, Flow's clean-up and the notes of a call run through `claude -p`,
-signed in with your own account. Coucou reads no credential: Claude Code
-answers exactly as it does in a terminal. Each run loads none of your settings
-(so none of your hooks), no MCP server and no skill, saves no session, and may
-only search the web (the chat) or, with no web at all, read the file you dropped. « OK Coucou »
-still needs the key: its tools are Coucou's own. Saving a key switches
-everything back to the API.
+**No key? Use your subscription.** **Settings… → Chat → Your AI
+subscriptions** has one switch per provider: on, the chat goes through the
+provider's official terminal tool, signed in with your own account — Claude
+Code (Claude plan), Antigravity CLI or Gemini CLI (Google AI plan), Codex CLI
+(ChatGPT plan), Cursor CLI and GitHub Copilot CLI (`cli_relay.rs`). Each row
+says whether the tool is installed (on PATH or in the usual install folders),
+links to its install page and gives the command to sign in once. Coucou reads
+no credential: the tool answers exactly as it does in a terminal. Each run is
+read-only (plan or ask modes, no shell, no edits), loads none of your hooks,
+MCP servers or extensions where the tool can turn them off, saves no session,
+and searches the web for the chat only; a dropped file is read with no web at
+all. Through npm's `.cmd` shims the prompt goes in on stdin. Flow's clean-up
+and the notes of a call use Claude Code when no Anthropic key is saved;
+« OK Coucou » still needs the key: its tools are Coucou's own.
 
 The chat also talks to **Google AI (Gemini)**, **OpenAI** and **OpenRouter**:
 add their keys in **Settings… → Chat providers**, then click the model name

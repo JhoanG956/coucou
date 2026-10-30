@@ -5,6 +5,7 @@ mod agents;
 mod chat;
 mod claude;
 mod claude_code;
+mod cli_relay;
 mod codex_plan;
 mod config_file;
 mod desktop;
@@ -583,6 +584,30 @@ fn claude_ready() -> bool {
     claude::ready()
 }
 
+/// Settings → Chat → Your AI subscriptions: each provider's switch and
+/// whether its terminal tool is installed (looked up again on every call).
+#[tauri::command]
+fn subscription_status(shared: State<Shared>) -> Vec<cli_relay::Status> {
+    let settings = shared.settings.lock().unwrap().clone();
+    cli_relay::status(&settings)
+}
+
+/// A switch under "Your AI subscriptions" moved: saved, and both windows told.
+#[tauri::command]
+fn subscription_set(app: AppHandle, shared: State<Shared>, provider: String, on: bool) -> Vec<cli_relay::Status> {
+    let settings = {
+        let mut current = shared.settings.lock().unwrap();
+        cli_relay::set(&mut current, &provider, on);
+        current.clone()
+    };
+    if let Err(err) = settings::save(&settings) {
+        log::line(format!("could not save settings: {err}"));
+    }
+    let status = cli_relay::status(&settings);
+    let _ = app.emit("settings-changed", settings);
+    status
+}
+
 #[tauri::command]
 fn secret_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
     // Bound to its server's address: only local_set_key may store it.
@@ -866,6 +891,8 @@ pub fn run() {
             ingest_file,
             secret_present,
             claude_ready,
+            subscription_status,
+            subscription_set,
             secret_set,
             secret_clear,
             refresh_integration,

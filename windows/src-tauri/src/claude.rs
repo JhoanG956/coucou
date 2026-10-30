@@ -36,9 +36,6 @@ const MAX_INLINE_TEXT: u64 = 200_000;
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5";
 
-/// How long a chat turn through Claude Code may take: it may search the web.
-const RELAY_CHAT_TIMEOUT: Duration = Duration::from_secs(180);
-
 /// Whether Claude can answer at all: an API key, or else Claude Code.
 pub fn ready() -> bool {
     secrets::present(KEY) || claude_code::available()
@@ -160,8 +157,10 @@ pub async fn send(
     query: String,
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
+    // No key: Settings → Chat → Your AI subscriptions lets Claude Code answer
+    // instead (cli_relay.rs); chat.rs sends the turn there before it gets here.
     let Some(key) = secrets::get(KEY) else {
-        return send_through_claude_code(chat, model, query, context).await;
+        return Err(t("API key missing. Open settings."));
     };
     let endpoint = endpoint()?;
 
@@ -176,40 +175,6 @@ pub async fn send(
     // next turn has the right context.
     let plain = chat::plain_question(turn.first, context.as_ref(), &query);
     chat.commit(&turn, user, json!({ "role": "assistant", "content": blocks }), &plain, &text);
-    Ok(ChatReply { text })
-}
-
-/// One chat turn answered by Claude Code, with web search, and reading the
-/// dropped file when there is one.
-async fn send_through_claude_code(
-    chat: &Chat,
-    model: &str,
-    query: String,
-    context: Option<ChatContext>,
-) -> Result<ChatReply, String> {
-    if !claude_code::available() {
-        return Err(t("API key missing. Open settings."));
-    }
-    let turn = chat.begin(claude_code::PROVIDER);
-    let reads_file = turn.first && matches!(context, Some(ChatContext::File { .. }));
-    let inbox = crate::files::inbox_dir();
-    // Reading a dropped file, the run gets no web at all: a file written to
-    // steer the model could otherwise send what it reads (or the other files
-    // in the inbox) to a website through a fetch or a search.
-    let tools: &[&str] = if reads_file { &["Read"] } else { &["WebSearch", "WebFetch"] };
-    let prompt = claude_code::chat_prompt(&turn.history, turn.first, context.as_ref(), &query);
-    let text = claude_code::ask(&claude_code::Request {
-        model,
-        system: &chat::system_prompt(true),
-        prompt: &prompt,
-        tools,
-        read_dir: reads_file.then_some(inbox.as_path()),
-        timeout: RELAY_CHAT_TIMEOUT,
-    })
-    .await?;
-
-    let plain = chat::plain_question(turn.first, context.as_ref(), &query);
-    chat.commit(&turn, json!({ "role": "user", "content": plain }), json!({ "role": "assistant", "content": text }), &plain, &text);
     Ok(ChatReply { text })
 }
 
